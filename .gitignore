@@ -1,0 +1,58 @@
+# Dependências
+node_modules/
+.pnp
+.pnp.js
+
+# Compilação e Distribuição
+out/
+dist/
+release/
+build/
+*.exe
+*.dmg
+*.AppImage
+*.deb
+*.rpm
+*.zip
+*.tar.gz
+
+# TypeScript e Bundler caches
+*.tsbuildinfo
+.vite/
+.vitest/
+
+# Logs e depuração
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+electron-debug.log*
+
+# Arquivos de Sistema Operacional
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# Arquivos temporários e backups
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+*.bak
+
+# Variáveis de ambiente e credenciais
+.env
+.env.local
+.env.*.local
+
+# IDEs e Editores
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.sublime-project
+*.sublime-workspace

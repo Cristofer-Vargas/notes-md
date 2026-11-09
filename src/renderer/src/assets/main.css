@@ -1,0 +1,600 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root,
+[data-theme='light'] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --bg-canvas: #f3f5f8;
+  --border-color: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --page-shadow: 0 4px 24px -4px rgba(15, 23, 42, 0.06), 0 1px 4px -1px rgba(15, 23, 42, 0.04);
+  --code-bg: #1e293b;
+  --code-header-bg: #0f172a;
+  --code-border: #334155;
+  --code-text: #f1f5f9;
+}
+
+[data-theme='dark'] {
+  --bg-primary: #282a36;        /* Dracula Editor Background (Tom suave slate-purple, sem contraste agressivo) */
+  --bg-secondary: #21222c;      /* Dracula Secondary (Barras laterais, abas e cabeçalhos) */
+  --bg-tertiary: #343746;       /* Dracula Tertiary (Linha ativa, campos de busca, hover e seleção suave) */
+  --bg-canvas: #1e1f29;         /* Dracula Outer Canvas (Fundo externo acolhedor sob o papel) */
+  --border-color: #3b3e51;      /* Dracula Divider (Divisores suaves, sem linhas brilhantes ou cortantes) */
+  --text-primary: #f8f8f2;      /* Dracula Foreground (Branco suave/creme, sem ofuscar a visão) */
+  --text-secondary: #b3b9c5;    /* Dracula Readable Text (Lavanda-cinza relaxante para subtítulos) */
+  --text-muted: #6272a4;        /* Dracula Comment (Cinza-azulado clássico) */
+  --page-shadow: 0 8px 30px -4px rgba(0, 0, 0, 0.35);
+  --code-bg: #21222c;
+  --code-header-bg: #1e1f29;
+  --code-border: #383a4c;
+  --code-text: #f8f8f2;
+}
+
+[data-theme='sepia'] {
+  --bg-primary: #fbf7f0;
+  --bg-secondary: #f3ece0;
+  --bg-tertiary: #e9dfc9;
+  --bg-canvas: #efe6d5;
+  --border-color: #dcd0b8;
+  --text-primary: #2c241b;
+  --text-secondary: #5c4e3e;
+  --text-muted: #8c7b67;
+  --page-shadow: 0 4px 20px -4px rgba(68, 51, 30, 0.08);
+  --code-bg: #2e2820;
+  --code-header-bg: #231e17;
+  --code-border: #443c30;
+  --code-text: #f4eee3;
+}
+
+/* Accent Color Presets (Default & Light Mode) */
+:root,
+[data-accent='blue'] {
+  --accent-color: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-soft: rgba(37, 99, 235, 0.12);
+  --accent-border: rgba(37, 99, 235, 0.35);
+}
+
+[data-accent='purple'] {
+  --accent-color: #7c3aed;
+  --accent-hover: #6d28d9;
+  --accent-soft: rgba(124, 58, 237, 0.14);
+  --accent-border: rgba(124, 58, 237, 0.38);
+}
+
+[data-accent='emerald'] {
+  --accent-color: #059669;
+  --accent-hover: #047857;
+  --accent-soft: rgba(5, 150, 105, 0.13);
+  --accent-border: rgba(5, 150, 105, 0.35);
+}
+
+[data-accent='amber'] {
+  --accent-color: #d97706;
+  --accent-hover: #b45309;
+  --accent-soft: rgba(217, 119, 6, 0.14);
+  --accent-border: rgba(217, 119, 6, 0.38);
+}
+
+[data-accent='rose'] {
+  --accent-color: #e11d48;
+  --accent-hover: #be123c;
+  --accent-soft: rgba(225, 29, 72, 0.13);
+  --accent-border: rgba(225, 29, 72, 0.35);
+}
+
+/* Dracula Accent Color Presets (Tons harmônicos e aveludados no Dark Mode) */
+[data-theme='dark'] {
+  --accent-color: #bd93f9;
+  --accent-hover: #caa6fa;
+  --accent-soft: rgba(189, 147, 249, 0.16);
+  --accent-border: rgba(189, 147, 249, 0.38);
+}
+
+[data-theme='dark'][data-accent='purple'] {
+  --accent-color: #bd93f9;
+  --accent-hover: #caa6fa;
+  --accent-soft: rgba(189, 147, 249, 0.16);
+  --accent-border: rgba(189, 147, 249, 0.38);
+}
+
+[data-theme='dark'][data-accent='blue'] {
+  --accent-color: #8be9fd;
+  --accent-hover: #a5f3fc;
+  --accent-soft: rgba(139, 233, 253, 0.15);
+  --accent-border: rgba(139, 233, 253, 0.35);
+}
+
+[data-theme='dark'][data-accent='emerald'] {
+  --accent-color: #50fa7b;
+  --accent-hover: #6efb91;
+  --accent-soft: rgba(80, 250, 123, 0.15);
+  --accent-border: rgba(80, 250, 123, 0.35);
+}
+
+[data-theme='dark'][data-accent='amber'] {
+  --accent-color: #ffb86c;
+  --accent-hover: #ffc98a;
+  --accent-soft: rgba(255, 184, 108, 0.16);
+  --accent-border: rgba(255, 184, 108, 0.38);
+}
+
+[data-theme='dark'][data-accent='rose'] {
+  --accent-color: #ff79c6;
+  --accent-hover: #ff94d2;
+  --accent-soft: rgba(255, 121, 198, 0.16);
+  --accent-border: rgba(255, 121, 198, 0.38);
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(98, 114, 164, 0.32);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(98, 114, 164, 0.55);
+}
+
+/* Global Selection Style (Inspirado no #44475a do tema Dracula) */
+::selection {
+  background: rgba(98, 114, 164, 0.35);
+}
+
+[data-theme='dark'] ::selection {
+  background: #44475a;
+  color: #f8f8f2;
+}
+
+/* TipTap WYSIWYG Document Styles */
+.ProseMirror {
+  outline: none;
+  min-height: 620px;
+  color: var(--text-primary);
+  font-size: var(--editor-font-size, 16px);
+  line-height: var(--editor-line-height, 1.7);
+  user-select: text;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--text-muted);
+  pointer-events: none;
+  height: 0;
+}
+
+.ProseMirror h1 {
+  font-size: 2.15em;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+  margin-top: 0.75em;
+  margin-bottom: 0.45em;
+  color: var(--text-primary);
+}
+
+.ProseMirror h2 {
+  font-size: 1.55em;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.32;
+  margin-top: 1.3em;
+  margin-bottom: 0.45em;
+  color: var(--text-primary);
+}
+
+.ProseMirror h3 {
+  font-size: 1.25em;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-top: 1.15em;
+  margin-bottom: 0.4em;
+  color: var(--text-primary);
+}
+
+/* Note WYSIWYG Hover Preview (Obsidian Page Preview style) */
+.preview-wysiwyg .ProseMirror {
+  min-height: auto;
+  padding: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  user-select: text;
+}
+
+.preview-wysiwyg .ProseMirror h1 {
+  font-size: 1.5em;
+  margin-top: 0.5em;
+  margin-bottom: 0.25em;
+}
+
+.preview-wysiwyg .ProseMirror h2 {
+  font-size: 1.3em;
+  margin-top: 0.55em;
+  margin-bottom: 0.25em;
+}
+
+.preview-wysiwyg .ProseMirror h3 {
+  font-size: 1.15em;
+  margin-top: 0.5em;
+  margin-bottom: 0.2em;
+}
+
+.preview-wysiwyg .ProseMirror p {
+  margin-top: 0.35em;
+  margin-bottom: 0.35em;
+}
+
+.preview-wysiwyg .ProseMirror blockquote {
+  padding-left: 0.75rem;
+  margin: 0.5rem 0;
+  border-left-width: 3px;
+}
+
+.ProseMirror h4,
+.ProseMirror h5,
+.ProseMirror h6 {
+  font-size: 1.05em;
+  font-weight: 600;
+  margin-top: 1em;
+  margin-bottom: 0.35em;
+  color: var(--text-secondary);
+}
+
+.ProseMirror p {
+  margin-top: 0.55em;
+  margin-bottom: 0.55em;
+}
+
+.ProseMirror hr {
+  border: none;
+  height: 1.5px;
+  background: var(--border-color);
+  margin: 1.85em 0;
+  border-radius: 2px;
+}
+
+.ProseMirror ul {
+  list-style-type: disc;
+  padding-left: 1.6em;
+  margin: 0.6em 0;
+}
+
+.ProseMirror ol {
+  list-style-type: decimal;
+  padding-left: 1.6em;
+  margin: 0.6em 0;
+}
+
+.ProseMirror li {
+  margin: 0.25em 0;
+}
+
+/* Task Lists (Checklists) */
+.ProseMirror ul[data-type='taskList'] {
+  list-style: none;
+  padding-left: 0.25em;
+}
+
+.ProseMirror ul[data-type='taskList'] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin: 0.35em 0;
+}
+
+.ProseMirror ul[data-type='taskList'] li > label {
+  flex: 0 0 auto;
+  margin-top: 0.25rem;
+  user-select: none;
+}
+
+.ProseMirror ul[data-type='taskList'] li > label input[type='checkbox'] {
+  cursor: pointer;
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: var(--accent-color);
+  border-radius: 4px;
+}
+
+.ProseMirror ul[data-type='taskList'] li > div {
+  flex: 1 1 auto;
+}
+
+.ProseMirror ul[data-type='taskList'] li[data-checked='true'] > div {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+/* Blockquote */
+.ProseMirror blockquote {
+  border-left: 4px solid var(--accent-color);
+  background-color: var(--accent-soft);
+  padding: 0.75rem 1.1rem;
+  margin: 1em 0;
+  border-radius: 0 0.5rem 0.5rem 0;
+  color: var(--text-primary);
+}
+
+/* Inline Code & Code Blocks */
+.ProseMirror code,
+.ProseMirror pre,
+.ProseMirror .code-block-pre,
+.ProseMirror [data-node-view-wrapper] code {
+  spellcheck: false;
+}
+
+.ProseMirror code {
+  background-color: var(--bg-tertiary);
+  color: var(--accent-color);
+  padding: 0.15em 0.4em;
+  border-radius: 0.3rem;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 0.88em;
+}
+
+.ProseMirror pre {
+  background-color: var(--code-bg, #21222c);
+  color: var(--code-text, #f8f8f2);
+  border: 1px solid var(--code-border, #383a4c);
+  padding: 1rem 1.25rem;
+  border-radius: 0.6rem;
+  overflow-x: auto;
+  margin: 0;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 0.88em;
+  line-height: 1.6;
+}
+
+.ProseMirror pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font-size: inherit;
+  display: block;
+}
+
+/* Syntax Highlighting Theme (Paleta autêntica Dracula do VS Code: contraste suave e harmônico) */
+.hljs-comment,
+.hljs-quote {
+  color: #6272a4;
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-subst {
+  color: #ff79c6;
+  font-weight: 500;
+}
+
+.hljs-number,
+.hljs-literal {
+  color: #bd93f9;
+}
+
+.hljs-variable,
+.hljs-template-variable {
+  color: #ffb86c;
+}
+
+.hljs-string,
+.hljs-doctag,
+.hljs-regexp {
+  color: #f1fa8c;
+}
+
+.hljs-title,
+.hljs-section,
+.hljs-selector-id {
+  color: #50fa7b;
+  font-weight: 600;
+}
+
+.hljs-title.function_ {
+  color: #50fa7b;
+}
+
+.hljs-title.class_,
+.hljs-type,
+.hljs-built_in {
+  color: #8be9fd;
+}
+
+.hljs-tag,
+.hljs-name {
+  color: #ff79c6;
+}
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-property {
+  color: #50fa7b;
+}
+
+.hljs-symbol,
+.hljs-bullet {
+  color: #ffb86c;
+}
+
+.hljs-addition {
+  color: #50fa7b;
+  background-color: rgba(80, 250, 123, 0.12);
+}
+
+.hljs-deletion {
+  color: #ff5555;
+  background-color: rgba(255, 85, 85, 0.12);
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: bold;
+}
+
+/* Highlights (including reference image warm gradient style) */
+.ProseMirror mark {
+  border-radius: 0.25em;
+  padding: 0.08em 0.28em;
+  color: #0f172a;
+}
+
+/* Tables */
+.ProseMirror table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 1.25em 0;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-color);
+}
+
+.ProseMirror td,
+.ProseMirror th {
+  min-width: 1em;
+  border: 1px solid var(--border-color);
+  padding: 0.55rem 0.8rem;
+  vertical-align: top;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.ProseMirror th {
+  font-weight: 600;
+  text-align: left;
+  background-color: var(--bg-secondary);
+}
+
+/* External Links */
+.ProseMirror a {
+  color: var(--accent-color);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* Obsidian-style [[WikiLink]] Live Preview */
+.wiki-link-syntax-hidden {
+  font-size: 0;
+  opacity: 0;
+  color: transparent;
+  user-select: none;
+}
+
+.wiki-link-editing {
+  background-color: var(--accent-soft);
+  color: var(--accent-color);
+  border-bottom: 1.5px dashed var(--accent-color);
+  border-radius: 0.25rem;
+  padding: 0.04rem 0.18rem;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 0.92em;
+}
+
+.wiki-link-node {
+  display: inline;
+  padding: 0.08rem 0.35rem;
+  margin-left: 0.05rem;
+  border-radius: 0.375rem 0 0 0.375rem;
+  font-weight: 500;
+  font-size: 0.95em;
+  color: var(--accent-color);
+  background-color: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  border-right: none;
+  cursor: text;
+  transition: all 0.15s ease;
+  text-decoration: underline;
+  text-decoration-color: var(--accent-border);
+  text-underline-offset: 3px;
+}
+
+.wiki-link-node:hover {
+  background-color: var(--accent-border);
+}
+
+.wiki-link-node.is-missing {
+  border-style: dashed;
+  opacity: 0.85;
+}
+
+.wiki-link-open-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.08rem 0.32rem;
+  margin-right: 0.08rem;
+  border-radius: 0 0.375rem 0.375rem 0;
+  font-size: 0.8em;
+  font-weight: 700;
+  color: var(--accent-color);
+  background-color: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.wiki-link-open-trigger:hover {
+  background-color: var(--accent-color);
+  color: #ffffff;
+}
+
+.ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+}
+
+.document-paper-shadow {
+  box-shadow: var(--page-shadow);
+}
+
+/* Smooth flash/pulse for outline and navigation target */
+@keyframes headingTargetPulse {
+  0% {
+    background-color: var(--accent-soft);
+    box-shadow: 0 0 0 6px var(--accent-soft);
+  }
+  40% {
+    background-color: var(--accent-soft);
+    box-shadow: 0 0 0 6px var(--accent-soft);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.heading-target-pulse {
+  animation: headingTargetPulse 1.4s ease-out;
+  border-radius: 6px;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
