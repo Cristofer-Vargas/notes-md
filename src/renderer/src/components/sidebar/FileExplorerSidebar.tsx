@@ -453,15 +453,13 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
               }`}
             />
             <span className="truncate">{entry.name}</span>
-            {entry.extension && (
+            {!isMd && entry.extension && (
               <span
                 className={cn(
                   'text-[9px] px-1 py-0.2 rounded font-mono font-bold shrink-0 tracking-wider uppercase select-none ml-1.5',
-                  isMd
-                    ? 'bg-accent/15 text-accent'
-                    : isImage
-                      ? 'bg-emerald-500/15 text-emerald-500'
-                      : 'bg-amber-500/15 text-amber-500'
+                  isImage
+                    ? 'bg-emerald-500/15 text-emerald-500'
+                    : 'bg-amber-500/15 text-amber-500'
                 )}
               >
                 {entry.extension}

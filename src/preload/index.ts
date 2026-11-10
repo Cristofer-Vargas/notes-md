@@ -108,6 +108,20 @@ const api: ElectronAPI = {
     return () => {
       ipcRenderer.removeListener('editor:spellcheck-suggestions', listener)
     }
+  },
+  openImageWindow: (vaultPath: string, relativePath: string, fileName: string) =>
+    ipcRenderer.invoke('window:open-image', vaultPath, relativePath, fileName),
+  openSettingsWindow: () => ipcRenderer.invoke('window:open-settings'),
+  closeCurrentWindow: () => ipcRenderer.invoke('window:close-current'),
+  broadcastSettings: (settings: unknown) => ipcRenderer.invoke('settings:broadcast', settings),
+  onSettingsChanged: (callback: (settings: unknown) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, settings: unknown): void => {
+      callback(settings)
+    }
+    ipcRenderer.on('settings:changed', listener)
+    return () => {
+      ipcRenderer.removeListener('settings:changed', listener)
+    }
   }
 }
 

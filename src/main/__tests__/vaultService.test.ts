@@ -11,8 +11,8 @@ import {
   readVaultImageBase64,
   VaultWatcher,
   computeVaultSignature
-} from '../../../../main/vaultService'
-import type { VaultSnapshot } from '../../../../preload/index.d'
+} from '../vaultService'
+import type { VaultSnapshot } from '../../preload/index.d'
 
 describe('vaultService — Operações de Sistema de Arquivos e Watcher em Tempo Real', () => {
   const defaultVaultDir = path.join(process.cwd(), 'Vault-Notas')

@@ -58,6 +58,7 @@ interface SettingsModalProps {
   settings: AppSettings
   onUpdateSettings: (partial: Partial<AppSettings>) => void
   onClose: () => void
+  isStandalone?: boolean
 }
 
 type SettingsTab = 'appearance' | 'typography' | 'spellcheck' | 'discord' | 'shortcuts'
@@ -181,7 +182,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   settings,
   onUpdateSettings,
-  onClose
+  onClose,
+  isStandalone = false
 }) => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('appearance')
   const [newIgnoredWord, setNewIgnoredWord] = useState('')
@@ -365,29 +367,30 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   )
   const discordStatusPresentation = getDiscordStatusPresentation(discordStatus)
 
-  return (
+  const content = (
     <div
-      className="fixed inset-0 z-50 bg-black/45 backdrop-blur-2xs animate-in fade-in duration-150"
-      onClick={onClose}
+      style={isStandalone ? undefined : modalStyle}
+      className={cn(
+        'bg-surface-bg flex flex-col overflow-hidden select-none',
+        isStandalone
+          ? 'w-full h-full'
+          : 'rounded-2xl border border-surface-border shadow-2xl'
+      )}
+      onClick={isStandalone ? undefined : (e) => e.stopPropagation()}
     >
-      <div
-        style={modalStyle}
-        className="rounded-2xl bg-surface-bg border border-surface-border shadow-2xl overflow-hidden flex flex-col select-none"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <ResizeHandles onStartResize={handleStartResize} disabled={isMaximized} />
+      {!isStandalone && <ResizeHandles onStartResize={handleStartResize} disabled={isMaximized} />}
 
-        {/* Header (Draggable & Resizable) */}
-        <div
-          {...headerDragProps}
-          className={cn(
-            'px-5 py-3.5 bg-surface-secondary border-b border-surface-border flex items-center justify-between shrink-0 transition-colors',
-            headerDragProps.className
-          )}
-        >
-          <div className="flex items-center gap-2.5 pointer-events-none min-w-0 flex-1">
-            <div className="w-7 h-7 rounded-lg bg-accent-soft text-accent flex items-center justify-center shrink-0">
-              <Sliders className="w-4 h-4" />
+      {/* Header */}
+      <div
+        {...(isStandalone ? {} : headerDragProps)}
+        className={cn(
+          'px-5 py-3.5 bg-surface-secondary border-b border-surface-border flex items-center justify-between shrink-0 transition-colors',
+          !isStandalone && headerDragProps.className
+        )}
+      >
+        <div className="flex items-center gap-2.5 pointer-events-none min-w-0 flex-1">
+          <div className="w-7 h-7 rounded-lg bg-accent-soft text-accent flex items-center justify-center shrink-0">
+            <Sliders className="w-4 h-4" />
             </div>
             <div className="min-w-0 flex-1 pr-2">
               <h2 className="text-sm font-bold text-content-primary truncate">Configurações do Notes-MD</h2>
@@ -397,6 +400,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0" data-no-drag>
+            {!isStandalone && (
             <IconButton
               variant="ghost"
               size="sm"
@@ -404,6 +408,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               tooltip={isMaximized ? 'Restaurar tamanho da janela' : 'Maximizar janela'}
               icon={isMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
             />
+          )}
             <IconButton
               variant="ghost"
               size="sm"
@@ -1351,6 +1356,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </Button>
         </div>
       </div>
-    </div>
-  )
+    )
+
+    if (isStandalone) {
+      return content
+    }
+
+    return (
+      <div
+        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+        onClick={onClose}
+      >
+        {content}
+      </div>
+    )
 }
