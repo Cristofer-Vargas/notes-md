@@ -1,17 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import {
   PanelLeft,
-  PanelRight,
-  Plus,
-  X,
-  FileText,
-  Sun,
-  Moon,
-  Palette,
-  Search,
-  Columns2,
-  Rows2,
-  Split
+  PanelRight
 } from 'lucide-react'
 import type { VaultFileEntry, VaultNoteData, VaultSnapshot } from '../../preload/index.d'
 import type { AppSettings, EditorPaneState, OpenTab, SplitLayoutMode } from './types/app'
@@ -29,7 +19,7 @@ import { QuickSwitcherModal } from './components/modals/QuickSwitcherModal'
 import { HelpShortcutsModal } from './components/modals/HelpShortcutsModal'
 import { InputPromptModal } from './components/modals/InputPromptModal'
 import { WikiLinkHoverPreview } from './components/editor/WikiLinkHoverPreview'
-import { Button, IconButton } from './components/ui'
+import { IconButton } from './components/ui'
 
 const SETTINGS_STORAGE_KEY = 'notes-md:settings:v1'
 const LAST_VAULT_STORAGE_KEY = 'notes-md:last-vault'
@@ -982,140 +972,34 @@ export function App(): React.ReactElement {
   }, [handleCreateNotePrompt])
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-surface-bg text-content-primary overflow-hidden">
-      {/* Top Application Header */}
-      <header className="h-10 bg-surface-secondary border-b border-surface-border px-3 flex items-center justify-between gap-3 shrink-0 select-none">
-        {/* Left Sidebar Toggle + App Brand */}
-        <div className="flex items-center gap-1.5 shrink-0">
+    <div className="h-screen w-screen flex flex-col bg-surface-bg text-content-primary overflow-hidden relative">
+      {/* Floating Toggle Left Sidebar Button (when sidebar is closed) */}
+      {!settings.showLeftSidebar && !isZenMode && (
+        <div className="absolute top-1 left-1.5 z-30 pointer-events-auto">
           <IconButton
-            variant="ghost"
+            variant="secondary"
             size="sm"
-            isActive={settings.showLeftSidebar && !isZenMode}
-            onClick={() => updateSettings({ showLeftSidebar: !settings.showLeftSidebar })}
-            tooltip="Mostrar/Ocultar Explorador de Arquivos (Ctrl+B)"
-            icon={<PanelLeft className="w-4 h-4" />}
-          />
-
-          <div className="flex items-center gap-1.5 px-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-accent" />
-            <span className="text-xs font-extrabold tracking-tight text-content-primary">
-              Notes-MD
-            </span>
-          </div>
-        </div>
-
-        {/* Center: Quick Switcher Search Pill */}
-        <div className="flex-1 max-w-md flex justify-center">
-          <button
-            type="button"
-            onClick={() => setIsQuickSwitcherOpen(true)}
-            title="Buscar notas ou executar comandos (Ctrl+P)"
-            className="w-full flex items-center justify-between gap-2 px-3 py-1 rounded-lg bg-surface-bg border border-surface-border text-xs text-content-muted hover:text-content-primary hover:border-accent/50 transition-colors shadow-2xs group cursor-pointer"
-          >
-            <div className="flex items-center gap-2 truncate">
-              <Search className="w-3.5 h-3.5 text-accent shrink-0" />
-              <span className="truncate">Buscar notas ou comandos...</span>
-            </div>
-            <kbd className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] bg-surface-secondary border border-surface-border font-mono text-content-muted group-hover:text-content-primary">
-              Ctrl+P
-            </kbd>
-          </button>
-        </div>
-
-        {/* Right Controls: Split Layout Quick Toggle, Theme Toggle, Customization, Right Sidebar Toggle */}
-        <div className="flex items-center gap-1 shrink-0">
-          {/* Split Mode Quick Switcher */}
-          <div className="flex items-center p-0.5 rounded-lg bg-surface-bg border border-surface-border mr-1">
-            <IconButton
-              variant={splitLayout !== 'single' ? 'accent' : 'ghost'}
-              size="xs"
-              onClick={() => {
-                if (splitLayout === 'single') {
-                  const activeTab =
-                    pane1.tabs.find((t) => t.relativePath === pane1.activeNotePath) || pane1.tabs[0]
-                  if (activeTab) {
-                    setPane2({
-                      id: 'pane-2',
-                      tabs: [{ ...activeTab }],
-                      activeNotePath: activeTab.relativePath
-                    })
-                  }
-                  setSplitLayout('horizontal')
-                  setActivePaneId('pane-2')
-                } else {
-                  setSplitLayout('single')
-                  setActivePaneId('pane-1')
-                }
-              }}
-              tooltip={
-                splitLayout === 'single'
-                  ? 'Dividir Janela ao Meio (Lado a Lado)'
-                  : 'Voltar para Janela Única'
-              }
-              icon={<Columns2 className="w-3.5 h-3.5" />}
-            />
-
-            {splitLayout !== 'single' && (
-              <IconButton
-                variant="ghost"
-                size="xs"
-                onClick={() =>
-                  setSplitLayout((prev) => (prev === 'horizontal' ? 'vertical' : 'horizontal'))
-                }
-                tooltip={
-                  splitLayout === 'horizontal'
-                    ? 'Alternar para Divisão Vertical (Em Cima e Embaixo)'
-                    : 'Alternar para Divisão Horizontal (Lado a Lado)'
-                }
-                icon={<Rows2 className="w-3.5 h-3.5" />}
-                className="ml-0.5"
-              />
-            )}
-          </div>
-
-          <IconButton
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              updateSettings({
-                theme:
-                  settings.theme === 'light'
-                    ? 'dark'
-                    : settings.theme === 'dark'
-                      ? 'sepia'
-                      : 'light'
-              })
-            }
-            tooltip={`Tema atual: ${settings.theme.toUpperCase()} (Clique para alternar)`}
-            icon={
-              settings.theme === 'dark' ? (
-                <Moon className="w-4 h-4 text-accent" />
-              ) : (
-                <Sun className="w-4 h-4 text-amber-500" />
-              )
-            }
-          />
-
-          <Button
-            variant="ghost"
-            size="xs"
-            onClick={() => setIsSettingsOpen(true)}
-            title="Personalização de Temas, Fontes e Layout (Ctrl+,)"
-            leftIcon={<Palette className="w-3.5 h-3.5 text-accent" />}
-          >
-            <span className="hidden md:inline">Personalizar</span>
-          </Button>
-
-          <IconButton
-            variant="ghost"
-            size="sm"
-            isActive={settings.showRightSidebar && !isZenMode}
-            onClick={() => updateSettings({ showRightSidebar: !settings.showRightSidebar })}
-            tooltip="Mostrar/Ocultar Painel Direito (Backlinks, Sumário e Arquivos)"
-            icon={<PanelRight className="w-4 h-4" />}
+            onClick={() => updateSettings({ showLeftSidebar: true })}
+            tooltip="Mostrar Explorador de Arquivos (Ctrl+B)"
+            icon={<PanelLeft className="w-4 h-4 text-content-primary" />}
+            className="shadow-sm bg-surface-secondary/95 backdrop-blur-sm border border-surface-border hover:bg-surface-tertiary hover:border-accent/40 transition-all hover:scale-105"
           />
         </div>
-      </header>
+      )}
+
+      {/* Floating Toggle Right Sidebar Button (when sidebar is closed) */}
+      {!settings.showRightSidebar && !isZenMode && (
+        <div className="absolute top-1 right-1.5 z-30 pointer-events-auto">
+          <IconButton
+            variant="secondary"
+            size="sm"
+            onClick={() => updateSettings({ showRightSidebar: true })}
+            tooltip="Mostrar Painel Direito (Links e Sumário)"
+            icon={<PanelRight className="w-4 h-4 text-content-primary" />}
+            className="shadow-sm bg-surface-secondary/95 backdrop-blur-sm border border-surface-border hover:bg-surface-tertiary hover:border-accent/40 transition-all hover:scale-105"
+          />
+        </div>
+      )}
 
       {/* Main 3-Pane Workspace */}
       <div
@@ -1150,6 +1034,18 @@ export function App(): React.ReactElement {
               onOpenInExplorer={handleOpenInExplorer}
               onOpenQuickSwitcher={() => setIsQuickSwitcherOpen(true)}
               onOpenSettings={() => setIsSettingsOpen(true)}
+              theme={settings.theme}
+              onToggleTheme={() =>
+                updateSettings({
+                  theme:
+                    settings.theme === 'light'
+                      ? 'dark'
+                      : settings.theme === 'dark'
+                        ? 'sepia'
+                        : 'light'
+                })
+              }
+              onCloseSidebar={() => updateSettings({ showLeftSidebar: false })}
             />
             {/* Left Resizer Drag Handle */}
             <div
@@ -1190,6 +1086,8 @@ export function App(): React.ReactElement {
           onUpdateSettings={updateSettings}
           onOpenQuickSwitcher={() => setIsQuickSwitcherOpen(true)}
           onCreateNotePrompt={handleCreateNotePrompt}
+          hasLeftFloatingToggle={!settings.showLeftSidebar && !isZenMode}
+          hasRightFloatingToggle={!settings.showRightSidebar && !isZenMode}
         />
 
         {settings.showRightSidebar && !isZenMode && (
@@ -1212,6 +1110,7 @@ export function App(): React.ReactElement {
               onNavigateWikiLink={handleNavigateWikiLink}
               onHoverTarget={handleHoverSidebarTarget}
               onLeaveTarget={handleLeaveSidebarTarget}
+              onCloseSidebar={() => updateSettings({ showRightSidebar: false })}
             />
           </>
         )}

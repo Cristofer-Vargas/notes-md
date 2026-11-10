@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import {
   Folder,
   FolderOpen,
@@ -15,14 +15,16 @@ import {
   Pencil,
   HardDrive,
   Settings,
-  RefreshCw,
   ExternalLink,
-  Radio,
   ChevronsDownUp,
-  ChevronsUpDown
+  ChevronsUpDown,
+  Moon,
+  Sun,
+  PanelLeft
 } from 'lucide-react'
 import type { VaultFileEntry } from '../../../../preload/index.d'
 import { FileContextMenu, type FileContextMenuTarget } from './FileContextMenu'
+import { IconButton } from '../ui/IconButton'
 
 interface FileExplorerSidebarProps {
   width?: number
@@ -49,6 +51,9 @@ interface FileExplorerSidebarProps {
   onOpenInExplorer: (subRelativePath?: string) => void
   onOpenQuickSwitcher: () => void
   onOpenSettings: () => void
+  theme?: 'light' | 'dark' | 'sepia'
+  onToggleTheme?: () => void
+  onCloseSidebar?: () => void
 }
 
 function collectAllFolderPaths(entries: VaultFileEntry[]): string[] {
@@ -122,7 +127,7 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
   vaultPath,
   tree,
   activeNotePath,
-  lastSyncTime,
+  lastSyncTime: _lastSyncTime,
   expandedFolders,
   onSetExpandedFolders,
   onSelectNote,
@@ -137,20 +142,14 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
   onRefreshVault,
   onOpenInExplorer,
   onOpenQuickSwitcher,
-  onOpenSettings
+  onOpenSettings,
+  theme = 'dark',
+  onToggleTheme,
+  onCloseSidebar
 }) => {
-  const [isSyncPulse, setIsSyncPulse] = useState(false)
   const [contextTarget, setContextTarget] = useState<FileContextMenuTarget | null>(null)
   const [draggedEntryPath, setDraggedEntryPath] = useState<string | null>(null)
   const [dragOverFolderPath, setDragOverFolderPath] = useState<string | null>(null)
-
-  // Pulse indicator briefly whenever a filesystem change is synchronized
-  useEffect(() => {
-    if (!lastSyncTime) return
-    setIsSyncPulse(true)
-    const timer = window.setTimeout(() => setIsSyncPulse(false), 900)
-    return () => window.clearTimeout(timer)
-  }, [lastSyncTime])
 
   const toggleFolder = (relPath: string): void => {
     onSetExpandedFolders((prev) => {
@@ -464,39 +463,67 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
   return (
     <aside style={{ width: width ? `${width}px` : undefined }} className="w-64 shrink-0 h-full bg-surface-secondary border-r border-surface-border flex flex-col select-none">
       {/* Vault Header */}
-      <div className="p-3 border-b border-surface-border flex items-center justify-between gap-1">
+      <div className="p-2.5 border-b border-surface-border flex items-center justify-between gap-1.5 bg-surface-bg/50">
         <button
           type="button"
           onClick={onSwitchVault}
           title={`Vault atual: ${vaultPath}\nClique para trocar a pasta do Vault`}
-          className="flex items-center gap-2 min-w-0 flex-1 px-2 py-1.5 rounded-lg hover:bg-surface-tertiary transition-colors text-left"
+          className="flex items-center gap-2 min-w-0 flex-1 px-2 py-1 rounded-lg hover:bg-surface-tertiary transition-colors text-left group"
         >
-          <div className="w-6 h-6 rounded-md bg-accent text-white flex items-center justify-center shrink-0">
-            <HardDrive className="w-3.5 h-3.5" />
+          <div className="w-5 h-5 rounded-md bg-accent text-white flex items-center justify-center shrink-0">
+            <HardDrive className="w-3 h-3" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-xs font-bold text-content-primary truncate">{vaultName}</div>
+            <div className="text-xs font-bold text-content-primary truncate group-hover:text-accent transition-colors">
+              {vaultName}
+            </div>
             <div className="text-[10px] text-content-muted truncate">Trocar pasta (Vault)</div>
           </div>
         </button>
 
-        <button
-          type="button"
-          onClick={() => onOpenInExplorer('')}
-          title="Abrir pasta do Vault no Windows Explorer"
-          className="p-1.5 rounded-lg text-content-secondary hover:bg-surface-tertiary hover:text-content-primary transition-colors"
-        >
-          <ExternalLink className="w-3.5 h-3.5" />
-        </button>
+        <div className="flex items-center gap-0.5 shrink-0">
+          <IconButton
+            variant="ghost"
+            size="sm"
+            onClick={() => onOpenInExplorer('')}
+            tooltip="Abrir pasta do Vault no Explorador de Arquivos"
+            icon={<ExternalLink className="w-3.5 h-3.5" />}
+          />
 
-        <button
-          type="button"
-          onClick={onOpenSettings}
-          title="Personalizar Aparência e Editor"
-          className="p-1.5 rounded-lg text-content-secondary hover:bg-surface-tertiary hover:text-content-primary transition-colors"
-        >
-          <Settings className="w-4 h-4" />
-        </button>
+          {onToggleTheme && (
+            <IconButton
+              variant="ghost"
+              size="sm"
+              onClick={onToggleTheme}
+              tooltip={`Tema atual: ${theme.toUpperCase()} (Clique para alternar)`}
+              icon={
+                theme === 'dark' ? (
+                  <Moon className="w-3.5 h-3.5 text-accent" />
+                ) : (
+                  <Sun className="w-3.5 h-3.5 text-amber-500" />
+                )
+              }
+            />
+          )}
+
+          <IconButton
+            variant="ghost"
+            size="sm"
+            onClick={onOpenSettings}
+            tooltip="Personalizar Aparência e Editor (Ctrl+,)"
+            icon={<Settings className="w-3.5 h-3.5" />}
+          />
+
+          {onCloseSidebar && (
+            <IconButton
+              variant="ghost"
+              size="sm"
+              onClick={onCloseSidebar}
+              tooltip="Ocultar Explorador de Arquivos (Ctrl+B)"
+              icon={<PanelLeft className="w-3.5 h-3.5" />}
+            />
+          )}
+        </div>
       </div>
 
       {/* Quick Actions Bar */}
@@ -510,37 +537,36 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
           <span className="truncate">Buscar...</span>
         </button>
 
-        <button
-          type="button"
+        <IconButton
+          variant="accent"
+          size="sm"
           onClick={() => onCreateNote('')}
-          title="Nova Nota Markdown na Raiz (Ctrl+N)"
-          className="p-1.5 rounded-lg bg-accent text-white hover:bg-accent-hover transition-colors shrink-0"
-        >
-          <FilePlus2 className="w-4 h-4" />
-        </button>
+          tooltip="Nova Nota Markdown na Raiz (Ctrl+N)"
+          icon={<FilePlus2 className="w-4 h-4" />}
+        />
 
-        <button
-          type="button"
+        <IconButton
+          variant="secondary"
+          size="sm"
           onClick={() => onCreateFolder('')}
-          title="Nova Pasta na Raiz"
-          className="p-1.5 rounded-lg bg-surface-bg border border-surface-border text-content-secondary hover:text-content-primary hover:bg-surface-tertiary transition-colors shrink-0"
-        >
-          <FolderPlus className="w-4 h-4" />
-        </button>
+          tooltip="Nova Pasta na Raiz"
+          icon={<FolderPlus className="w-4 h-4" />}
+        />
 
         {allFolderPaths.length > 0 && (
-          <button
-            type="button"
+          <IconButton
+            variant="secondary"
+            size="sm"
             onClick={handleToggleAllFolders}
-            title={anyExpanded ? 'Recolher todas as pastas' : 'Expandir todas as pastas'}
-            className="p-1.5 rounded-lg bg-surface-bg border border-surface-border text-content-secondary hover:text-content-primary hover:bg-surface-tertiary transition-colors shrink-0"
-          >
-            {anyExpanded ? (
-              <ChevronsDownUp className="w-4 h-4" />
-            ) : (
-              <ChevronsUpDown className="w-4 h-4" />
-            )}
-          </button>
+            tooltip={anyExpanded ? 'Recolher todas as pastas' : 'Expandir todas as pastas'}
+            icon={
+              anyExpanded ? (
+                <ChevronsDownUp className="w-4 h-4" />
+              ) : (
+                <ChevronsUpDown className="w-4 h-4" />
+              )
+            }
+          />
         )}
       </div>
 
@@ -613,29 +639,6 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
         onRefreshVault={onRefreshVault}
         onOpenInExplorer={onOpenInExplorer}
       />
-
-      {/* Live Watcher Status Footer */}
-      <div className="px-3 py-2 border-t border-surface-border bg-surface-bg/40 flex items-center justify-between text-[11px] text-content-muted">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <Radio
-            className={`w-3.5 h-3.5 shrink-0 transition-colors ${
-              isSyncPulse ? 'text-emerald-500 animate-pulse' : 'text-emerald-500/80'
-            }`}
-          />
-          <span className="truncate">
-            {isSyncPulse ? 'Diretório atualizado!' : 'Sincronização ativa'}
-          </span>
-        </div>
-
-        <button
-          type="button"
-          onClick={onRefreshVault}
-          title="Sincronizar diretório agora"
-          className="p-1 rounded hover:bg-surface-tertiary text-content-secondary hover:text-content-primary transition-colors"
-        >
-          <RefreshCw className={`w-3 h-3 ${isSyncPulse ? 'animate-spin text-accent' : ''}`} />
-        </button>
-      </div>
     </aside>
   )
 }

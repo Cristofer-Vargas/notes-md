@@ -3,7 +3,7 @@ import {
   Link2,
   ArrowUpRight,
   ListTree,
-  Sparkles,
+  PanelRight,
   FileText,
   PlusCircle,
   ChevronDown,
@@ -14,6 +14,7 @@ import {
 import type { VaultNoteData } from '../../../../preload/index.d'
 import type { IndexedNoteMeta, NoteHeading } from '../../types/app'
 import { resolveWikiLinkTarget } from '../../services/noteIndexer'
+import { IconButton } from '../ui/IconButton'
 
 export interface HeadingTreeNode extends NoteHeading {
   index: number
@@ -164,6 +165,7 @@ interface BacklinksSidebarProps {
   onNavigateWikiLink: (targetTitle: string, openInNewTab?: boolean) => void
   onHoverTarget?: (targetName: string, rect: DOMRect, isCtrlDown: boolean) => void
   onLeaveTarget?: () => void
+  onCloseSidebar?: () => void
 }
 
 export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
@@ -174,7 +176,8 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
   onOpenNoteByPath,
   onNavigateWikiLink,
   onHoverTarget,
-  onLeaveTarget
+  onLeaveTarget,
+  onCloseSidebar
 }) => {
   const [activeTab, setActiveTab] = useState<'connections' | 'outline'>(() => {
     try {
@@ -262,7 +265,7 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
       style={{ width: width ? `${width}px` : undefined }}
       className="w-72 shrink-0 h-full bg-surface-secondary border-l border-surface-border flex flex-col select-none"
     >
-      {/* Header Tabs (Links & Sumário) */}
+      {/* Header Tabs (Links & Sumário) + Close Button */}
       <div className="p-2 border-b border-surface-border flex items-center gap-1.5 bg-surface-bg/50">
         <button
           type="button"
@@ -291,6 +294,16 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
           <ListTree className="w-3.5 h-3.5 shrink-0" />
           <span>Sumário ({noteMeta ? noteMeta.headings.length : 0})</span>
         </button>
+
+        {onCloseSidebar && (
+          <IconButton
+            variant="ghost"
+            size="sm"
+            onClick={onCloseSidebar}
+            tooltip="Ocultar Painel Direito"
+            icon={<PanelRight className="w-4 h-4 text-content-secondary hover:text-content-primary" />}
+          />
+        )}
       </div>
 
       {!activeNote || !noteMeta ? (
@@ -517,12 +530,6 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
           </div>
         </div>
       )}
-
-      {/* Footer Info */}
-      <div className="p-2.5 border-t border-surface-border bg-surface-bg/40 flex items-center gap-2 text-[11px] text-content-muted">
-        <Sparkles className="w-3.5 h-3.5 text-accent shrink-0" />
-        <span>Sincronizado com o sistema de arquivos</span>
-      </div>
     </aside>
   )
 }

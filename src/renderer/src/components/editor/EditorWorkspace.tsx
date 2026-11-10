@@ -36,6 +36,8 @@ interface EditorWorkspaceProps {
   onUpdateSettings: (partial: Partial<AppSettings>) => void
   onOpenQuickSwitcher: () => void
   onCreateNotePrompt: (folderRelativePath?: string) => void
+  hasLeftFloatingToggle?: boolean
+  hasRightFloatingToggle?: boolean
 }
 
 export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
@@ -60,7 +62,9 @@ export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
   onOpenHelpModal,
   onUpdateSettings,
   onOpenQuickSwitcher,
-  onCreateNotePrompt
+  onCreateNotePrompt,
+  hasLeftFloatingToggle,
+  hasRightFloatingToggle
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const isResizingRef = useRef(false)
@@ -562,6 +566,8 @@ export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
           onOpenHelpModal={onOpenHelpModal}
           onUpdateSettings={onUpdateSettings}
           onOpenQuickSwitcher={onOpenQuickSwitcher}
+          hasLeftFloatingToggle={hasLeftFloatingToggle}
+          hasRightFloatingToggle={isSplitActive && splitLayout === 'horizontal' ? false : hasRightFloatingToggle}
         />
       </div>
 
@@ -623,6 +629,8 @@ export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
             onOpenHelpModal={onOpenHelpModal}
             onUpdateSettings={onUpdateSettings}
             onOpenQuickSwitcher={onOpenQuickSwitcher}
+            hasLeftFloatingToggle={false}
+            hasRightFloatingToggle={splitLayout === 'horizontal' ? hasRightFloatingToggle : false}
           />
         </div>
       )}

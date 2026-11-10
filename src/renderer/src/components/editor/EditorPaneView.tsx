@@ -56,6 +56,8 @@ interface EditorPaneViewProps {
   onOpenHelpModal: () => void
   onUpdateSettings: (partial: Partial<AppSettings>) => void
   onOpenQuickSwitcher: () => void
+  hasLeftFloatingToggle?: boolean
+  hasRightFloatingToggle?: boolean
 }
 
 export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
@@ -83,7 +85,9 @@ export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
   onToggleZenMode,
   onOpenHelpModal,
   onUpdateSettings,
-  onOpenQuickSwitcher
+  onOpenQuickSwitcher,
+  hasLeftFloatingToggle,
+  hasRightFloatingToggle
 }) => {
   const editorContentRef = useRef<HTMLDivElement | null>(null)
   const [dropZone, setDropZone] = useState<DropZoneDirection | null>(null)
@@ -246,7 +250,7 @@ export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
         }}
         className={`h-9 bg-surface-secondary border-b border-surface-border px-2 flex items-center justify-between gap-1.5 shrink-0 select-none ${
           isActivePane ? 'border-b-accent/30' : ''
-        }`}
+        } ${hasLeftFloatingToggle ? 'pl-11' : ''} ${hasRightFloatingToggle ? 'pr-11' : ''}`}
       >
         {/* Left Side: Tabs in this pane */}
         <div
