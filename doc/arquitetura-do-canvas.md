@@ -10,6 +10,9 @@ O Canvas Infinito é uma mesa de trabalho visual bidimensional sem limites físi
 
 Enquanto as notas tradicionais (`.md`) organizam o pensamento de forma **linear** (de cima para baixo), o Canvas permite organizar o conhecimento de forma **relacional e espacial** (lado a lado, agrupado, interconectado).
 
+![Mockup Conceitual da Interface do Canvas Infinito](assets/canvas-workspace-ui.jpg)
+*Figura 1: Representação conceitual da interface do Canvas Infinito no Notes-MD com cartões de notas, imagens, grupos com moldura translúcida e conectores dinâmicos sobre grid pontilhado no tema Dracula.*
+
 ```mermaid
 graph TD
     subgraph "Mesa Visual Infinita (.canvas)"
@@ -135,6 +138,9 @@ Para implementar o Canvas na stack **React 18 + Vite + TypeScript**, três abord
 ### 2. Split Panes e Abas
 - Como o Notes-MD suporta divisão flexível de janelas (`EditorWorkspace` e `EditorPaneView`), uma aba de nota pode ser aberta **lado a lado com uma aba de Canvas**.
 - O usuário pode visualizar a nota à esquerda e organizá-la visualmente no Canvas à direita.
+
+![Integração Split Panes com Canvas e Editor](assets/canvas-split-panes.jpg)
+*Figura 2: Vista em Split Panes permitindo editar uma anotação Markdown no painel esquerdo enquanto mapeia visualmente as conexões e interage com o Canvas no painel direito.*
 
 ### 3. Drag and Drop Nativo
 - Arrastar uma nota `.md` ou uma imagem do Explorador de Arquivos e soltar sobre o Canvas cria automaticamente um nó do tipo `file` nas coordenadas exatas do cursor do mouse!
