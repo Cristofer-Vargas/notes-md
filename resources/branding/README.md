@@ -1,6 +1,16 @@
-# 🎨 Notes-MD — Identidade Visual & Discord Portal
+# 🎨 Notes-MD — Identidade Visual Oficial & Discord Portal
 
-Este diretório reúne as opções de ícones e logotipos oficiais do **Notes-MD**, projetados no formato quadrado 1:1 (*circular-safe*) para o aplicativo e cadastro de Art Assets no **Discord Developer Portal**.
+A identidade visual e o logotipo oficial do **Notes-MD** adotam o conceito da **Fita Dobrada Contínua 'N' (Estilo VS Code / Fluent)**: minimalista, moderno, com degradê contínuo na paleta Dracula (do roxo elétrico `#bd93f9` ao ciano neon `#8be9fd`).
+
+---
+
+## 💎 Arquivos do Logotipo Oficial
+
+| Arquivo | Formato | Fundo | Utilização Principal |
+| :--- | :--- | :--- | :--- |
+| **`logo-official-transparent.png`** | PNG 1024×1024 (32-bit ARGB) | **Transparente** | **Ícone Oficial do App**, barra de tarefas, dock e atalhos |
+| **`logo-official.jpg`** | JPEG 1024×1024 | Escuro (#181926) | **Discord App Icon**, Rich Presence Asset e capa |
+| `../icon.png` | PNG 1024×1024 | **Transparente** | Ícone nativo das janelas Electron e empacotamento desktop |
 
 ---
 
@@ -47,19 +57,3 @@ Notes-MD is a sleek, fast, and privacy-first Markdown note-taking app designed f
 • Discord Rich Presence: Show off your active notes, focus sessions, and vaults right on your Discord profile.
 • Local & Private: 100% offline-first. Your notes belong entirely to you.
 ```
-
----
-
-## 🖼️ Catálogo de Ícones
-
-| Arquivo | Conceito | Estilo |
-| :--- | :--- | :--- |
-| `logo-minimal-1-obsidian-crystal.jpg` | Cristal Facetado 'N' | Estilo Obsidian, prismático roxo |
-| `logo-minimal-2-vscode-ribbon.jpg` | Fita Contínua 'N' | Estilo VS Code, fita violeta/ciano |
-| `logo-minimal-3-origami-markdown.jpg` | Origami Plano 'N' | Minimalismo puro, dobras nítidas |
-| `logo-minimal-4-tech-monogram.jpg` | Monograma Polígono Sólido | Tech, traço grosso, alto contraste |
-| `logo-minimal-5-split-polygon.jpg` | Split Polygon Neon 'N' | Dois blocos chanfrados com linha de luz |
-| `logo-concept-1-geometric-n.jpg` | Monograma Geométrico | 3D com squircle escuro Dracula |
-| `logo-concept-2-graph-notebook.jpg` | Grafo & Caderno | Sinapses conectadas e linhas de texto |
-| `logo-concept-3-origami-crystal.jpg` | Cristal & Vidro Fosco | 3D glassmorphism |
-| `logo-concept-4-markdown-futuristic.jpg` | Glifo Markdown Neon | Símbolo M↓ com iluminação 3D |

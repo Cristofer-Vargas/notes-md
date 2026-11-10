@@ -51,11 +51,17 @@ function broadcastDiscordPresenceStatus(status: DiscordPresenceStatus): void {
   }
 }
 
+function getAppIcon(): string | undefined {
+  const iconPath = join(__dirname, '../../resources/icon.png')
+  return existsSync(iconPath) ? iconPath : undefined
+}
+
 function createWindow(): void {
   const windowStatePath = join(app.getPath('userData'), 'window-state.json')
   const savedWindowState = loadWindowState(windowStatePath)
 
   const mainWindow = new BrowserWindow({
+    icon: getAppIcon(),
     width: savedWindowState.width,
     height: savedWindowState.height,
     x: savedWindowState.x,
@@ -159,6 +165,7 @@ function openSettingsWindow(): void {
   }
 
   settingsWindow = new BrowserWindow({
+    icon: getAppIcon(),
     width: 960,
     height: 720,
     minWidth: 700,
@@ -187,6 +194,7 @@ function openSettingsWindow(): void {
 
 function openImageWindow(vaultPath: string, relativePath: string, fileName: string): void {
   const imageWin = new BrowserWindow({
+    icon: getAppIcon(),
     width: 980,
     height: 720,
     minWidth: 420,
