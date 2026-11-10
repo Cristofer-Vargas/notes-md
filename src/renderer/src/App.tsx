@@ -29,6 +29,7 @@ import { QuickSwitcherModal } from './components/modals/QuickSwitcherModal'
 import { HelpShortcutsModal } from './components/modals/HelpShortcutsModal'
 import { InputPromptModal } from './components/modals/InputPromptModal'
 import { WikiLinkHoverPreview } from './components/editor/WikiLinkHoverPreview'
+import { Button, IconButton } from './components/ui'
 
 const SETTINGS_STORAGE_KEY = 'notes-md:settings:v1'
 const LAST_VAULT_STORAGE_KEY = 'notes-md:last-vault'
@@ -986,18 +987,14 @@ export function App(): React.ReactElement {
       <header className="h-10 bg-surface-secondary border-b border-surface-border px-3 flex items-center justify-between gap-3 shrink-0 select-none">
         {/* Left Sidebar Toggle + App Brand */}
         <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            type="button"
+          <IconButton
+            variant="ghost"
+            size="sm"
+            isActive={settings.showLeftSidebar && !isZenMode}
             onClick={() => updateSettings({ showLeftSidebar: !settings.showLeftSidebar })}
-            title="Mostrar/Ocultar Explorador de Arquivos (Ctrl+B)"
-            className={`p-1.5 rounded-lg transition-colors ${
-              settings.showLeftSidebar && !isZenMode
-                ? 'bg-accent-soft text-accent'
-                : 'text-content-secondary hover:bg-surface-tertiary'
-            }`}
-          >
-            <PanelLeft className="w-4 h-4" />
-          </button>
+            tooltip="Mostrar/Ocultar Explorador de Arquivos (Ctrl+B)"
+            icon={<PanelLeft className="w-4 h-4" />}
+          />
 
           <div className="flex items-center gap-1.5 px-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-accent" />
@@ -1029,8 +1026,9 @@ export function App(): React.ReactElement {
         <div className="flex items-center gap-1 shrink-0">
           {/* Split Mode Quick Switcher */}
           <div className="flex items-center p-0.5 rounded-lg bg-surface-bg border border-surface-border mr-1">
-            <button
-              type="button"
+            <IconButton
+              variant={splitLayout !== 'single' ? 'accent' : 'ghost'}
+              size="xs"
               onClick={() => {
                 if (splitLayout === 'single') {
                   const activeTab =
@@ -1049,40 +1047,35 @@ export function App(): React.ReactElement {
                   setActivePaneId('pane-1')
                 }
               }}
-              title={
+              tooltip={
                 splitLayout === 'single'
                   ? 'Dividir Janela ao Meio (Lado a Lado)'
                   : 'Voltar para Janela Única'
               }
-              className={`p-1 rounded transition-colors ${
-                splitLayout !== 'single'
-                  ? 'bg-accent text-white shadow-2xs'
-                  : 'text-content-secondary hover:text-content-primary hover:bg-surface-tertiary'
-              }`}
-            >
-              <Columns2 className="w-3.5 h-3.5" />
-            </button>
+              icon={<Columns2 className="w-3.5 h-3.5" />}
+            />
 
             {splitLayout !== 'single' && (
-              <button
-                type="button"
+              <IconButton
+                variant="ghost"
+                size="xs"
                 onClick={() =>
                   setSplitLayout((prev) => (prev === 'horizontal' ? 'vertical' : 'horizontal'))
                 }
-                title={
+                tooltip={
                   splitLayout === 'horizontal'
                     ? 'Alternar para Divisão Vertical (Em Cima e Embaixo)'
                     : 'Alternar para Divisão Horizontal (Lado a Lado)'
                 }
-                className="p-1 rounded text-content-secondary hover:text-accent hover:bg-surface-tertiary transition-colors ml-0.5"
-              >
-                <Rows2 className="w-3.5 h-3.5" />
-              </button>
+                icon={<Rows2 className="w-3.5 h-3.5" />}
+                className="ml-0.5"
+              />
             )}
           </div>
 
-          <button
-            type="button"
+          <IconButton
+            variant="ghost"
+            size="sm"
             onClick={() =>
               updateSettings({
                 theme:
@@ -1093,38 +1086,34 @@ export function App(): React.ReactElement {
                       : 'light'
               })
             }
-            title={`Tema atual: ${settings.theme.toUpperCase()} (Clique para alternar)`}
-            className="p-1.5 rounded-lg text-content-secondary hover:bg-surface-tertiary hover:text-content-primary transition-colors"
-          >
-            {settings.theme === 'dark' ? (
-              <Moon className="w-4 h-4 text-accent" />
-            ) : (
-              <Sun className="w-4 h-4 text-amber-500" />
-            )}
-          </button>
+            tooltip={`Tema atual: ${settings.theme.toUpperCase()} (Clique para alternar)`}
+            icon={
+              settings.theme === 'dark' ? (
+                <Moon className="w-4 h-4 text-accent" />
+              ) : (
+                <Sun className="w-4 h-4 text-amber-500" />
+              )
+            }
+          />
 
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="xs"
             onClick={() => setIsSettingsOpen(true)}
             title="Personalização de Temas, Fontes e Layout (Ctrl+,)"
-            className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-content-secondary hover:bg-surface-tertiary hover:text-content-primary transition-colors"
+            leftIcon={<Palette className="w-3.5 h-3.5 text-accent" />}
           >
-            <Palette className="w-3.5 h-3.5 text-accent" />
             <span className="hidden md:inline">Personalizar</span>
-          </button>
+          </Button>
 
-          <button
-            type="button"
+          <IconButton
+            variant="ghost"
+            size="sm"
+            isActive={settings.showRightSidebar && !isZenMode}
             onClick={() => updateSettings({ showRightSidebar: !settings.showRightSidebar })}
-            title="Mostrar/Ocultar Painel Direito (Backlinks, Sumário e Arquivos)"
-            className={`p-1.5 rounded-lg transition-colors ${
-              settings.showRightSidebar && !isZenMode
-                ? 'bg-accent-soft text-accent'
-                : 'text-content-secondary hover:bg-surface-tertiary'
-            }`}
-          >
-            <PanelRight className="w-4 h-4" />
-          </button>
+            tooltip="Mostrar/Ocultar Painel Direito (Backlinks, Sumário e Arquivos)"
+            icon={<PanelRight className="w-4 h-4" />}
+          />
         </div>
       </header>
 

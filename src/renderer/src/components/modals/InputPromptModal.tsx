@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
+import { Button, IconButton, Input } from '../ui'
 
 interface InputPromptModalProps {
   isOpen: boolean
@@ -50,39 +51,40 @@ export const InputPromptModal: React.FC<InputPromptModalProps> = ({
       >
         <div className="px-5 py-3.5 bg-surface-secondary border-b border-surface-border flex items-center justify-between">
           <h3 className="text-sm font-bold text-content-primary">{title}</h3>
-          <button
-            type="button"
+          <IconButton
+            variant="ghost"
+            size="sm"
             onClick={onClose}
-            className="p-1 rounded-lg text-content-secondary hover:bg-surface-tertiary"
-          >
-            <X className="w-4 h-4" />
-          </button>
+            tooltip="Fechar"
+            icon={<X className="w-4 h-4" />}
+          />
         </div>
 
         <div className="p-5 space-y-4">
-          <input
+          <Input
             type="text"
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder={placeholder}
             autoFocus
-            className="w-full px-3 py-2 text-sm rounded-xl bg-surface-secondary border border-surface-border text-content-primary focus:outline-none focus:border-accent"
           />
 
           <div className="flex justify-end gap-2">
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={onClose}
-              className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-content-secondary hover:bg-surface-secondary"
             >
               Cancelar
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors"
+              variant="primary"
+              size="sm"
             >
               {confirmLabel}
-            </button>
+            </Button>
           </div>
         </div>
       </form>

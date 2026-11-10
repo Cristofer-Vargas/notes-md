@@ -22,6 +22,9 @@ Para navegar pelos conceitos no seu próprio ritmo, dividimos o conteúdo em qua
 4. **[Guia de Comandos e Versionamento (`guia-de-comandos.md`)](guia-de-comandos.md)**  
    *Um manual prático dos comandos do projeto: como rodar em desenvolvimento, executar testes automáticos de qualidade, criar commits semânticos no padrão Commitizen e gerenciar versões Alpha pré-v1.0.0.*
 
+5. **[Guia de Estilos e Componentes Reutilizáveis (`guia-de-estilos-e-componentes.md`)](guia-de-estilos-e-componentes.md)**  
+   *Como utilizar a camada de componentes primitivos (Button, IconButton, Badge, Input, cn) para otimizar código, evitar repetição e garantir consistência visual em todos os temas.*
+
 ---
 
 ## 💡 Glossário Rápido de Termos Técnicos

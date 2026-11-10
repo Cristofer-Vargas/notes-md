@@ -12,6 +12,7 @@ import {
   Split,
   FolderOpen
 } from 'lucide-react'
+import { Button, IconButton } from '../ui'
 import type {
   AppSettings,
   EditorPaneState,
@@ -358,75 +359,71 @@ export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
             )
           })}
 
-          <button
-            type="button"
+          <IconButton
+            variant="ghost"
+            size="sm"
             onClick={(e) => {
               e.stopPropagation()
               onFocusPane()
               onNewNote()
             }}
-            title="Nova Nota nesta Janela (Ctrl+N)"
-            className="p-1 rounded-md text-content-secondary hover:bg-surface-tertiary hover:text-accent transition-colors shrink-0 ml-0.5"
-          >
-            <Plus className="w-3.5 h-3.5" />
-          </button>
+            tooltip="Nova Nota nesta Janela (Ctrl+N)"
+            icon={<Plus className="w-3.5 h-3.5 text-content-secondary hover:text-accent" />}
+            className="shrink-0 ml-0.5"
+          />
         </div>
 
         {/* Right Side: Split Window Controls */}
         <div className="flex items-center gap-0.5 shrink-0 pl-1 border-l border-surface-border/60">
-          <button
-            type="button"
+          <IconButton
+            variant="ghost"
+            size="sm"
             onClick={(e) => {
               e.stopPropagation()
               onSplit('horizontal')
             }}
-            title="Dividir Janela à Direita (Lado a Lado)"
-            className="p-1 rounded text-content-secondary hover:text-accent hover:bg-surface-tertiary transition-colors"
-          >
-            <Columns2 className="w-3.5 h-3.5" />
-          </button>
+            tooltip="Dividir Janela à Direita (Lado a Lado)"
+            icon={<Columns2 className="w-3.5 h-3.5" />}
+          />
 
-          <button
-            type="button"
+          <IconButton
+            variant="ghost"
+            size="sm"
             onClick={(e) => {
               e.stopPropagation()
               onSplit('vertical')
             }}
-            title="Dividir Janela Abaixo (Em Cima e Embaixo)"
-            className="p-1 rounded text-content-secondary hover:text-accent hover:bg-surface-tertiary transition-colors"
-          >
-            <Rows2 className="w-3.5 h-3.5" />
-          </button>
+            tooltip="Dividir Janela Abaixo (Em Cima e Embaixo)"
+            icon={<Rows2 className="w-3.5 h-3.5" />}
+          />
 
           {splitLayout !== 'single' && (
             <>
-              <button
-                type="button"
+              <IconButton
+                variant="ghost"
+                size="sm"
                 onClick={(e) => {
                   e.stopPropagation()
                   onToggleLayout()
                 }}
-                title={
+                tooltip={
                   splitLayout === 'horizontal'
                     ? 'Alternar para Divisão Vertical (Em Cima e Embaixo)'
                     : 'Alternar para Divisão Horizontal (Lado a Lado)'
                 }
-                className="p-1 rounded text-content-secondary hover:text-accent hover:bg-surface-tertiary transition-colors"
-              >
-                <Split className="w-3.5 h-3.5" />
-              </button>
+                icon={<Split className="w-3.5 h-3.5" />}
+              />
 
-              <button
-                type="button"
+              <IconButton
+                variant="danger"
+                size="sm"
                 onClick={(e) => {
                   e.stopPropagation()
                   onClosePane()
                 }}
-                title="Fechar esta Janela Dividida"
-                className="p-1 rounded text-content-secondary hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
+                tooltip="Fechar esta Janela Dividida"
+                icon={<X className="w-3.5 h-3.5" />}
+              />
             </>
           )}
         </div>
@@ -470,33 +467,33 @@ export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
             </div>
 
             <div className="flex items-center gap-2 pt-2">
-              <button
-                type="button"
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={onNewNote}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-accent text-white hover:bg-accent-hover transition-colors shadow-2xs"
+                leftIcon={<Plus className="w-3.5 h-3.5" />}
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Nova Nota</span>
-              </button>
+                Nova Nota
+              </Button>
 
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={onOpenQuickSwitcher}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-surface-secondary border border-surface-border text-content-secondary hover:text-content-primary hover:bg-surface-tertiary transition-colors"
+                leftIcon={<FolderOpen className="w-3.5 h-3.5" />}
               >
-                <FolderOpen className="w-3.5 h-3.5" />
-                <span>Quick Switcher (Ctrl+P)</span>
-              </button>
+                Quick Switcher (Ctrl+P)
+              </Button>
 
               {splitLayout !== 'single' && (
-                <button
-                  type="button"
+                <Button
+                  variant="danger"
+                  size="sm"
                   onClick={onClosePane}
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-content-muted hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
+                  leftIcon={<Minimize2 className="w-3.5 h-3.5" />}
                 >
-                  <Minimize2 className="w-3.5 h-3.5" />
-                  <span>Fechar Janela</span>
-                </button>
+                  Fechar Janela
+                </Button>
               )}
             </div>
           </div>
