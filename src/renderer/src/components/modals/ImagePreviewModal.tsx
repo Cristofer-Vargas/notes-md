@@ -4,12 +4,16 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCcw,
-  ExternalLink,
   FolderOpen,
   Image as ImageIcon,
   Loader2,
-  Maximize2
+  Maximize2,
+  Minimize2
 } from 'lucide-react'
+import { IconButton } from '../ui/IconButton'
+import { useFloatingModal } from './useFloatingModal'
+import { ResizeHandles } from './ResizeHandles'
+import { cn } from '../../utils/cn'
 
 interface ImagePreviewModalProps {
   isOpen: boolean
@@ -34,6 +38,22 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
   const [zoom, setZoom] = useState<number>(1)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+
+  const {
+    modalStyle,
+    isMaximized,
+    isResizing,
+    headerDragProps,
+    handleStartResize,
+    toggleMaximize
+  } = useFloatingModal({
+    isOpen,
+    initialWidth: 840,
+    initialHeight: 600,
+    minWidth: 440,
+    minHeight: 340,
+    storageKey: 'notes-md:image-preview-geometry'
+  })
 
   useEffect(() => {
     if (!isOpen || !relativePath) {
@@ -101,16 +121,25 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-150 select-none"
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-2xs animate-in fade-in duration-150 select-none"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-4xl max-h-[90vh] bg-surface-bg border border-surface-border rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-150"
+        style={modalStyle}
+        className="rounded-2xl bg-surface-bg border border-surface-border shadow-2xl flex flex-col overflow-hidden select-none animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header Bar */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-surface-border bg-surface-secondary/70">
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+        <ResizeHandles onStartResize={handleStartResize} disabled={isMaximized} />
+
+        {/* Header Bar (Draggable) */}
+        <div
+          {...headerDragProps}
+          className={cn(
+            'flex items-center justify-between px-4 py-3 border-b border-surface-border bg-surface-secondary/70 transition-colors',
+            headerDragProps.className
+          )}
+        >
+          <div className="flex items-center gap-2.5 min-w-0 flex-1 pointer-events-none pr-3">
             <div className="w-7 h-7 rounded-lg bg-accent-soft text-accent flex items-center justify-center shrink-0">
               <ImageIcon className="w-4 h-4" />
             </div>
@@ -137,96 +166,98 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
           </div>
 
           {/* Quick Toolbar */}
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1 shrink-0" data-no-drag>
             {/* Zoom Controls */}
-            <div className="flex items-center gap-0.5 px-1 py-0.5 rounded-lg bg-surface-tertiary border border-surface-border/60 text-xs text-content-secondary mr-2">
-              <button
-                type="button"
+            <div className="flex items-center gap-0.5 px-1 py-0.5 rounded-lg bg-surface-tertiary border border-surface-border/60 text-xs text-content-secondary mr-1">
+              <IconButton
+                variant="ghost"
+                size="xs"
                 onClick={() => setZoom((z) => Math.max(0.25, z - 0.25))}
-                title="Reduzir zoom (-)"
-                className="p-1 rounded hover:bg-surface-bg hover:text-content-primary transition-colors"
-              >
-                <ZoomOut className="w-3.5 h-3.5" />
-              </button>
-              <span className="px-1 text-[11px] font-mono min-w-[38px] text-center">
+                tooltip="Reduzir zoom (-)"
+                icon={<ZoomOut className="w-3.5 h-3.5" />}
+              />
+              <span className="px-1 text-[11px] font-mono min-w-[38px] text-center select-none font-semibold text-content-primary">
                 {Math.round(zoom * 100)}%
               </span>
-              <button
-                type="button"
+              <IconButton
+                variant="ghost"
+                size="xs"
                 onClick={() => setZoom((z) => Math.min(4, z + 0.25))}
-                title="Aumentar zoom (+)"
-                className="p-1 rounded hover:bg-surface-bg hover:text-content-primary transition-colors"
-              >
-                <ZoomIn className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
+                tooltip="Aumentar zoom (+)"
+                icon={<ZoomIn className="w-3.5 h-3.5" />}
+              />
+              <IconButton
+                variant="ghost"
+                size="xs"
                 onClick={() => setZoom(1)}
-                title="Redefinir zoom (100%)"
-                className="p-1 rounded hover:bg-surface-bg hover:text-content-primary transition-colors ml-0.5"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
+                tooltip="Redefinir zoom (100%)"
+                icon={<RotateCcw className="w-3.5 h-3.5" />}
+              />
             </div>
 
             {onOpenInExplorer && (
-              <button
-                type="button"
+              <IconButton
+                variant="ghost"
+                size="sm"
                 onClick={() => onOpenInExplorer(relativePath)}
-                title="Mostrar arquivo no Windows Explorer"
-                className="p-1.5 rounded-lg text-content-secondary hover:bg-surface-tertiary hover:text-content-primary transition-colors"
-              >
-                <FolderOpen className="w-4 h-4" />
-              </button>
+                tooltip="Mostrar arquivo no Windows Explorer"
+                icon={<FolderOpen className="w-4 h-4" />}
+              />
             )}
 
-            <button
-              type="button"
+            <IconButton
+              variant="ghost"
+              size="sm"
+              onClick={toggleMaximize}
+              tooltip={isMaximized ? 'Restaurar janela' : 'Maximizar janela'}
+              icon={isMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            />
+
+            <IconButton
+              variant="danger"
+              size="sm"
               onClick={onClose}
-              title="Fechar (Esc)"
-              className="p-1.5 rounded-lg text-content-secondary hover:bg-rose-500/10 hover:text-rose-500 transition-colors ml-1"
-            >
-              <X className="w-4 h-4" />
-            </button>
+              tooltip="Fechar (Esc)"
+              icon={<X className="w-4 h-4" />}
+            />
           </div>
         </div>
 
         {/* Image Canvas / Viewport */}
-        <div className="flex-1 min-h-[380px] max-h-[75vh] overflow-auto flex items-center justify-center p-6 bg-surface-canvas/70 relative">
+        <div className="flex-1 min-h-0 w-full overflow-hidden flex items-center justify-center p-3 bg-surface-canvas/80 relative">
           {isLoading ? (
             <div className="flex flex-col items-center gap-2 text-content-muted">
               <Loader2 className="w-8 h-8 animate-spin text-accent" />
-              <span className="text-xs">Carregando imagem...</span>
+              <span className="text-xs font-medium">Carregando imagem...</span>
             </div>
           ) : loadError ? (
             <div className="p-6 text-center text-rose-500 text-xs max-w-sm">
               <p className="font-semibold">{loadError}</p>
             </div>
           ) : dataUrl ? (
-            <div className="flex items-center justify-center transition-transform duration-100 ease-out">
+            <div className="w-full h-full flex items-center justify-center overflow-auto">
               <img
                 src={dataUrl}
                 alt={fileName}
                 style={{
-                  transform: `scale(${zoom})`,
+                  transform: zoom !== 1 ? `scale(${zoom})` : undefined,
                   transformOrigin: 'center center',
-                  maxHeight: '65vh',
-                  maxWidth: '100%'
+                  transition: isResizing ? 'none' : 'transform 100ms ease-out'
                 }}
                 onLoad={(e) => {
                   const img = e.currentTarget
                   setDimensions({ width: img.naturalWidth, height: img.naturalHeight })
                 }}
-                className="rounded-lg shadow-xl object-contain transition-transform"
+                className="w-full h-full object-contain rounded-lg drop-shadow-md select-none"
               />
             </div>
           ) : null}
         </div>
 
-        {/* Footer info note */}
+        {/* Footer info bar */}
         <div className="px-4 py-2 border-t border-surface-border bg-surface-secondary/50 flex items-center justify-between text-[11px] text-content-muted">
-          <span>Modo de visualização rápida de mídia</span>
-          <span>Dica: Use <strong>+</strong> e <strong>-</strong> para zoom ou <strong>Esc</strong> para fechar</span>
+          <span>Janela flutuante redimensionável</span>
+          <span>Dica: Use <strong>+</strong> / <strong>-</strong> para zoom ou arraste as bordas para redimensionar</span>
         </div>
       </div>
     </div>

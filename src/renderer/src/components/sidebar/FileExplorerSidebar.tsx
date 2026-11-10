@@ -238,7 +238,7 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
                   onMoveEntry?.(fromPath, entry.relativePath)
                 }
               }}
-              style={{ paddingLeft: `${depth * 12 + 8}px` }}
+              style={{ paddingLeft: `${depth * 10 + 6}px` }}
               onClick={() => toggleFolder(entry.relativePath)}
               onContextMenu={(e) => {
                 e.preventDefault()
@@ -251,7 +251,7 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
                 })
               }}
               title={`Pasta: ${entry.name} (Arraste para mover para outra pasta)`}
-              className={`group flex items-center justify-between pr-1.5 h-7 rounded-md text-xs font-medium cursor-pointer transition-colors duration-150 border ${
+              className={`relative group flex items-center justify-between pr-1.5 h-7 rounded-md text-xs font-medium cursor-pointer transition-colors duration-150 border ${
                 isDragging ? 'opacity-40' : ''
               } ${
                 isDragOver
@@ -274,7 +274,7 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
               </div>
 
               <div
-                className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto flex items-center gap-0.5 shrink-0 ml-1"
+                className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover:flex items-center gap-0.5 bg-surface-secondary/95 backdrop-blur-xs pl-1 pr-0.5 py-0.5 rounded-md shadow-xs border border-surface-border/60 z-10"
                 onClick={(e) => e.stopPropagation()}
               >
                 <button
@@ -395,7 +395,7 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
               }
             }
           }}
-          style={{ paddingLeft: `${depth * 12 + 20}px` }}
+          style={{ paddingLeft: `${depth * 10 + 16}px` }}
           onClick={() => handleFileClick(false)}
           onMouseDown={(e) => {
             if (e.button === 1) e.preventDefault()
@@ -432,7 +432,7 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
             })
           }}
           title={fileTooltip}
-          className={`group flex items-center justify-between pr-1.5 h-7 rounded-md text-xs cursor-pointer transition-colors duration-150 border ${
+          className={`relative group flex items-center justify-between pr-1.5 h-7 rounded-md text-xs cursor-pointer transition-colors duration-150 border ${
             isDragging ? 'opacity-40' : ''
           } ${
             isActive
@@ -440,7 +440,7 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
               : 'text-content-secondary border-transparent hover:bg-surface-tertiary hover:text-content-primary hover:border-surface-border/50'
           }`}
         >
-          <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
             <IconComponent
               className={`w-3.5 h-3.5 shrink-0 ${
                 isActive
@@ -456,7 +456,7 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
             {entry.extension && (
               <span
                 className={cn(
-                  'text-[9px] px-1 py-0.2 rounded font-mono font-bold shrink-0 tracking-wider uppercase select-none ml-auto mr-1',
+                  'text-[9px] px-1 py-0.2 rounded font-mono font-bold shrink-0 tracking-wider uppercase select-none ml-1.5',
                   isMd
                     ? 'bg-accent/15 text-accent'
                     : isImage
@@ -470,7 +470,7 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
           </div>
 
           <div
-            className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto flex items-center gap-0.5 shrink-0 ml-1"
+            className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover:flex items-center gap-0.5 bg-surface-secondary/95 backdrop-blur-xs pl-1 pr-0.5 py-0.5 rounded-md shadow-xs border border-surface-border/60 z-10"
             onClick={(e) => e.stopPropagation()}
           >
             <button
