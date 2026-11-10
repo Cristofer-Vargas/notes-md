@@ -25,6 +25,9 @@ Para navegar pelos conceitos no seu próprio ritmo, dividimos o conteúdo em qua
 5. **[Guia de Estilos e Componentes Reutilizáveis (`guia-de-estilos-e-componentes.md`)](guia-de-estilos-e-componentes.md)**  
    *Como utilizar a camada de componentes primitivos (Button, IconButton, Badge, Input, cn) para otimizar código, evitar repetição e garantir consistência visual em todos os temas.*
 
+6. **[Arquitetura do Canvas Infinito (`arquitetura-do-canvas.md`)](arquitetura-do-canvas.md)**  
+   *Como funciona o Canvas visual estilo Obsidian (.canvas), a especificação aberta JSON Canvas, os tipos de nós (textos, notas, imagens, grupos) e as opções arquiteturais de implementação.*
+
 ---
 
 ## 💡 Glossário Rápido de Termos Técnicos
