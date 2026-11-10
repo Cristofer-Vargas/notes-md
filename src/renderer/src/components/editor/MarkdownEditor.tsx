@@ -38,6 +38,7 @@ import {
   resolveWikiLinkTarget,
   countWords
 } from '../../services/noteIndexer'
+import { getShortcutKey, matchesShortcut } from '../../services/shortcutService'
 import type { VaultNoteData } from '../../../../preload/index.d'
 import type { AppSettings, IndexedNoteMeta } from '../../types/app'
 import { CheckCircle2, Clock, ExternalLink, FolderOpen, Link2, RefreshCw, Sparkles, Unlink } from 'lucide-react'
@@ -119,7 +120,6 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     position: { top: number; left: number }
   } | null>(null)
   const isMouseOverPreviewRef = useRef(false)
-  const selectionMenuTimeoutRef = useRef<number | null>(null)
   const activeNotePathRef = useRef<string | null>(null)
   const isInternalUpdateRef = useRef(false)
   const lastSavedMarkdownRef = useRef<string>('')
@@ -166,6 +166,8 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       }
     })
   }, [])
+
+  const handleOpenQuickToolsAtCaretRef = useRef<() => void>(() => {})
 
   const editor = useEditor({
     extensions: [
@@ -313,11 +315,20 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       // Show inline URL editor when cursor is placed on a standard Markdown link [Text](url)
       if (ed.isActive('link')) {
         const href = (ed.getAttributes('link').href as string) || ''
-        const coords = ed.view.coordsAtPos(from)
-        setActiveLinkEdit({
-          href,
-          position: { top: coords.bottom + 6, left: coords.left }
-        })
+        let coords: { left: number; bottom: number } | null = null
+        try {
+          coords = ed.view.coordsAtPos(from)
+        } catch {
+          coords = null
+        }
+        if (coords && !isNaN(coords.bottom) && !isNaN(coords.left)) {
+          setActiveLinkEdit({
+            href,
+            position: { top: coords.bottom + 6, left: coords.left }
+          })
+        } else {
+          setActiveLinkEdit(null)
+        }
       } else {
         setActiveLinkEdit(null)
       }
@@ -325,6 +336,40 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       window.requestAnimationFrame(() => {
         syncWikiLinkMissingClasses(ed.view.dom)
       })
+    },
+    editorProps: {
+      handleKeyDown: (_view, event) => {
+        if (
+          matchesShortcut(event, getShortcutKey(settings, 'quickTools')) ||
+          (event.shiftKey && event.key === 'F10') ||
+          event.key === 'ContextMenu'
+        ) {
+          event.preventDefault()
+          handleOpenQuickToolsAtCaretRef.current()
+          return true
+        }
+        if (matchesShortcut(event, getShortcutKey(settings, 'toggleSourceMode'))) {
+          event.preventDefault()
+          handleToggleSourceMode()
+          return true
+        }
+        if (matchesShortcut(event, getShortcutKey(settings, 'toggleZenMode'))) {
+          event.preventDefault()
+          onToggleZenMode()
+          return true
+        }
+        if (matchesShortcut(event, getShortcutKey(settings, 'insertWikiLink'))) {
+          event.preventDefault()
+          handleOpenWikiPickerFromToolbar()
+          return true
+        }
+        if (matchesShortcut(event, getShortcutKey(settings, 'saveNote'))) {
+          event.preventDefault()
+          flushPendingSave()
+          return true
+        }
+        return false
+      }
     }
   })
 
@@ -535,75 +580,74 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     [settings.ignoredWords, onUpdateSettings]
   )
 
-  const checkAndOpenSelectionMenu = useCallback(() => {
+  const handleOpenQuickToolsAtCaret = useCallback(() => {
     if (!editor) return
-    if (selectionMenuTimeoutRef.current) {
-      window.clearTimeout(selectionMenuTimeoutRef.current)
-    }
-    selectionMenuTimeoutRef.current = window.setTimeout(() => {
-      if (!editor || editor.state.selection.empty) return
-      const { from, to } = editor.state.selection
-      const rawSelected = editor.state.doc.textBetween(from, to, ' ').trim()
-      if (!rawSelected) return
+    const pos = editor.state.selection.from
+    const inCode = isPosInsideCode(editor, pos)
+    let wordInfo: { from: number; to: number; word: string } | null = null
 
-      const cleanWord = rawSelected.replace(/^[\s.,;:!?()[\]{}"'`]+|[\s.,;:!?()[\]{}"'`]+$/g, '')
-
-      const inCode =
-        isPosInsideCode(editor, from) ||
-        Boolean(
-          (editor.view.dom.querySelector(':hover') as HTMLElement)?.closest(
-            'code, pre, .code-block-pre, .code-block-wrapper'
-          )
-        )
-
-      if (inCode) {
-        setSpellSuggestions(null)
-        setTargetWordRange(null)
-      } else {
-        const isSingleWord =
-          cleanWord.length >= 2 && !cleanWord.includes(' ') && !/^\W+$/.test(cleanWord)
-        if (isSingleWord) {
-          const isIgnored = Boolean(settings.ignoredWords?.includes(cleanWord))
-          const nativeList = window.electronAPI?.getWordSuggestions?.(cleanWord) || []
-          const fallbackList = generateFallbackSuggestions(cleanWord)
-          const combinedList = Array.from(new Set([...nativeList, ...fallbackList])).filter(
-            (s) => s.toLowerCase() !== cleanWord.toLowerCase()
-          )
-          const isMisspelled =
-            !isIgnored &&
-            (Boolean(window.electronAPI?.isWordMisspelled?.(cleanWord)) || combinedList.length > 0)
-
-          if (isMisspelled) {
-            setTargetWordRange({ from, to, word: cleanWord })
-            setSpellSuggestions({
-              misspelledWord: cleanWord,
-              suggestions: combinedList
-            })
-          } else {
-            setSpellSuggestions(null)
-            setTargetWordRange({ from, to, word: cleanWord })
-          }
-        } else {
-          setSpellSuggestions(null)
-          setTargetWordRange(null)
+    try {
+      if (editor.state.selection.from !== editor.state.selection.to) {
+        const rawSel = editor.state.doc
+          .textBetween(editor.state.selection.from, editor.state.selection.to, ' ')
+          .trim()
+        const clean = rawSel.replace(/^[\s.,;:!?()[\]{}"'`]+|[\s.,;:!?()[\]{}"'`]+$/g, '')
+        if (clean && !clean.includes(' ')) {
+          wordInfo = { from: editor.state.selection.from, to: editor.state.selection.to, word: clean }
         }
       }
 
-      const startCoords = editor.view.coordsAtPos(from)
-      const endCoords = editor.view.coordsAtPos(to)
-      const left = Math.max(16, Math.min(startCoords.left, endCoords.left))
-      const top = Math.min(startCoords.top, endCoords.top)
-      const bottom = Math.max(startCoords.bottom, endCoords.bottom)
+      if (!wordInfo) {
+        wordInfo = getWordRangeAtPos(editor.state.doc, pos)
+      }
+
+      if (wordInfo && !inCode) {
+        const cleanWord = wordInfo.word.replace(/^[\s.,;:!?()[\]{}"'`]+|[\s.,;:!?()[\]{}"'`]+$/g, '')
+        const isIgnored = Boolean(settings.ignoredWords?.includes(cleanWord))
+        const nativeList = window.electronAPI?.getWordSuggestions?.(cleanWord) || []
+        const fallbackList = generateFallbackSuggestions(cleanWord)
+        const combinedList = Array.from(new Set([...nativeList, ...fallbackList])).filter(
+          (s) => s.toLowerCase() !== cleanWord.toLowerCase()
+        )
+
+        setTargetWordRange(wordInfo)
+        setSpellSuggestions({
+          misspelledWord: cleanWord,
+          suggestions: combinedList
+        })
+
+        if (editor.state.selection.from === editor.state.selection.to) {
+          editor.commands.setTextSelection({ from: wordInfo.from, to: wordInfo.to })
+        }
+      } else {
+        setSpellSuggestions(null)
+        setTargetWordRange(null)
+      }
+
+      let coords: { left: number; bottom: number } | null = null
+      try {
+        coords = editor.view.coordsAtPos(pos)
+      } catch {
+        coords = null
+      }
+
+      const safeLeft = coords && !isNaN(coords.left) ? Math.max(16, coords.left) : 100
+      const safeTop = coords && !isNaN(coords.bottom) ? coords.bottom + 6 : 100
 
       setHoverPreview(null)
       setContextMenuPos({
-        x: left,
-        y: top,
-        selectionBottom: bottom,
-        trigger: 'selection'
+        x: safeLeft,
+        y: safeTop,
+        trigger: 'contextmenu'
       })
-    }, 25)
+    } catch (err) {
+      console.error('Falha ao abrir ferramentas de contexto no cursor:', err)
+    }
   }, [editor, settings.ignoredWords])
+
+  useEffect(() => {
+    handleOpenQuickToolsAtCaretRef.current = handleOpenQuickToolsAtCaret
+  }, [handleOpenQuickToolsAtCaret])
 
   const handleToggleSourceMode = (): void => {
     if (!editor) return
@@ -840,6 +884,33 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
             <textarea
               value={rawMarkdown}
               onChange={handleRawMarkdownChange}
+              onKeyDown={(e) => {
+                const nativeEvent = e.nativeEvent
+                if (
+                  matchesShortcut(nativeEvent, getShortcutKey(settings, 'quickTools')) ||
+                  (nativeEvent.shiftKey && nativeEvent.key === 'F10') ||
+                  nativeEvent.key === 'ContextMenu'
+                ) {
+                  e.preventDefault()
+                  handleOpenQuickToolsAtCaret()
+                  return
+                }
+                if (matchesShortcut(nativeEvent, getShortcutKey(settings, 'toggleSourceMode'))) {
+                  e.preventDefault()
+                  handleToggleSourceMode()
+                  return
+                }
+                if (matchesShortcut(nativeEvent, getShortcutKey(settings, 'toggleZenMode'))) {
+                  e.preventDefault()
+                  onToggleZenMode()
+                  return
+                }
+                if (matchesShortcut(nativeEvent, getShortcutKey(settings, 'saveNote'))) {
+                  e.preventDefault()
+                  flushPendingSave()
+                  return
+                }
+              }}
               spellCheck={settings.spellcheck}
               placeholder="Escreva em Markdown puro..."
               className="w-full min-h-[620px] bg-transparent text-content-primary font-mono text-sm leading-relaxed focus:outline-none resize-none"
@@ -847,16 +918,6 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
           ) : (
             <div
               onClick={handleEditorClick}
-              onMouseUp={(e) => {
-                if (e.button === 0) {
-                  checkAndOpenSelectionMenu()
-                }
-              }}
-              onKeyUp={(e) => {
-                if (e.shiftKey || e.key.startsWith('Arrow')) {
-                  checkAndOpenSelectionMenu()
-                }
-              }}
               onContextMenu={(e) => {
                 e.preventDefault()
                 setHoverPreview(null)
@@ -995,21 +1056,23 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       )}
 
       {/* Right-Click & Selection Quick Text Tools Context Menu (Windows style with submenus) */}
-      <EditorContextMenu
-        editor={editor}
-        position={contextMenuPos}
-        onClose={() => setContextMenuPos(null)}
-        targetWordRange={targetWordRange}
-        spellSuggestions={spellSuggestions}
-        ignoredWords={settings.ignoredWords}
-        isInsideCode={editor ? isPosInsideCode(editor, targetWordRange?.from) : false}
-        onClearSpellSuggestions={() => {
-          setSpellSuggestions(null)
-          setTargetWordRange(null)
-        }}
-        onAddIgnoredWord={handleAddIgnoredWord}
-        onOpenWikiLinkPicker={handleOpenWikiPickerFromToolbar}
-      />
+      {contextMenuPos && editor && (
+        <EditorContextMenu
+          editor={editor}
+          position={contextMenuPos}
+          onClose={() => setContextMenuPos(null)}
+          targetWordRange={targetWordRange}
+          spellSuggestions={spellSuggestions}
+          ignoredWords={settings.ignoredWords}
+          isInsideCode={editor ? isPosInsideCode(editor, targetWordRange?.from) : false}
+          onClearSpellSuggestions={() => {
+            setSpellSuggestions(null)
+            setTargetWordRange(null)
+          }}
+          onAddIgnoredWord={handleAddIgnoredWord}
+          onOpenWikiLinkPicker={handleOpenWikiPickerFromToolbar}
+        />
+      )}
 
       {/* [[WikiLink]] Autocomplete Popover */}
       {wikiSuggest && wikiSuggest.open && (

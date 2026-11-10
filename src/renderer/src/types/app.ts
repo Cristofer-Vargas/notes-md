@@ -8,10 +8,36 @@ export type PageWidthPreset = 'standard' | 'wide' | 'full'
 
 export type CanvasStylePreset = 'paper' | 'flat'
 
+export type EditorFontWeightPreset = '200' | '300' | '400' | '500'
+
+export type ShortcutActionId =
+  | 'quickSwitcher'
+  | 'newNote'
+  | 'openSettings'
+  | 'toggleLeftSidebar'
+  | 'toggleRightSidebar'
+  | 'nextTab'
+  | 'prevTab'
+  | 'closeTab'
+  | 'quickTools'
+  | 'toggleZenMode'
+  | 'toggleSourceMode'
+  | 'insertWikiLink'
+  | 'saveNote'
+
+export type CustomShortcutsMap = Partial<Record<ShortcutActionId, string>>
+
+export interface RecentVault {
+  path: string
+  name: string
+  lastOpened: number
+}
+
 export interface AppSettings {
   theme: ThemeMode
   accent: AccentPreset
   fontFamily: FontFamilyPreset
+  editorFontWeight: EditorFontWeightPreset
   baseFontSize: number // 14 to 22
   lineHeight: number // 1.5 to 2.0
   pageWidth: PageWidthPreset
@@ -21,6 +47,7 @@ export interface AppSettings {
   spellcheck: boolean
   spellcheckLanguages: string[]
   ignoredWords: string[]
+  shortcuts?: CustomShortcutsMap
 }
 
 export interface OpenTab {

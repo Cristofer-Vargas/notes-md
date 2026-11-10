@@ -1,5 +1,6 @@
 import { app, shell, BrowserWindow, ipcMain, dialog, session } from 'electron'
 import { join } from 'path'
+import { existsSync } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import {
   ensureDefaultVault,
@@ -123,6 +124,14 @@ app.whenReady().then(() => {
     const snapshot = await loadVaultSnapshot(result.filePaths[0])
     vaultWatcher?.watch(snapshot.vaultPath, snapshot)
     return snapshot
+  })
+
+  ipcMain.handle('vault:exists', async (_event, folderPath: string) => {
+    try {
+      return Boolean(folderPath && existsSync(folderPath))
+    } catch {
+      return false
+    }
   })
 
   ipcMain.handle('vault:load', async (_event, vaultPath: string) => {

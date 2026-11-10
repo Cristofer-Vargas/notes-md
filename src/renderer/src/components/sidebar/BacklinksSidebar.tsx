@@ -260,6 +260,11 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
     }
   }
 
+  const isCompact = typeof width === 'number' && width < 260
+  const isIconOnly = typeof width === 'number' && width < 230
+  const linksCount = noteMeta ? noteMeta.backlinks.length + noteMeta.outgoingLinks.length : 0
+  const headingsCount = noteMeta ? noteMeta.headings.length : 0
+
   return (
     <aside
       style={{ width: width ? `${width}px` : undefined }}
@@ -270,29 +275,45 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
         <button
           type="button"
           onClick={() => handleSelectTab('connections')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition-colors ${
+          title={`Links e Conexões (${linksCount})`}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition-colors min-w-0 ${
             activeTab === 'connections'
               ? 'bg-accent-soft text-accent'
               : 'text-content-secondary hover:bg-surface-tertiary'
           }`}
         >
           <Link2 className="w-3.5 h-3.5 shrink-0" />
-          <span>
-            Links ({noteMeta ? noteMeta.backlinks.length + noteMeta.outgoingLinks.length : 0})
-          </span>
+          {!isIconOnly && (
+            !isCompact ? (
+              <span className="truncate">Links ({linksCount})</span>
+            ) : (
+              <span className="text-[10px] px-1 py-0.2 rounded-full bg-accent/20 text-accent font-bold">
+                {linksCount}
+              </span>
+            )
+          )}
         </button>
 
         <button
           type="button"
           onClick={() => handleSelectTab('outline')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition-colors ${
+          title={`Sumário da Nota (${headingsCount})`}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition-colors min-w-0 ${
             activeTab === 'outline'
               ? 'bg-accent-soft text-accent'
               : 'text-content-secondary hover:bg-surface-tertiary'
           }`}
         >
           <ListTree className="w-3.5 h-3.5 shrink-0" />
-          <span>Sumário ({noteMeta ? noteMeta.headings.length : 0})</span>
+          {!isIconOnly && (
+            !isCompact ? (
+              <span className="truncate">Sumário ({headingsCount})</span>
+            ) : (
+              <span className="text-[10px] px-1 py-0.2 rounded-full bg-accent/20 text-accent font-bold">
+                {headingsCount}
+              </span>
+            )
+          )}
         </button>
 
         {onCloseSidebar && (
@@ -316,7 +337,7 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold uppercase tracking-wider text-content-muted">
-                Backlinks (Citam esta nota)
+                {!isCompact ? 'Backlinks (Citam esta nota)' : 'Backlinks'}
               </span>
               <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-accent-soft text-accent">
                 {noteMeta.backlinks.length}
@@ -393,7 +414,7 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold uppercase tracking-wider text-content-muted">
-                Links de Saída (Citadas aqui)
+                {!isCompact ? 'Links de Saída (Citadas aqui)' : 'Links de Saída'}
               </span>
               <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-surface-tertiary text-content-secondary">
                 {noteMeta.outgoingLinks.length}
@@ -482,7 +503,7 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
           <div className="px-3 py-2 border-b border-surface-border flex items-center justify-between gap-2 bg-surface-bg/30 shrink-0">
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] font-bold uppercase tracking-wider text-content-muted">
-                Estrutura de Tópicos
+                {!isCompact ? 'Estrutura de Tópicos' : 'Tópicos'}
               </span>
               <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-accent-soft text-accent">
                 {noteMeta.headings.length}

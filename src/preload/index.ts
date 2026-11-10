@@ -38,6 +38,7 @@ const api: ElectronAPI = {
     ipcRenderer.invoke('vault:delete-entry', vaultPath, relativePath),
   openExternal: (url: string) => ipcRenderer.invoke('shell:open-external', url),
   openInExplorer: (vaultPath: string) => ipcRenderer.invoke('shell:open-in-explorer', vaultPath),
+  checkPathExists: (folderPath: string) => ipcRenderer.invoke('vault:exists', folderPath),
   onVaultChanged: (callback: (snapshot: VaultSnapshot) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, snapshot: VaultSnapshot): void => {
       callback(snapshot)

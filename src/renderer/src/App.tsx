@@ -4,12 +4,13 @@ import {
   PanelRight
 } from 'lucide-react'
 import type { VaultFileEntry, VaultNoteData, VaultSnapshot } from '../../preload/index.d'
-import type { AppSettings, EditorPaneState, OpenTab, SplitLayoutMode } from './types/app'
+import type { AppSettings, EditorPaneState, OpenTab, RecentVault, SplitLayoutMode } from './types/app'
 import {
   buildVaultIndex,
   resolveWikiLinkTarget,
   updateWikiLinksAfterRename
 } from './services/noteIndexer'
+import { getShortcutKey, matchesShortcut } from './services/shortcutService'
 import { FileExplorerSidebar } from './components/sidebar/FileExplorerSidebar'
 import { BacklinksSidebar } from './components/sidebar/BacklinksSidebar'
 import { EditorWorkspace } from './components/editor/EditorWorkspace'
@@ -24,6 +25,7 @@ import { IconButton } from './components/ui'
 const SETTINGS_STORAGE_KEY = 'notes-md:settings:v1'
 const LAST_VAULT_STORAGE_KEY = 'notes-md:last-vault'
 const VAULT_SESSIONS_STORAGE_KEY = 'notes-md:vault-sessions:v1'
+const RECENT_VAULTS_KEY = 'notes-md:recent-vaults:v1'
 
 interface PersistedVaultSession {
   openTabPaths: string[]
@@ -58,6 +60,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   theme: 'light',
   accent: 'blue',
   fontFamily: 'sans',
+  editorFontWeight: '200',
   baseFontSize: 16,
   lineHeight: 1.7,
   pageWidth: 'standard',
@@ -83,6 +86,52 @@ export function App(): React.ReactElement {
   const [vaultName, setVaultName] = useState<string>('Vault-Notas')
   const [tree, setTree] = useState<VaultFileEntry[]>([])
   const [notes, setNotes] = useState<VaultNoteData[]>([])
+  const [recentVaults, setRecentVaults] = useState<RecentVault[]>(() => {
+    try {
+      const raw = localStorage.getItem(RECENT_VAULTS_KEY)
+      return raw ? JSON.parse(raw) : []
+    } catch {
+      return []
+    }
+  })
+
+  // Prune deleted or inaccessible vault paths on mount
+  useEffect(() => {
+    const verifyPaths = async (): Promise<void> => {
+      try {
+        const raw = localStorage.getItem(RECENT_VAULTS_KEY)
+        if (!raw) return
+        const list: RecentVault[] = JSON.parse(raw)
+        const valid: RecentVault[] = []
+        for (const v of list) {
+          if (window.electronAPI?.checkPathExists) {
+            const exists = await window.electronAPI.checkPathExists(v.path)
+            if (exists) valid.push(v)
+          } else {
+            valid.push(v)
+          }
+        }
+        setRecentVaults(valid)
+        localStorage.setItem(RECENT_VAULTS_KEY, JSON.stringify(valid))
+      } catch {
+        // ignore
+      }
+    }
+    verifyPaths()
+  }, [])
+
+  const recordRecentVault = useCallback((vPath: string, vName: string) => {
+    if (!vPath) return
+    setRecentVaults((prev) => {
+      const filtered = prev.filter((v) => v.path.toLowerCase() !== vPath.toLowerCase())
+      const next = [{ path: vPath, name: vName, lastOpened: Date.now() }, ...filtered].slice(0, 10)
+      try {
+        localStorage.setItem(RECENT_VAULTS_KEY, JSON.stringify(next))
+      } catch {}
+      return next
+    })
+  }, [])
+
   const [splitLayout, setSplitLayout] = useState<SplitLayoutMode>('single')
   const [splitRatio, setSplitRatio] = useState<number>(0.5)
   const [pane1, setPane1] = useState<EditorPaneState>({
@@ -310,6 +359,10 @@ export function App(): React.ReactElement {
     document.documentElement.setAttribute('data-theme', settings.theme)
     document.documentElement.setAttribute('data-accent', settings.accent)
     document.documentElement.classList.toggle('dark', settings.theme === 'dark')
+    document.documentElement.style.setProperty(
+      '--editor-font-weight',
+      settings.editorFontWeight || '200'
+    )
     try {
       localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings))
     } catch {
@@ -354,6 +407,7 @@ export function App(): React.ReactElement {
     setTree(snapshot.tree)
     setNotes(snapshot.notes)
     setLastSyncTime(Date.now())
+    recordRecentVault(snapshot.vaultPath, snapshot.vaultName)
 
     try {
       localStorage.setItem(LAST_VAULT_STORAGE_KEY, snapshot.vaultPath)
@@ -913,6 +967,19 @@ export function App(): React.ReactElement {
     }
   }
 
+  const handleSelectRecentVault = useCallback(
+    async (targetPath: string) => {
+      if (!targetPath || targetPath === vaultPath) return
+      try {
+        const snapshot = await window.electronAPI.loadVault(targetPath)
+        applyVaultSnapshot(snapshot)
+      } catch (err) {
+        console.error('Erro ao abrir cofre recente:', err)
+      }
+    },
+    [vaultPath, applyVaultSnapshot]
+  )
+
   const handleRefreshVault = useCallback(async () => {
     if (!vaultPath) return
     const refreshed = await window.electronAPI.loadVault(vaultPath)
@@ -952,16 +1019,58 @@ export function App(): React.ReactElement {
     [vaultPath, notes, applyVaultSnapshot]
   )
 
-  // Global keyboard shortcuts (Ctrl+P, Ctrl+N, Ctrl+,)
+  const activePaneIdRef = useRef(activePaneId)
+  activePaneIdRef.current = activePaneId
+  const settingsRef = useRef(settings)
+  settingsRef.current = settings
+
+  // Global keyboard shortcuts (configurable in Settings)
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent): void => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+      const curSettings = settingsRef.current
+      if (matchesShortcut(e, getShortcutKey(curSettings, 'nextTab'))) {
+        e.preventDefault()
+        const targetPaneId = activePaneIdRef.current
+        const setTargetPane = targetPaneId === 'pane-1' ? setPane1 : setPane2
+        setTargetPane((prev) => {
+          if (prev.tabs.length <= 1) return prev
+          const curIdx = prev.tabs.findIndex((t) => t.relativePath === prev.activeNotePath)
+          const nextIdx = (curIdx + 1 + prev.tabs.length) % prev.tabs.length
+          return { ...prev, activeNotePath: prev.tabs[nextIdx].relativePath }
+        })
+      } else if (matchesShortcut(e, getShortcutKey(curSettings, 'prevTab'))) {
+        e.preventDefault()
+        const targetPaneId = activePaneIdRef.current
+        const setTargetPane = targetPaneId === 'pane-1' ? setPane1 : setPane2
+        setTargetPane((prev) => {
+          if (prev.tabs.length <= 1) return prev
+          const curIdx = prev.tabs.findIndex((t) => t.relativePath === prev.activeNotePath)
+          const nextIdx = (curIdx - 1 + prev.tabs.length) % prev.tabs.length
+          return { ...prev, activeNotePath: prev.tabs[nextIdx].relativePath }
+        })
+      } else if (matchesShortcut(e, getShortcutKey(curSettings, 'closeTab'))) {
+        e.preventDefault()
+        const targetPaneId = activePaneIdRef.current
+        const setTargetPane = targetPaneId === 'pane-1' ? setPane1 : setPane2
+        setTargetPane((prev) => {
+          if (!prev.activeNotePath || prev.tabs.length === 0) return prev
+          const remainingTabs = prev.tabs.filter((t) => t.relativePath !== prev.activeNotePath)
+          const nextActive = remainingTabs.length > 0 ? remainingTabs[remainingTabs.length - 1].relativePath : null
+          return { ...prev, tabs: remainingTabs, activeNotePath: nextActive }
+        })
+      } else if (matchesShortcut(e, getShortcutKey(curSettings, 'toggleLeftSidebar'))) {
+        e.preventDefault()
+        updateSettings({ showLeftSidebar: !curSettings.showLeftSidebar })
+      } else if (matchesShortcut(e, getShortcutKey(curSettings, 'toggleRightSidebar'))) {
+        e.preventDefault()
+        updateSettings({ showRightSidebar: !curSettings.showRightSidebar })
+      } else if (matchesShortcut(e, getShortcutKey(curSettings, 'quickSwitcher'))) {
         e.preventDefault()
         setIsQuickSwitcherOpen((prev) => !prev)
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
+      } else if (matchesShortcut(e, getShortcutKey(curSettings, 'newNote'))) {
         e.preventDefault()
         handleCreateNotePrompt('')
-      } else if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+      } else if (matchesShortcut(e, getShortcutKey(curSettings, 'openSettings'))) {
         e.preventDefault()
         setIsSettingsOpen((prev) => !prev)
       }
@@ -969,7 +1078,7 @@ export function App(): React.ReactElement {
 
     window.addEventListener('keydown', handleGlobalKeyDown)
     return () => window.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [handleCreateNotePrompt])
+  }, [handleCreateNotePrompt, updateSettings])
 
   return (
     <div className="h-screen w-screen flex flex-col bg-surface-bg text-content-primary overflow-hidden relative">
@@ -1046,6 +1155,8 @@ export function App(): React.ReactElement {
                 })
               }
               onCloseSidebar={() => updateSettings({ showLeftSidebar: false })}
+              recentVaults={recentVaults}
+              onSelectRecentVault={handleSelectRecentVault}
             />
             {/* Left Resizer Drag Handle */}
             <div

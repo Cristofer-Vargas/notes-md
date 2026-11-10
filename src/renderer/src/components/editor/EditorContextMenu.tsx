@@ -39,6 +39,7 @@ import {
 } from 'lucide-react'
 import { HIGHLIGHT_COLORS, TEXT_COLORS } from './EditorToolbar'
 import { generateFallbackSuggestions } from '../../services/spellcheckService'
+import { cn } from '../../utils/cn'
 
 export interface EditorContextMenuPosition {
   x: number
@@ -85,10 +86,12 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
   onOpenWikiLinkPicker
 }) => {
   const [activeSubmenu, setActiveSubmenu] = useState<SubmenuId>(null)
+  const [selectedSugIndex, setSelectedSugIndex] = useState(0)
   const menuRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     setActiveSubmenu(null)
+    setSelectedSugIndex(0)
   }, [position])
 
   useEffect(() => {
@@ -98,27 +101,22 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
         onClose()
       }
     }
-    const handleKeyDown = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') {
-        onClose()
-      }
-    }
     window.addEventListener('mousedown', handleMouseDown)
-    window.addEventListener('keydown', handleKeyDown)
     return () => {
       window.removeEventListener('mousedown', handleMouseDown)
-      window.removeEventListener('keydown', handleKeyDown)
     }
   }, [position, onClose])
 
-  if (!editor || !position) return null
-
-  const selectedText =
-    editor.state.selection.from !== editor.state.selection.to
-      ? editor.state.doc
-          .textBetween(editor.state.selection.from, editor.state.selection.to, ' ')
-          .trim()
-      : ''
+  let selectedText = ''
+  try {
+    if (editor && editor.state.selection.from !== editor.state.selection.to) {
+      selectedText = editor.state.doc
+        .textBetween(editor.state.selection.from, editor.state.selection.to, ' ')
+        .trim()
+    }
+  } catch {
+    selectedText = ''
+  }
 
   const rawWord =
     spellSuggestions?.misspelledWord ||
@@ -128,18 +126,38 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
   const activeWord = rawWord.replace(/^[\s.,;:!?()[\]{}"'`]+|[\s.,;:!?()[\]{}"'`]+$/g, '')
   const isIgnored = Boolean(activeWord && ignoredWords?.includes(activeWord))
 
-  const rawSuggestions = spellSuggestions?.suggestions || []
-  const nativeSuggestions = activeWord
-    ? window.electronAPI?.getWordSuggestions?.(activeWord) || []
+  const rawSuggestions = Array.isArray(spellSuggestions?.suggestions)
+    ? spellSuggestions.suggestions
     : []
-  const fallbackSuggestions = activeWord ? generateFallbackSuggestions(activeWord) : []
+  let nativeSuggestions: string[] = []
+  if (activeWord) {
+    try {
+      const res = window.electronAPI?.getWordSuggestions?.(activeWord)
+      if (Array.isArray(res)) nativeSuggestions = res
+    } catch {
+      nativeSuggestions = []
+    }
+  }
+  let fallbackSuggestions: string[] = []
+  if (activeWord) {
+    try {
+      fallbackSuggestions = generateFallbackSuggestions(activeWord)
+    } catch {
+      fallbackSuggestions = []
+    }
+  }
   const combinedSuggestions = Array.from(
     new Set([...rawSuggestions, ...nativeSuggestions, ...fallbackSuggestions])
   ).filter((s) => s.toLowerCase() !== activeWord.toLowerCase())
 
-  const isMisspelledByApi = activeWord
-    ? Boolean(window.electronAPI?.isWordMisspelled?.(activeWord))
-    : false
+  let isMisspelledByApi = false
+  if (activeWord) {
+    try {
+      isMisspelledByApi = Boolean(window.electronAPI?.isWordMisspelled?.(activeWord))
+    } catch {
+      isMisspelledByApi = false
+    }
+  }
 
   const hasTypo = Boolean(
     activeWord &&
@@ -155,6 +173,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
   const showSpellSection = Boolean(activeWord && activeWord.length >= 2 && !isInsideCode)
 
   const handleApplySuggestion = (sug: string): void => {
+    if (!editor) return
     let replaced = false
 
     // 1. If we have the exact document range from right-click
@@ -213,19 +232,91 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
     onClose()
   }
 
+  // Keyboard navigation for spellcheck suggestions and quick tools
+  useEffect(() => {
+    if (!position) return
+
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        e.stopPropagation()
+        onClose()
+        editor?.commands.focus()
+        return
+      }
+
+      // Fast numbers 1-5 to apply suggestions directly
+      if (combinedSuggestions.length > 0 && ['1', '2', '3', '4', '5'].includes(e.key)) {
+        const idx = parseInt(e.key, 10) - 1
+        if (idx < combinedSuggestions.length) {
+          e.preventDefault()
+          e.stopPropagation()
+          handleApplySuggestion(combinedSuggestions[idx])
+          return
+        }
+      }
+
+      // 'i' or 'I' for Ignore
+      if ((e.key === 'i' || e.key === 'I') && activeWord) {
+        e.preventDefault()
+        e.stopPropagation()
+        handleIgnoreWord(activeWord)
+        return
+      }
+
+      // 'd' or 'D' for Add to dictionary
+      if ((e.key === 'd' || e.key === 'D') && activeWord) {
+        e.preventDefault()
+        e.stopPropagation()
+        handleAddWordToDict(activeWord)
+        return
+      }
+
+      // Arrow navigation
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        e.stopPropagation()
+        if (combinedSuggestions.length > 0) {
+          const max = Math.min(5, combinedSuggestions.length)
+          setSelectedSugIndex((prev) => (prev + 1) % max)
+        }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        e.stopPropagation()
+        if (combinedSuggestions.length > 0) {
+          const max = Math.min(5, combinedSuggestions.length)
+          setSelectedSugIndex((prev) => (prev - 1 + max) % max)
+        }
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        e.stopPropagation()
+        if (combinedSuggestions.length > 0 && combinedSuggestions[selectedSugIndex]) {
+          handleApplySuggestion(combinedSuggestions[selectedSugIndex])
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown, true)
+    return () => window.removeEventListener('keydown', handleKeyDown, true)
+  }, [position, combinedSuggestions, selectedSugIndex, activeWord, onClose, editor])
+
+  if (!editor || !position) return null
+
   const menuWidth = 248
   const menuHeight = 360
-  const openSubmenuOnLeft = position.x + menuWidth + 230 > window.innerWidth
-  const safeLeft = Math.min(Math.max(8, position.x), window.innerWidth - menuWidth - 12)
+  const posX = typeof position.x === 'number' && !isNaN(position.x) ? position.x : 100
+  const posY = typeof position.y === 'number' && !isNaN(position.y) ? position.y : 100
+  const openSubmenuOnLeft = posX + menuWidth + 230 > window.innerWidth
+  const safeLeft = Math.min(Math.max(8, posX), window.innerWidth - menuWidth - 12)
 
-  let computedTop = position.y
+  let computedTop = posY
   if (position.trigger === 'selection') {
-    const aboveTop = position.y - menuHeight - 10
+    const aboveTop = posY - menuHeight - 10
     if (aboveTop >= 52) {
       computedTop = aboveTop
     } else {
       computedTop = Math.min(
-        (position.selectionBottom ?? position.y + 24) + 10,
+        (position.selectionBottom ?? posY + 24) + 10,
         window.innerHeight - menuHeight - 12
       )
     }
@@ -325,23 +416,33 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
 
           <div className="space-y-0.5 mt-1">
             {combinedSuggestions.length > 0 ? (
-              combinedSuggestions.slice(0, 5).map((sug) => (
-                <button
-                  key={sug}
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => handleApplySuggestion(sug)}
-                  className="w-full flex items-center justify-between px-2 py-1.5 rounded-md text-xs font-medium text-content-primary hover:bg-emerald-500/15 hover:text-emerald-700 dark:hover:text-emerald-300 text-left transition-colors group cursor-pointer"
-                >
-                  <div className="flex items-center gap-2 truncate">
-                    <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 group-hover:scale-110 transition-transform" />
-                    <span className="truncate font-semibold">{sug}</span>
-                  </div>
-                  <span className="text-[10px] text-content-muted group-hover:text-emerald-600 dark:group-hover:text-emerald-400 font-normal shrink-0 ml-1">
-                    Corrigir
-                  </span>
-                </button>
-              ))
+              combinedSuggestions.slice(0, 5).map((sug, idx) => {
+                const isSelected = idx === selectedSugIndex
+                return (
+                  <button
+                    key={sug}
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => handleApplySuggestion(sug)}
+                    className={cn(
+                      'w-full flex items-center justify-between px-2 py-1.5 rounded-md text-xs font-medium text-left transition-colors group cursor-pointer',
+                      isSelected
+                        ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 ring-1 ring-emerald-500/50'
+                        : 'text-content-primary hover:bg-emerald-500/15 hover:text-emerald-700 dark:hover:text-emerald-300'
+                    )}
+                  >
+                    <div className="flex items-center gap-1.5 truncate">
+                      <span className="w-4 h-4 rounded bg-surface-tertiary flex items-center justify-center text-[10px] font-mono font-bold text-content-muted shrink-0 group-hover:bg-emerald-500/30 group-hover:text-emerald-600">
+                        {idx + 1}
+                      </span>
+                      <span className="truncate font-semibold">{sug}</span>
+                    </div>
+                    <span className="text-[10px] text-content-muted group-hover:text-emerald-600 dark:group-hover:text-emerald-400 font-normal shrink-0 ml-1">
+                      {isSelected ? 'Enter ↵' : 'Corrigir'}
+                    </span>
+                  </button>
+                )
+              })
             ) : hasTypo ? (
               <div className="px-2 py-1 text-[11px] text-content-muted italic">
                 Nenhuma sugestão automática
@@ -357,22 +458,28 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => handleAddWordToDict(activeWord)}
-                title="Adicionar termo ao dicionário permanente"
-                className="flex items-center justify-center gap-1 px-1.5 py-1 rounded text-[10.5px] font-medium text-content-secondary hover:text-content-primary hover:bg-surface-secondary text-center transition-colors"
+                title="Adicionar termo ao dicionário permanente (Atalho: D)"
+                className="flex items-center justify-center gap-1 px-1.5 py-1 rounded text-[10.5px] font-medium text-content-secondary hover:text-content-primary hover:bg-surface-secondary text-center transition-colors cursor-pointer group"
               >
                 <Plus className="w-3 h-3 text-accent shrink-0" />
                 <span>+ Dicionário</span>
+                <kbd className="text-[9px] px-1 rounded bg-surface-tertiary font-mono text-content-muted group-hover:text-content-primary">
+                  D
+                </kbd>
               </button>
 
               <button
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => handleIgnoreWord(activeWord)}
-                title="Ignorar esta palavra para não sublinhar como erro"
-                className="flex items-center justify-center gap-1 px-1.5 py-1 rounded text-[10.5px] font-medium text-content-secondary hover:text-content-primary hover:bg-surface-secondary text-center transition-colors"
+                title="Ignorar esta palavra para não sublinhar como erro (Atalho: I)"
+                className="flex items-center justify-center gap-1 px-1.5 py-1 rounded text-[10.5px] font-medium text-content-secondary hover:text-content-primary hover:bg-surface-secondary text-center transition-colors cursor-pointer group"
               >
                 <EyeOff className="w-3 h-3 text-amber-500 shrink-0" />
                 <span>Ignorar</span>
+                <kbd className="text-[9px] px-1 rounded bg-surface-tertiary font-mono text-content-muted group-hover:text-content-primary">
+                  I
+                </kbd>
               </button>
             </div>
           </div>

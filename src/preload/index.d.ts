@@ -58,6 +58,7 @@ export interface ElectronAPI {
   deleteEntry: (vaultPath: string, relativePath: string) => Promise<boolean>
   openExternal: (url: string) => Promise<void>
   openInExplorer: (vaultPath: string) => Promise<void>
+  checkPathExists: (folderPath: string) => Promise<boolean>
   onVaultChanged: (callback: (snapshot: VaultSnapshot) => void) => () => void
   getSpellCheckerLanguages: () => Promise<string[]>
   getAvailableSpellCheckerLanguages: () => Promise<string[]>
