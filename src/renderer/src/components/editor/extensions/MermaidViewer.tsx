@@ -220,7 +220,7 @@ export const MermaidViewer: React.FC<MermaidViewerProps> = ({
       ref={containerRef}
       onDoubleClick={onEditCode}
       title="Duplo clique para editar o código do diagrama"
-      className="relative group p-4 bg-surface-bg/70 dark:bg-surface-secondary/50 rounded-b-xl border-t border-surface-border overflow-hidden select-none transition-colors"
+      className="relative group p-4 bg-transparent rounded-b-xl border-t border-surface-border/50 overflow-hidden select-none transition-colors"
     >
       {/* Action Floating Badges */}
       <div className="absolute top-2 right-2 flex items-center gap-1 bg-surface-bg/90 dark:bg-surface-secondary/90 backdrop-blur-md border border-surface-border rounded-lg p-1 shadow-sm opacity-80 group-hover:opacity-100 transition-opacity z-10">

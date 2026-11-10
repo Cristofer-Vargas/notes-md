@@ -12,5 +12,6 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["node"]
   },
-  "include": ["electron.vite.config.*", "src/main/**/*", "src/preload/**/*"]
+  "include": ["electron.vite.config.*", "src/main/**/*", "src/preload/**/*"],
+  "exclude": ["src/preload/index.d.ts"]
 }

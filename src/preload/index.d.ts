@@ -74,6 +74,11 @@ export interface ElectronAPI {
   onSpellcheckSuggestions: (
     callback: (data: { misspelledWord: string; suggestions: string[] }) => void
   ) => () => void
+  openImageWindow: (vaultPath: string, relativePath: string, fileName: string) => Promise<void>
+  openSettingsWindow: () => Promise<void>
+  closeCurrentWindow: () => Promise<void>
+  broadcastSettings: (settings: unknown) => Promise<void>
+  onSettingsChanged: (callback: (settings: unknown) => void) => () => void
 }
 
 declare global {

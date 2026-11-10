@@ -87,11 +87,91 @@ function createWindow(): void {
     return { action: 'deny' }
   })
 
+  mainWindow.on('closed', () => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.close()
+      }
+    }
+  })
+
+  loadWindowRoute(mainWindow, '')
+}
+
+function loadWindowRoute(win: BrowserWindow, routeWithHash: string): void {
+  const hash = routeWithHash ? (routeWithHash.startsWith('#') ? routeWithHash : `#${routeWithHash}`) : ''
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}${hash}`)
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    win.loadFile(join(__dirname, '../renderer/index.html'), {
+      hash: hash ? hash.replace(/^#\/?/, '') : undefined
+    })
   }
+}
+
+let settingsWindow: BrowserWindow | null = null
+
+function openSettingsWindow(): void {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    if (settingsWindow.isMinimized()) settingsWindow.restore()
+    settingsWindow.focus()
+    return
+  }
+
+  settingsWindow = new BrowserWindow({
+    width: 960,
+    height: 720,
+    minWidth: 700,
+    minHeight: 500,
+    show: false,
+    autoHideMenuBar: true,
+    backgroundColor: '#181825',
+    title: 'Configurações — Notes-MD',
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false,
+      spellcheck: true
+    }
+  })
+
+  settingsWindow.on('ready-to-show', () => {
+    settingsWindow?.show()
+  })
+
+  settingsWindow.on('closed', () => {
+    settingsWindow = null
+  })
+
+  loadWindowRoute(settingsWindow, '#/settings')
+}
+
+function openImageWindow(vaultPath: string, relativePath: string, fileName: string): void {
+  const imageWin = new BrowserWindow({
+    width: 980,
+    height: 720,
+    minWidth: 420,
+    minHeight: 320,
+    show: false,
+    autoHideMenuBar: true,
+    backgroundColor: '#11111b',
+    title: `${fileName} — Notes-MD`,
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false
+    }
+  })
+
+  imageWin.on('ready-to-show', () => {
+    imageWin.show()
+  })
+
+  const query = new URLSearchParams({
+    vaultPath,
+    relativePath,
+    fileName
+  }).toString()
+
+  loadWindowRoute(imageWin, `#/image-viewer?${query}`)
 }
 
 app.whenReady().then(() => {
@@ -307,6 +387,37 @@ app.whenReady().then(() => {
     } catch {
       // ignore
     }
+  })
+
+  // Multi-Window IPC Handlers
+  ipcMain.handle(
+    'window:open-image',
+    async (_event, vaultPath: string, relativePath: string, fileName: string) => {
+      openImageWindow(vaultPath, relativePath, fileName)
+      return true
+    }
+  )
+
+  ipcMain.handle('window:open-settings', async () => {
+    openSettingsWindow()
+    return true
+  })
+
+  ipcMain.handle('window:close-current', async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (win && !win.isDestroyed()) {
+      win.close()
+    }
+    return true
+  })
+
+  ipcMain.handle('settings:broadcast', async (_event, newSettings: unknown) => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('settings:changed', newSettings)
+      }
+    }
+    return true
   })
 
   // Initialize native spellchecker with Portuguese (Brazil) and English (US) simultaneously by default

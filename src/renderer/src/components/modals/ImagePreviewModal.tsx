@@ -217,7 +217,7 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
                   const img = e.currentTarget
                   setDimensions({ width: img.naturalWidth, height: img.naturalHeight })
                 }}
-                className="rounded-lg shadow-xl object-contain transition-transform"
+                className="object-contain transition-transform select-none shadow-none"
               />
             </div>
           ) : null}

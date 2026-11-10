@@ -43,6 +43,7 @@ interface SettingsModalProps {
   settings: AppSettings
   onUpdateSettings: (partial: Partial<AppSettings>) => void
   onClose: () => void
+  isStandalone?: boolean
 }
 
 type SettingsTab = 'appearance' | 'typography' | 'spellcheck' | 'shortcuts'
@@ -110,7 +111,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   settings,
   onUpdateSettings,
-  onClose
+  onClose,
+  isStandalone = false
 }) => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('appearance')
   const [newIgnoredWord, setNewIgnoredWord] = useState('')
@@ -228,15 +230,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const currentWeight = settings.editorFontWeight || '200'
 
-  return (
+  const content = (
     <div
-      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
-      onClick={onClose}
+      className={cn(
+        'bg-surface-bg flex flex-col overflow-hidden select-none',
+        isStandalone
+          ? 'w-full h-full'
+          : 'w-full max-w-3xl rounded-2xl border border-surface-border shadow-2xl h-[600px] max-h-[90vh]'
+      )}
+      onClick={isStandalone ? undefined : (e) => e.stopPropagation()}
     >
-      <div
-        className="w-full max-w-3xl rounded-2xl bg-surface-bg border border-surface-border shadow-2xl overflow-hidden flex flex-col h-[600px] max-h-[90vh]"
-        onClick={(e) => e.stopPropagation()}
-      >
         {/* Header */}
         <div className="px-5 py-3.5 bg-surface-secondary border-b border-surface-border flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
@@ -944,6 +947,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </Button>
         </div>
       </div>
-    </div>
-  )
+    )
+
+    if (isStandalone) {
+      return content
+    }
+
+    return (
+      <div
+        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+        onClick={onClose}
+      >
+        {content}
+      </div>
+    )
 }
