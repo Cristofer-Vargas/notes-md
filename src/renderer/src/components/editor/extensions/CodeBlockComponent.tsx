@@ -91,7 +91,9 @@ export const CodeBlockComponent: React.FC<NodeViewProps> = ({
     <NodeViewWrapper
       spellCheck={false}
       data-gramm={false}
-      className="my-5 rounded-xl border border-[var(--code-border,#383a4c)] bg-[var(--code-bg,#21222c)] text-[var(--code-text,#f8f8f2)] shadow-md overflow-hidden select-text transition-all duration-150"
+      className={`my-5 rounded-xl border border-[var(--code-border,#383a4c)] bg-[var(--code-bg,#21222c)] text-[var(--code-text,#f8f8f2)] ${
+        isMermaid && viewMode === 'preview' ? 'shadow-none' : 'shadow-sm'
+      } overflow-hidden select-text transition-all duration-150`}
     >
       {/* Header Interativo do Bloco de Código */}
       <div

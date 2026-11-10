@@ -38,7 +38,10 @@ import {
   Sparkles
 } from 'lucide-react'
 import { HIGHLIGHT_COLORS, TEXT_COLORS } from './EditorToolbar'
-import { generateFallbackSuggestions } from '../../services/spellcheckService'
+import {
+  generateFallbackSuggestions,
+  mergeSpellSuggestions
+} from '../../services/spellcheckService'
 import { cn } from '../../utils/cn'
 
 export interface EditorContextMenuPosition {
@@ -55,6 +58,7 @@ interface EditorContextMenuProps {
   spellSuggestions?: {
     misspelledWord: string
     suggestions: string[]
+    isMisspelled?: boolean
   } | null
   ignoredWords?: string[]
   isInsideCode?: boolean
@@ -129,26 +133,6 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
   const rawSuggestions = Array.isArray(spellSuggestions?.suggestions)
     ? spellSuggestions.suggestions
     : []
-  let nativeSuggestions: string[] = []
-  if (activeWord) {
-    try {
-      const res = window.electronAPI?.getWordSuggestions?.(activeWord)
-      if (Array.isArray(res)) nativeSuggestions = res
-    } catch {
-      nativeSuggestions = []
-    }
-  }
-  let fallbackSuggestions: string[] = []
-  if (activeWord) {
-    try {
-      fallbackSuggestions = generateFallbackSuggestions(activeWord)
-    } catch {
-      fallbackSuggestions = []
-    }
-  }
-  const combinedSuggestions = Array.from(
-    new Set([...rawSuggestions, ...nativeSuggestions, ...fallbackSuggestions])
-  ).filter((s) => s.toLowerCase() !== activeWord.toLowerCase())
 
   let isMisspelledByApi = false
   if (activeWord) {
@@ -159,16 +143,39 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
     }
   }
 
+  const wordIsMisspelled = Boolean(spellSuggestions?.isMisspelled || isMisspelledByApi)
+  let nativeSuggestions: string[] = []
+  if (activeWord && wordIsMisspelled) {
+    try {
+      const res = window.electronAPI?.getWordSuggestions?.(activeWord)
+      if (Array.isArray(res)) nativeSuggestions = res
+    } catch {
+      nativeSuggestions = []
+    }
+  }
+  let fallbackSuggestions: string[] = []
+  if (activeWord && wordIsMisspelled) {
+    try {
+      fallbackSuggestions = generateFallbackSuggestions(activeWord)
+    } catch {
+      fallbackSuggestions = []
+    }
+  }
+  const combinedSuggestions = mergeSpellSuggestions(
+    activeWord,
+    rawSuggestions,
+    nativeSuggestions,
+    fallbackSuggestions
+  )
+
   const hasTypo = Boolean(
     activeWord &&
       activeWord.length >= 2 &&
       !isIgnored &&
       !isInsideCode &&
-      (isMisspelledByApi ||
-        combinedSuggestions.length > 0 ||
-        nativeSuggestions.length > 0 ||
-        Boolean(spellSuggestions?.misspelledWord))
+      wordIsMisspelled
   )
+  const actionableSuggestions = hasTypo ? combinedSuggestions : []
 
   const showSpellSection = Boolean(activeWord && activeWord.length >= 2 && !isInsideCode)
 
@@ -246,12 +253,12 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
       }
 
       // Fast numbers 1-5 to apply suggestions directly
-      if (combinedSuggestions.length > 0 && ['1', '2', '3', '4', '5'].includes(e.key)) {
+      if (actionableSuggestions.length > 0 && ['1', '2', '3', '4', '5'].includes(e.key)) {
         const idx = parseInt(e.key, 10) - 1
-        if (idx < combinedSuggestions.length) {
+        if (idx < actionableSuggestions.length) {
           e.preventDefault()
           e.stopPropagation()
-          handleApplySuggestion(combinedSuggestions[idx])
+          handleApplySuggestion(actionableSuggestions[idx])
           return
         }
       }
@@ -276,29 +283,29 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
       if (e.key === 'ArrowDown') {
         e.preventDefault()
         e.stopPropagation()
-        if (combinedSuggestions.length > 0) {
-          const max = Math.min(5, combinedSuggestions.length)
+        if (actionableSuggestions.length > 0) {
+          const max = Math.min(5, actionableSuggestions.length)
           setSelectedSugIndex((prev) => (prev + 1) % max)
         }
       } else if (e.key === 'ArrowUp') {
         e.preventDefault()
         e.stopPropagation()
-        if (combinedSuggestions.length > 0) {
-          const max = Math.min(5, combinedSuggestions.length)
+        if (actionableSuggestions.length > 0) {
+          const max = Math.min(5, actionableSuggestions.length)
           setSelectedSugIndex((prev) => (prev - 1 + max) % max)
         }
       } else if (e.key === 'Enter') {
         e.preventDefault()
         e.stopPropagation()
-        if (combinedSuggestions.length > 0 && combinedSuggestions[selectedSugIndex]) {
-          handleApplySuggestion(combinedSuggestions[selectedSugIndex])
+        if (actionableSuggestions.length > 0 && actionableSuggestions[selectedSugIndex]) {
+          handleApplySuggestion(actionableSuggestions[selectedSugIndex])
         }
       }
     }
 
     window.addEventListener('keydown', handleKeyDown, true)
     return () => window.removeEventListener('keydown', handleKeyDown, true)
-  }, [position, combinedSuggestions, selectedSugIndex, activeWord, onClose, editor])
+  }, [position, actionableSuggestions, selectedSugIndex, activeWord, onClose, editor])
 
   if (!editor || !position) return null
 
@@ -415,8 +422,8 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
           </div>
 
           <div className="space-y-0.5 mt-1">
-            {combinedSuggestions.length > 0 ? (
-              combinedSuggestions.slice(0, 5).map((sug, idx) => {
+            {actionableSuggestions.length > 0 ? (
+              actionableSuggestions.slice(0, 5).map((sug, idx) => {
                 const isSelected = idx === selectedSugIndex
                 return (
                   <button
@@ -451,7 +458,9 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
 
             <div
               className={`pt-1 mt-1 grid grid-cols-2 gap-1 ${
-                combinedSuggestions.length > 0 || hasTypo ? 'border-t border-surface-border/60' : ''
+                actionableSuggestions.length > 0 || hasTypo
+                  ? 'border-t border-surface-border/60'
+                  : ''
               }`}
             >
               <button

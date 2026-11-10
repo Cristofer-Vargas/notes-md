@@ -75,6 +75,24 @@ const api: ElectronAPI = {
       return []
     }
   },
+  getEnhancedSpellSuggestions: (word: string) =>
+    ipcRenderer.invoke('spellcheck:get-enhanced-suggestions', word),
+  configureDiscordPresence: (settings) =>
+    ipcRenderer.invoke('discord-presence:configure', settings),
+  updateDiscordPresenceContext: (context) =>
+    ipcRenderer.invoke('discord-presence:update-context', context),
+  getDiscordPresenceStatus: () => ipcRenderer.invoke('discord-presence:get-status'),
+  reconnectDiscordPresence: () => ipcRenderer.invoke('discord-presence:reconnect'),
+  onDiscordPresenceStatus: (callback) => {
+    const listener = (
+      _event: Electron.IpcRendererEvent,
+      status: Parameters<typeof callback>[0]
+    ): void => callback(status)
+    ipcRenderer.on('discord-presence:status', listener)
+    return () => {
+      ipcRenderer.removeListener('discord-presence:status', listener)
+    }
+  },
   replaceMisspelling: (suggestion: string) =>
     ipcRenderer.invoke('spellcheck:replace-misspelling', suggestion),
   onSpellcheckSuggestions: (
@@ -89,6 +107,20 @@ const api: ElectronAPI = {
     ipcRenderer.on('editor:spellcheck-suggestions', listener)
     return () => {
       ipcRenderer.removeListener('editor:spellcheck-suggestions', listener)
+    }
+  },
+  openImageWindow: (vaultPath: string, relativePath: string, fileName: string) =>
+    ipcRenderer.invoke('window:open-image', vaultPath, relativePath, fileName),
+  openSettingsWindow: () => ipcRenderer.invoke('window:open-settings'),
+  closeCurrentWindow: () => ipcRenderer.invoke('window:close-current'),
+  broadcastSettings: (settings: unknown) => ipcRenderer.invoke('settings:broadcast', settings),
+  onSettingsChanged: (callback: (settings: unknown) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, settings: unknown): void => {
+      callback(settings)
+    }
+    ipcRenderer.on('settings:changed', listener)
+    return () => {
+      ipcRenderer.removeListener('settings:changed', listener)
     }
   }
 }

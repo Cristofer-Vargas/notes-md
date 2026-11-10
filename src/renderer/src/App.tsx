@@ -21,8 +21,16 @@ import { HelpShortcutsModal } from './components/modals/HelpShortcutsModal'
 import { InputPromptModal } from './components/modals/InputPromptModal'
 import { WikiLinkHoverPreview } from './components/editor/WikiLinkHoverPreview'
 import { IconButton } from './components/ui'
+import {
+  DEFAULT_DISCORD_PRESENCE_SETTINGS,
+  normalizeDiscordPresenceSettings
+} from '../../shared/discordPresence'
+import {
+  loadSettings,
+  saveSettings,
+  applyThemeToDocument
+} from './services/settingsManager'
 
-const SETTINGS_STORAGE_KEY = 'notes-md:settings:v1'
 const LAST_VAULT_STORAGE_KEY = 'notes-md:last-vault'
 const VAULT_SESSIONS_STORAGE_KEY = 'notes-md:vault-sessions:v1'
 const RECENT_VAULTS_KEY = 'notes-md:recent-vaults:v1'
@@ -56,31 +64,8 @@ function saveVaultSession(targetVaultPath: string, session: PersistedVaultSessio
   }
 }
 
-const DEFAULT_SETTINGS: AppSettings = {
-  theme: 'light',
-  accent: 'blue',
-  fontFamily: 'sans',
-  editorFontWeight: '200',
-  baseFontSize: 16,
-  lineHeight: 1.7,
-  pageWidth: 'standard',
-  canvasStyle: 'paper',
-  showLeftSidebar: true,
-  showRightSidebar: true,
-  spellcheck: true,
-  spellcheckLanguages: ['pt-BR', 'en-US'],
-  ignoredWords: []
-}
-
 export function App(): React.ReactElement {
-  const [settings, setSettings] = useState<AppSettings>(() => {
-    try {
-      const saved = localStorage.getItem(SETTINGS_STORAGE_KEY)
-      return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : DEFAULT_SETTINGS
-    } catch {
-      return DEFAULT_SETTINGS
-    }
-  })
+  const [settings, setSettings] = useState<AppSettings>(() => loadSettings())
 
   const [vaultPath, setVaultPath] = useState<string>('')
   const [vaultName, setVaultName] = useState<string>('Vault-Notas')
@@ -356,18 +341,8 @@ export function App(): React.ReactElement {
 
   // Apply theme and accent to document root + sync spellchecker settings
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', settings.theme)
-    document.documentElement.setAttribute('data-accent', settings.accent)
-    document.documentElement.classList.toggle('dark', settings.theme === 'dark')
-    document.documentElement.style.setProperty(
-      '--editor-font-weight',
-      settings.editorFontWeight || '200'
-    )
-    try {
-      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings))
-    } catch {
-      // ignore storage errors
-    }
+    applyThemeToDocument(settings)
+    saveSettings(settings)
 
     if (window.electronAPI) {
       window.electronAPI.setSpellCheckerEnabled(settings.spellcheck).catch(() => {})
@@ -380,6 +355,23 @@ export function App(): React.ReactElement {
     }
   }, [settings])
 
+  useEffect(() => {
+    window.electronAPI
+      ?.configureDiscordPresence(settings.discordPresence)
+      .catch(() => {})
+  }, [settings.discordPresence])
+
+  // Listen to broadcasted settings from other windows (e.g. standalone Settings window)
+  useEffect(() => {
+    if (!window.electronAPI?.onSettingsChanged) return
+    const unsub = window.electronAPI.onSettingsChanged((updated: unknown) => {
+      if (updated && typeof updated === 'object') {
+        setSettings((prev) => ({ ...prev, ...(updated as Partial<AppSettings>) }))
+      }
+    })
+    return () => unsub()
+  }, [])
+
   // Persist per-Vault session (open tabs, last active note, and expanded/collapsed folders)
   useEffect(() => {
     if (!vaultPath) return
@@ -391,7 +383,12 @@ export function App(): React.ReactElement {
   }, [vaultPath, openTabs, activeNotePath, expandedFolders])
 
   const updateSettings = useCallback((partial: Partial<AppSettings>) => {
-    setSettings((prev) => ({ ...prev, ...partial }))
+    setSettings((prev) => {
+      const next = { ...prev, ...partial }
+      saveSettings(next)
+      window.electronAPI?.broadcastSettings(next).catch(() => {})
+      return next
+    })
   }, [])
 
   const applyVaultSnapshot = useCallback((snapshot: VaultSnapshot, preferredNotePath?: string) => {
@@ -597,6 +594,15 @@ export function App(): React.ReactElement {
     () => notes.find((n) => n.relativePath === activeNotePath) || null,
     [notes, activeNotePath]
   )
+
+  useEffect(() => {
+    window.electronAPI
+      ?.updateDiscordPresenceContext({
+        vaultName: vaultName || null,
+        noteName: activeNote?.name || null
+      })
+      .catch(() => {})
+  }, [activeNote?.name, vaultName])
 
   const navigateToNote = useCallback(
     (relativePath: string, openInNewTab = false) => {
@@ -889,12 +895,35 @@ export function App(): React.ReactElement {
     [vaultPath, activeNotePath, applyVaultSnapshot]
   )
 
-  const handleOpenImage = useCallback((relativePath: string, fileName: string) => {
-    setImageModal({
-      open: true,
-      fileName,
-      relativePath
-    })
+  const handleOpenImage = useCallback(
+    (relativePath: string, fileName: string) => {
+      if (window.electronAPI?.openImageWindow && vaultPath) {
+        window.electronAPI.openImageWindow(vaultPath, relativePath, fileName).catch(() => {
+          setImageModal({
+            open: true,
+            fileName,
+            relativePath
+          })
+        })
+      } else {
+        setImageModal({
+          open: true,
+          fileName,
+          relativePath
+        })
+      }
+    },
+    [vaultPath]
+  )
+
+  const handleOpenSettings = useCallback(() => {
+    if (window.electronAPI?.openSettingsWindow) {
+      window.electronAPI.openSettingsWindow().catch(() => {
+        setIsSettingsOpen(true)
+      })
+    } else {
+      setIsSettingsOpen((prev) => !prev)
+    }
   }, [])
 
   const handleOpenOtherFile = useCallback(
@@ -1072,13 +1101,13 @@ export function App(): React.ReactElement {
         handleCreateNotePrompt('')
       } else if (matchesShortcut(e, getShortcutKey(curSettings, 'openSettings'))) {
         e.preventDefault()
-        setIsSettingsOpen((prev) => !prev)
+        handleOpenSettings()
       }
     }
 
     window.addEventListener('keydown', handleGlobalKeyDown)
     return () => window.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [handleCreateNotePrompt, updateSettings])
+  }, [handleCreateNotePrompt, updateSettings, handleOpenSettings])
 
   return (
     <div className="h-screen w-screen flex flex-col bg-surface-bg text-content-primary overflow-hidden relative">
@@ -1142,7 +1171,7 @@ export function App(): React.ReactElement {
               onRefreshVault={handleRefreshVault}
               onOpenInExplorer={handleOpenInExplorer}
               onOpenQuickSwitcher={() => setIsQuickSwitcherOpen(true)}
-              onOpenSettings={() => setIsSettingsOpen(true)}
+              onOpenSettings={handleOpenSettings}
               theme={settings.theme}
               onToggleTheme={() =>
                 updateSettings({

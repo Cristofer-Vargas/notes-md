@@ -1,3 +1,5 @@
+import type { DiscordPresenceSettings } from '../../../shared/discordPresence'
+
 export type ThemeMode = 'light' | 'dark' | 'sepia'
 
 export type AccentPreset = 'blue' | 'purple' | 'emerald' | 'amber' | 'rose'
@@ -47,6 +49,7 @@ export interface AppSettings {
   spellcheck: boolean
   spellcheckLanguages: string[]
   ignoredWords: string[]
+  discordPresence: DiscordPresenceSettings
   shortcuts?: CustomShortcutsMap
 }
 
