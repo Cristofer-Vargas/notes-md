@@ -25,8 +25,11 @@ export const SettingsWindow: React.FC = () => {
       if (settings.ignoredWords && settings.ignoredWords.length > 0) {
         window.electronAPI.syncIgnoredWords(settings.ignoredWords).catch(() => {})
       }
+      if (settings.discordPresence) {
+        window.electronAPI.configureDiscordPresence(settings.discordPresence).catch(() => {})
+      }
     }
-  }, [settings.spellcheck, settings.spellcheckLanguages, settings.ignoredWords])
+  }, [settings.spellcheck, settings.spellcheckLanguages, settings.ignoredWords, settings.discordPresence])
 
   // Listen for broadcasted settings updates from other windows
   useEffect(() => {
