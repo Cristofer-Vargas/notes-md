@@ -1,3 +1,9 @@
+import type {
+  DiscordPresenceContext,
+  DiscordPresenceSettings,
+  DiscordPresenceStatus
+} from '../shared/discordPresence'
+
 export interface VaultFileEntry {
   name: string
   relativePath: string
@@ -70,6 +76,18 @@ export interface ElectronAPI {
   syncIgnoredWords: (words: string[]) => Promise<boolean>
   isWordMisspelled: (word: string) => boolean
   getWordSuggestions: (word: string) => string[]
+  getEnhancedSpellSuggestions: (word: string) => Promise<string[]>
+  configureDiscordPresence: (
+    settings: DiscordPresenceSettings
+  ) => Promise<DiscordPresenceStatus | undefined>
+  updateDiscordPresenceContext: (
+    context: DiscordPresenceContext
+  ) => Promise<DiscordPresenceStatus | undefined>
+  getDiscordPresenceStatus: () => Promise<DiscordPresenceStatus | undefined>
+  reconnectDiscordPresence: () => Promise<DiscordPresenceStatus | undefined>
+  onDiscordPresenceStatus: (
+    callback: (status: DiscordPresenceStatus) => void
+  ) => () => void
   replaceMisspelling: (suggestion: string) => Promise<void>
   onSpellcheckSuggestions: (
     callback: (data: { misspelledWord: string; suggestions: string[] }) => void

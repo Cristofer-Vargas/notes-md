@@ -16,7 +16,15 @@ import {
   Sliders,
   RotateCcw,
   Search,
-  AlertTriangle
+  AlertTriangle,
+  Maximize2,
+  Minimize2,
+  Radio,
+  ShieldCheck,
+  Clock3,
+  ExternalLink,
+  RefreshCw,
+  ImageIcon
 } from 'lucide-react'
 import type {
   AccentPreset,
@@ -28,7 +36,7 @@ import type {
   ShortcutActionId,
   ThemeMode
 } from '../../types/app'
-import { Button, IconButton, Badge, Input } from '../ui'
+import { Button, IconButton, Badge, Input, Switch } from '../ui'
 import {
   SHORTCUT_DEFINITIONS,
   formatShortcutDisplay,
@@ -36,7 +44,14 @@ import {
   getShortcutKey,
   findShortcutConflict
 } from '../../services/shortcutService'
+import { useFloatingModal } from './useFloatingModal'
+import { ResizeHandles } from './ResizeHandles'
 import { cn } from '../../utils/cn'
+import {
+  isValidDiscordApplicationId,
+  type DiscordPresenceSettings,
+  type DiscordPresenceStatus
+} from '../../../../shared/discordPresence'
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -45,7 +60,63 @@ interface SettingsModalProps {
   onClose: () => void
 }
 
-type SettingsTab = 'appearance' | 'typography' | 'spellcheck' | 'shortcuts'
+type SettingsTab = 'appearance' | 'typography' | 'spellcheck' | 'discord' | 'shortcuts'
+
+function getDiscordStatusPresentation(status: DiscordPresenceStatus): {
+  label: string
+  variant: 'default' | 'accent' | 'success' | 'warning' | 'danger'
+} {
+  switch (status.state) {
+    case 'connected':
+      return { label: 'Conectado', variant: 'success' }
+    case 'connecting':
+      return { label: 'Conectando', variant: 'accent' }
+    case 'configuration-required':
+      return { label: 'Configuração necessária', variant: 'warning' }
+    case 'disconnected':
+      return { label: 'Desconectado', variant: 'warning' }
+    case 'error':
+      return { label: 'Erro', variant: 'danger' }
+    default:
+      return { label: 'Desativado', variant: 'default' }
+  }
+}
+
+interface SettingToggleRowProps {
+  title: string
+  description: string
+  checked: boolean
+  onCheckedChange: (checked: boolean) => void
+  disabled?: boolean
+  icon?: React.ReactNode
+}
+
+const SettingToggleRow: React.FC<SettingToggleRowProps> = ({
+  title,
+  description,
+  checked,
+  onCheckedChange,
+  disabled,
+  icon
+}) => (
+  <div className="flex items-center justify-between gap-4 rounded-xl border border-surface-border bg-surface-secondary/60 p-3">
+    <div className="flex items-start gap-2.5 min-w-0">
+      {icon && <div className="mt-0.5 text-accent shrink-0">{icon}</div>}
+      <div className="min-w-0">
+        <div className="text-xs font-semibold text-content-primary">{title}</div>
+        <p className="mt-0.5 text-[11px] leading-relaxed text-content-muted">
+          {description}
+        </p>
+      </div>
+    </div>
+    <Switch
+      checked={checked}
+      onCheckedChange={onCheckedChange}
+      label={title}
+      disabled={disabled}
+    />
+  </div>
+)
 
 const THEME_OPTIONS: Array<{ id: ThemeMode; label: string; desc: string; icon: React.ReactNode }> =
   [
@@ -116,6 +187,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [newIgnoredWord, setNewIgnoredWord] = useState('')
   const [recordingActionId, setRecordingActionId] = useState<ShortcutActionId | null>(null)
   const [shortcutSearch, setShortcutSearch] = useState('')
+  const [discordStatus, setDiscordStatus] = useState<DiscordPresenceStatus>({
+    state: 'disabled',
+    message: 'Presença do Discord desativada.',
+    updatedAt: Date.now()
+  })
+  const [isReconnectingDiscord, setIsReconnectingDiscord] = useState(false)
   const [conflictNotice, setConflictNotice] = useState<{
     actionName: string
     candidateKey: string
@@ -163,6 +240,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   }, [recordingActionId, settings.shortcuts, onUpdateSettings])
 
+  useEffect(() => {
+    if (!isOpen || !window.electronAPI) return
+
+    let mounted = true
+    window.electronAPI
+      .getDiscordPresenceStatus()
+      .then((status) => {
+        if (mounted && status) setDiscordStatus(status)
+      })
+      .catch(() => {})
+
+    const unsubscribe = window.electronAPI.onDiscordPresenceStatus((status) => {
+      if (mounted) setDiscordStatus(status)
+    })
+
+    return () => {
+      mounted = false
+      unsubscribe()
+    }
+  }, [isOpen])
+
   const handleResetSingleShortcut = (actionId: ShortcutActionId): void => {
     const nextShortcuts = { ...(settings.shortcuts || {}) }
     delete nextShortcuts[actionId]
@@ -197,6 +295,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     })
   }, [shortcutSearch, settings])
 
+  const {
+    modalStyle,
+    isMaximized,
+    headerDragProps,
+    handleStartResize,
+    toggleMaximize
+  } = useFloatingModal({
+    isOpen,
+    initialWidth: 800,
+    initialHeight: 600,
+    minWidth: 540,
+    minHeight: 420,
+    storageKey: 'notes-md:settings-modal-geometry'
+  })
+
   if (!isOpen) return null
 
   const handleAddIgnoredWord = (): void => {
@@ -226,103 +339,139 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     onUpdateSettings({ ignoredWords: [] })
   }
 
+  const updateDiscordPresence = (partial: Partial<DiscordPresenceSettings>): void => {
+    onUpdateSettings({
+      discordPresence: {
+        ...settings.discordPresence,
+        ...partial
+      }
+    })
+  }
+
+  const handleReconnectDiscord = async (): Promise<void> => {
+    setIsReconnectingDiscord(true)
+    try {
+      const status = await window.electronAPI?.reconnectDiscordPresence()
+      if (status) setDiscordStatus(status)
+    } finally {
+      setIsReconnectingDiscord(false)
+    }
+  }
+
   const currentWeight = settings.editorFontWeight || '200'
+  const discordSettings = settings.discordPresence
+  const discordApplicationIdIsValid = isValidDiscordApplicationId(
+    discordSettings.applicationId
+  )
+  const discordStatusPresentation = getDiscordStatusPresentation(discordStatus)
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 bg-black/45 backdrop-blur-2xs animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-3xl rounded-2xl bg-surface-bg border border-surface-border shadow-2xl overflow-hidden flex flex-col h-[600px] max-h-[90vh]"
+        style={modalStyle}
+        className="rounded-2xl bg-surface-bg border border-surface-border shadow-2xl overflow-hidden flex flex-col select-none"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="px-5 py-3.5 bg-surface-secondary border-b border-surface-border flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-accent-soft text-accent flex items-center justify-center">
+        <ResizeHandles onStartResize={handleStartResize} disabled={isMaximized} />
+
+        {/* Header (Draggable & Resizable) */}
+        <div
+          {...headerDragProps}
+          className={cn(
+            'px-5 py-3.5 bg-surface-secondary border-b border-surface-border flex items-center justify-between shrink-0 transition-colors',
+            headerDragProps.className
+          )}
+        >
+          <div className="flex items-center gap-2.5 pointer-events-none min-w-0 flex-1">
+            <div className="w-7 h-7 rounded-lg bg-accent-soft text-accent flex items-center justify-center shrink-0">
               <Sliders className="w-4 h-4" />
             </div>
-            <div>
-              <h2 className="text-sm font-bold text-content-primary">Configurações do Notes-MD</h2>
-              <p className="text-[11px] text-content-muted">
-                Personalize tema, tipografia, ortografia e atalhos rápidos do aplicativo.
+            <div className="min-w-0 flex-1 pr-2">
+              <h2 className="text-sm font-bold text-content-primary truncate">Configurações do Notes-MD</h2>
+              <p className="text-[11px] text-content-muted truncate">
+                Personalize tema, editor, ortografia, integrações e atalhos do aplicativo.
               </p>
             </div>
           </div>
-          <IconButton
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            tooltip="Fechar Configurações (Esc)"
-            icon={<X className="w-4 h-4" />}
-          />
+          <div className="flex items-center gap-1 shrink-0" data-no-drag>
+            <IconButton
+              variant="ghost"
+              size="sm"
+              onClick={toggleMaximize}
+              tooltip={isMaximized ? 'Restaurar tamanho da janela' : 'Maximizar janela'}
+              icon={isMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            />
+            <IconButton
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              tooltip="Fechar Configurações (Esc)"
+              icon={<X className="w-4 h-4" />}
+            />
+          </div>
         </div>
 
         {/* Modal Body: Left Tab Navigation + Right Sector Content */}
         <div className="flex-1 flex min-h-0 overflow-hidden">
           {/* Left Sidebar Navigation */}
-          <aside className="w-52 bg-surface-secondary/70 border-r border-surface-border p-2 space-y-1 shrink-0 select-none flex flex-col justify-between">
+          <aside className="w-56 bg-surface-secondary/70 border-r border-surface-border p-2 space-y-1 shrink-0 select-none flex flex-col justify-between">
             <nav className="space-y-1">
-              <button
-                type="button"
+              <Button
+                variant={activeTab === 'appearance' ? 'primary' : 'ghost'}
+                size="sm"
                 onClick={() => setActiveTab('appearance')}
-                className={cn(
-                  'w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-left transition-colors cursor-pointer',
-                  activeTab === 'appearance'
-                    ? 'bg-accent text-white shadow-xs'
-                    : 'text-content-secondary hover:bg-surface-tertiary hover:text-content-primary'
-                )}
+                className="w-full justify-start rounded-xl py-2"
+                leftIcon={<Palette className="w-4 h-4" />}
               >
-                <Palette className="w-4 h-4 shrink-0" />
-                <span>Aparência & Tema</span>
-              </button>
+                Aparência & Tema
+              </Button>
 
-              <button
-                type="button"
+              <Button
+                variant={activeTab === 'typography' ? 'primary' : 'ghost'}
+                size="sm"
                 onClick={() => setActiveTab('typography')}
-                className={cn(
-                  'w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-left transition-colors cursor-pointer',
-                  activeTab === 'typography'
-                    ? 'bg-accent text-white shadow-xs'
-                    : 'text-content-secondary hover:bg-surface-tertiary hover:text-content-primary'
-                )}
+                className="w-full justify-start rounded-xl py-2"
+                leftIcon={<Type className="w-4 h-4" />}
               >
-                <Type className="w-4 h-4 shrink-0" />
-                <span>Tipografia & Editor</span>
-              </button>
+                Tipografia & Editor
+              </Button>
 
-              <button
-                type="button"
+              <Button
+                variant={activeTab === 'spellcheck' ? 'primary' : 'ghost'}
+                size="sm"
                 onClick={() => setActiveTab('spellcheck')}
-                className={cn(
-                  'w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-left transition-colors cursor-pointer',
-                  activeTab === 'spellcheck'
-                    ? 'bg-accent text-white shadow-xs'
-                    : 'text-content-secondary hover:bg-surface-tertiary hover:text-content-primary'
-                )}
+                className="w-full justify-start rounded-xl py-2"
+                leftIcon={<SpellCheck className="w-4 h-4" />}
               >
-                <SpellCheck className="w-4 h-4 shrink-0" />
-                <span>Ortografia & Idiomas</span>
-              </button>
+                Ortografia & Idiomas
+              </Button>
 
-              <button
-                type="button"
-                onClick={() => setActiveTab('shortcuts')}
-                className={cn(
-                  'w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-left transition-colors cursor-pointer',
-                  activeTab === 'shortcuts'
-                    ? 'bg-accent text-white shadow-xs'
-                    : 'text-content-secondary hover:bg-surface-tertiary hover:text-content-primary'
-                )}
+              <Button
+                variant={activeTab === 'discord' ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={() => setActiveTab('discord')}
+                className="w-full justify-start rounded-xl py-2"
+                leftIcon={<Radio className="w-4 h-4" />}
               >
-                <Keyboard className="w-4 h-4 shrink-0" />
-                <span>Atalhos de Teclado</span>
-              </button>
+                Discord Presence
+              </Button>
+
+              <Button
+                variant={activeTab === 'shortcuts' ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={() => setActiveTab('shortcuts')}
+                className="w-full justify-start rounded-xl py-2"
+                leftIcon={<Keyboard className="w-4 h-4" />}
+              >
+                Atalhos de Teclado
+              </Button>
             </nav>
 
             <div className="p-2 bg-surface-bg/60 rounded-xl border border-surface-border/60 text-[10px] text-content-muted leading-tight">
-              Versão <span className="font-mono text-content-secondary">0.1.0-alpha.1</span>
+              Versão <span className="font-mono text-content-secondary">0.2.0-alpha.1</span>
               <br />
               Armazenamento local ativo
             </div>
@@ -612,21 +761,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <SpellCheck className="w-3.5 h-3.5 text-accent" />
                       <span>Corretor Ortográfico (Nativo Windows)</span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => onUpdateSettings({ spellcheck: !settings.spellcheck })}
-                      className={cn(
-                        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden',
-                        settings.spellcheck ? 'bg-accent' : 'bg-surface-tertiary'
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          'pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out',
-                          settings.spellcheck ? 'translate-x-4' : 'translate-x-0'
-                        )}
-                      />
-                    </button>
+                    <Switch
+                      checked={settings.spellcheck}
+                      onCheckedChange={(checked) => onUpdateSettings({ spellcheck: checked })}
+                      label="Ativar corretor ortográfico"
+                    />
                   </div>
 
                   <p className="text-xs text-content-secondary leading-relaxed">
@@ -708,7 +847,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         </div>
 
                         <div className="flex gap-2">
-                          <input
+                          <Input
                             type="text"
                             value={newIgnoredWord}
                             onChange={(e) => setNewIgnoredWord(e.target.value)}
@@ -719,7 +858,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               }
                             }}
                             placeholder="Adicionar termo ao dicionário (ex: minhamarca)..."
-                            className="flex-1 px-3 py-1.5 text-xs rounded-xl border border-surface-border bg-surface-secondary text-content-primary placeholder:text-content-muted focus:outline-hidden focus:border-accent"
+                            className="flex-1"
                           />
                           <Button
                             variant="primary"
@@ -762,7 +901,275 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             )}
 
-            {/* 4. ATALHOS DE TECLADO (Personalizáveis) */}
+            {/* 4. DISCORD PRESENCE */}
+            {activeTab === 'discord' && (
+              <div className="space-y-5 animate-in fade-in duration-150">
+                <section className="space-y-3">
+                  <div className="flex items-start justify-between gap-4 rounded-xl border border-surface-border bg-surface-secondary p-3.5">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent">
+                        <Radio className="h-4.5 w-4.5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-sm font-bold text-content-primary">
+                            Discord Rich Presence
+                          </h3>
+                          <Badge variant={discordStatusPresentation.variant}>
+                            {discordStatusPresentation.label}
+                          </Badge>
+                        </div>
+                        <p className="mt-1 text-xs leading-relaxed text-content-secondary">
+                          Mostre no seu perfil do Discord que você está escrevendo no Notes-MD.
+                          A integração é local e compartilha apenas os dados autorizados abaixo.
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={discordSettings.enabled}
+                      onCheckedChange={(enabled) => updateDiscordPresence({ enabled })}
+                      label="Ativar Discord Rich Presence"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-2 rounded-xl border border-surface-border bg-surface-bg p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-content-primary">
+                        Estado da conexão
+                      </div>
+                      <p className="mt-0.5 text-[11px] leading-relaxed text-content-muted">
+                        {discordStatus.message}
+                      </p>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      size="xs"
+                      onClick={() => void handleReconnectDiscord()}
+                      isLoading={isReconnectingDiscord}
+                      disabled={!discordSettings.enabled || !discordApplicationIdIsValid}
+                      leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
+                      className="shrink-0"
+                    >
+                      Reconectar
+                    </Button>
+                  </div>
+                </section>
+
+                <section className="space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-content-muted">
+                    <ShieldCheck className="h-3.5 w-3.5 text-accent" />
+                    <span>Conexão e privacidade</span>
+                  </div>
+
+                  <div className="rounded-xl border border-surface-border bg-surface-secondary/40 p-3 space-y-2.5">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                      <label className="flex-1 min-w-0 space-y-1.5">
+                        <span className="text-[11px] font-semibold text-content-secondary">
+                          ID da aplicação Discord
+                        </span>
+                        <Input
+                          value={discordSettings.applicationId}
+                          onChange={(event) =>
+                            updateDiscordPresence({
+                              applicationId: event.target.value.replace(/\D/g, '').slice(0, 20)
+                            })
+                          }
+                          placeholder="Ex.: 123456789012345678"
+                          inputMode="numeric"
+                          autoComplete="off"
+                          error={
+                            discordSettings.applicationId && !discordApplicationIdIsValid
+                              ? 'Use o ID numérico de 17 a 20 dígitos.'
+                              : undefined
+                          }
+                        />
+                      </label>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          window.electronAPI
+                            ?.openExternal('https://discord.com/developers/applications')
+                            .catch(() => {})
+                        }
+                        rightIcon={<ExternalLink className="h-3.5 w-3.5" />}
+                        className="shrink-0"
+                      >
+                        Portal do Discord
+                      </Button>
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-content-muted">
+                      Crie uma aplicação no portal, copie o <strong>Application ID</strong> e cole
+                      aqui. Esse identificador é público; nenhum token ou senha é solicitado.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <SettingToggleRow
+                      title="Mostrar título da nota"
+                      description="Inclui o nome da nota atualmente aberta na atividade."
+                      checked={discordSettings.showNoteTitle}
+                      onCheckedChange={(showNoteTitle) =>
+                        updateDiscordPresence({ showNoteTitle })
+                      }
+                      icon={<BookOpen className="h-3.5 w-3.5" />}
+                    />
+                    <SettingToggleRow
+                      title="Mostrar nome do cofre"
+                      description="Inclui o nome do espaço de trabalho atual."
+                      checked={discordSettings.showVaultName}
+                      onCheckedChange={(showVaultName) =>
+                        updateDiscordPresence({ showVaultName })
+                      }
+                      icon={<ShieldCheck className="h-3.5 w-3.5" />}
+                    />
+                  </div>
+                </section>
+
+                <section className="space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-content-muted">
+                    <Sparkles className="h-3.5 w-3.5 text-accent" />
+                    <span>Textos e aparência</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <label className="space-y-1.5">
+                      <span className="text-[11px] font-semibold text-content-secondary">
+                        Texto durante a edição
+                      </span>
+                      <Input
+                        value={discordSettings.activeText}
+                        onChange={(event) =>
+                          updateDiscordPresence({ activeText: event.target.value.slice(0, 96) })
+                        }
+                        placeholder="Editando uma nota"
+                        maxLength={96}
+                      />
+                    </label>
+                    <label className="space-y-1.5">
+                      <span className="text-[11px] font-semibold text-content-secondary">
+                        Texto quando inativo
+                      </span>
+                      <Input
+                        value={discordSettings.idleText}
+                        onChange={(event) =>
+                          updateDiscordPresence({ idleText: event.target.value.slice(0, 96) })
+                        }
+                        placeholder="Inativo"
+                        maxLength={96}
+                      />
+                    </label>
+                    <label className="space-y-1.5">
+                      <span className="flex items-center gap-1.5 text-[11px] font-semibold text-content-secondary">
+                        <ImageIcon className="h-3.5 w-3.5 text-accent" />
+                        Chave da imagem grande
+                      </span>
+                      <Input
+                        value={discordSettings.largeImageKey}
+                        onChange={(event) =>
+                          updateDiscordPresence({ largeImageKey: event.target.value.slice(0, 128) })
+                        }
+                        placeholder="Ex.: notes-md"
+                        maxLength={128}
+                      />
+                    </label>
+                    <label className="space-y-1.5">
+                      <span className="text-[11px] font-semibold text-content-secondary">
+                        Texto da imagem
+                      </span>
+                      <Input
+                        value={discordSettings.largeImageText}
+                        onChange={(event) =>
+                          updateDiscordPresence({ largeImageText: event.target.value.slice(0, 128) })
+                        }
+                        placeholder="Notes-MD"
+                        maxLength={128}
+                        disabled={!discordSettings.largeImageKey}
+                      />
+                    </label>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-content-muted">
+                    A chave da imagem deve corresponder a um recurso enviado na seção Rich
+                    Presence da sua aplicação no portal do Discord. Deixe em branco para não usar imagem.
+                  </p>
+                </section>
+
+                <section className="space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-content-muted">
+                    <Clock3 className="h-3.5 w-3.5 text-accent" />
+                    <span>Sessão e inatividade</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <SettingToggleRow
+                      title="Mostrar tempo da sessão"
+                      description="Exibe há quanto tempo o Notes-MD está em atividade."
+                      checked={discordSettings.showElapsedTime}
+                      onCheckedChange={(showElapsedTime) =>
+                        updateDiscordPresence({ showElapsedTime })
+                      }
+                      icon={<Clock3 className="h-3.5 w-3.5" />}
+                    />
+                    <SettingToggleRow
+                      title="Detectar inatividade"
+                      description="Troca apenas o status; o cronômetro da sessão continua correndo."
+                      checked={discordSettings.idleDetectionEnabled}
+                      onCheckedChange={(idleDetectionEnabled) =>
+                        updateDiscordPresence({ idleDetectionEnabled })
+                      }
+                      icon={<Radio className="h-3.5 w-3.5" />}
+                    />
+                  </div>
+
+                  <label className="block max-w-xs space-y-1.5">
+                    <span className="text-[11px] font-semibold text-content-secondary">
+                      Considerar inativo depois de
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min={1}
+                        max={120}
+                        value={discordSettings.idleTimeoutMinutes}
+                        onChange={(event) =>
+                          updateDiscordPresence({
+                            idleTimeoutMinutes: Math.min(
+                              120,
+                              Math.max(1, Number(event.target.value) || 1)
+                            )
+                          })
+                        }
+                        disabled={!discordSettings.idleDetectionEnabled}
+                        className="w-24"
+                      />
+                      <span className="text-xs text-content-muted">minutos</span>
+                    </div>
+                  </label>
+                </section>
+
+                <section className="rounded-xl border border-accent/30 bg-accent-soft p-3.5">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-accent">
+                    Prévia da atividade
+                  </div>
+                  <div className="mt-2 text-sm font-bold text-content-primary">Notes-MD</div>
+                  <div className="mt-1 text-xs text-content-secondary">
+                    {discordSettings.activeText || 'Editando uma nota'}
+                    {discordSettings.showNoteTitle ? ': Minha nota' : ''}
+                  </div>
+                  {discordSettings.showVaultName && (
+                    <div className="mt-0.5 text-xs text-content-muted">Cofre: Meu cofre</div>
+                  )}
+                  {discordSettings.showElapsedTime && (
+                    <div className="mt-1.5 flex items-center gap-1 text-[11px] text-content-muted">
+                      <Clock3 className="h-3 w-3" />
+                      Tempo decorrido desde o início da sessão
+                    </div>
+                  )}
+                </section>
+              </div>
+            )}
+
+            {/* 5. ATALHOS DE TECLADO (Personalizáveis) */}
             {activeTab === 'shortcuts' && (
               <div className="space-y-4 animate-in fade-in duration-150">
                 {/* Header & Global Reset */}

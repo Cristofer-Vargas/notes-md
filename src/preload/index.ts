@@ -75,6 +75,24 @@ const api: ElectronAPI = {
       return []
     }
   },
+  getEnhancedSpellSuggestions: (word: string) =>
+    ipcRenderer.invoke('spellcheck:get-enhanced-suggestions', word),
+  configureDiscordPresence: (settings) =>
+    ipcRenderer.invoke('discord-presence:configure', settings),
+  updateDiscordPresenceContext: (context) =>
+    ipcRenderer.invoke('discord-presence:update-context', context),
+  getDiscordPresenceStatus: () => ipcRenderer.invoke('discord-presence:get-status'),
+  reconnectDiscordPresence: () => ipcRenderer.invoke('discord-presence:reconnect'),
+  onDiscordPresenceStatus: (callback) => {
+    const listener = (
+      _event: Electron.IpcRendererEvent,
+      status: Parameters<typeof callback>[0]
+    ): void => callback(status)
+    ipcRenderer.on('discord-presence:status', listener)
+    return () => {
+      ipcRenderer.removeListener('discord-presence:status', listener)
+    }
+  },
   replaceMisspelling: (suggestion: string) =>
     ipcRenderer.invoke('spellcheck:replace-misspelling', suggestion),
   onSpellcheckSuggestions: (

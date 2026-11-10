@@ -21,6 +21,10 @@ import { HelpShortcutsModal } from './components/modals/HelpShortcutsModal'
 import { InputPromptModal } from './components/modals/InputPromptModal'
 import { WikiLinkHoverPreview } from './components/editor/WikiLinkHoverPreview'
 import { IconButton } from './components/ui'
+import {
+  DEFAULT_DISCORD_PRESENCE_SETTINGS,
+  normalizeDiscordPresenceSettings
+} from '../../shared/discordPresence'
 
 const SETTINGS_STORAGE_KEY = 'notes-md:settings:v1'
 const LAST_VAULT_STORAGE_KEY = 'notes-md:last-vault'
@@ -69,14 +73,21 @@ const DEFAULT_SETTINGS: AppSettings = {
   showRightSidebar: true,
   spellcheck: true,
   spellcheckLanguages: ['pt-BR', 'en-US'],
-  ignoredWords: []
+  ignoredWords: [],
+  discordPresence: DEFAULT_DISCORD_PRESENCE_SETTINGS
 }
 
 export function App(): React.ReactElement {
   const [settings, setSettings] = useState<AppSettings>(() => {
     try {
       const saved = localStorage.getItem(SETTINGS_STORAGE_KEY)
-      return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : DEFAULT_SETTINGS
+      if (!saved) return DEFAULT_SETTINGS
+      const parsed = JSON.parse(saved) as Partial<AppSettings>
+      return {
+        ...DEFAULT_SETTINGS,
+        ...parsed,
+        discordPresence: normalizeDiscordPresenceSettings(parsed.discordPresence)
+      }
     } catch {
       return DEFAULT_SETTINGS
     }
@@ -380,6 +391,12 @@ export function App(): React.ReactElement {
     }
   }, [settings])
 
+  useEffect(() => {
+    window.electronAPI
+      ?.configureDiscordPresence(settings.discordPresence)
+      .catch(() => {})
+  }, [settings.discordPresence])
+
   // Persist per-Vault session (open tabs, last active note, and expanded/collapsed folders)
   useEffect(() => {
     if (!vaultPath) return
@@ -597,6 +614,15 @@ export function App(): React.ReactElement {
     () => notes.find((n) => n.relativePath === activeNotePath) || null,
     [notes, activeNotePath]
   )
+
+  useEffect(() => {
+    window.electronAPI
+      ?.updateDiscordPresenceContext({
+        vaultName: vaultName || null,
+        noteName: activeNote?.name || null
+      })
+      .catch(() => {})
+  }, [activeNote?.name, vaultName])
 
   const navigateToNote = useCallback(
     (relativePath: string, openInNewTab = false) => {

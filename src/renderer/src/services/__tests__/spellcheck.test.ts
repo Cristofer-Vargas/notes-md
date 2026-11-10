@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { generateFallbackSuggestions, getWordRangeAtPos } from '../spellcheckService'
+import {
+  generateFallbackSuggestions,
+  getWordRangeAtPos,
+  mergeSpellSuggestions
+} from '../spellcheckService'
 import { schema } from '@tiptap/pm/schema-basic'
 
 describe('Spellchecker Fallback Suggestions', () => {
@@ -47,6 +51,16 @@ describe('Spellchecker Fallback Suggestions', () => {
   it('should ignore words with length < 2 or empty', () => {
     expect(generateFallbackSuggestions('')).toEqual([])
     expect(generateFallbackSuggestions('a')).toEqual([])
+  })
+
+  it('should merge native and enhanced suggestions without case-insensitive duplicates', () => {
+    expect(
+      mergeSpellSuggestions(
+        'tecnoloiga',
+        ['tecnologia', 'Tecnologia'],
+        ['tecnologia', 'tecnóloga']
+      )
+    ).toEqual(['tecnologia', 'tecnóloga'])
   })
 
   it('should extract word at pos correctly for all inner positions', () => {

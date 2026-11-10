@@ -9,6 +9,7 @@ import {
   findShortcutConflict
 } from '../shortcutService'
 import type { AppSettings } from '../../types/app'
+import { DEFAULT_DISCORD_PRESENCE_SETTINGS } from '../../../../shared/discordPresence'
 
 const mockSettings: AppSettings = {
   theme: 'light',
@@ -24,6 +25,7 @@ const mockSettings: AppSettings = {
   spellcheck: true,
   spellcheckLanguages: ['pt-BR'],
   ignoredWords: [],
+  discordPresence: DEFAULT_DISCORD_PRESENCE_SETTINGS,
   shortcuts: {
     quickSwitcher: 'Ctrl+Shift+O',
     newNote: 'Alt+N'

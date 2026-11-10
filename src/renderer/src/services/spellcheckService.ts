@@ -194,6 +194,40 @@ export function generateFallbackSuggestions(word: string): string[] {
 }
 
 /**
+ * Combines suggestion providers without duplicating words that differ only by casing.
+ */
+export function mergeSpellSuggestions(
+  word: string,
+  ...suggestionGroups: Array<readonly string[] | null | undefined>
+): string[] {
+  const normalizedWord = word.trim().toLocaleLowerCase('pt-BR')
+  const seen = new Set<string>()
+  const merged: string[] = []
+
+  for (const group of suggestionGroups) {
+    if (!group) continue
+
+    for (const suggestion of group) {
+      const cleanSuggestion = typeof suggestion === 'string' ? suggestion.trim() : ''
+      const normalizedSuggestion = cleanSuggestion.toLocaleLowerCase('pt-BR')
+
+      if (
+        !cleanSuggestion ||
+        normalizedSuggestion === normalizedWord ||
+        seen.has(normalizedSuggestion)
+      ) {
+        continue
+      }
+
+      seen.add(normalizedSuggestion)
+      merged.push(cleanSuggestion)
+    }
+  }
+
+  return merged
+}
+
+/**
  * Extracts the start offset, end offset, and word under a specific ProseMirror document position.
  */
 export function getWordRangeAtPos(

@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, dialog, session } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog, session, powerMonitor } from 'electron'
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -16,6 +16,16 @@ import {
   VaultWatcher
 } from './vaultService'
 import { loadWindowState, trackWindowState } from './windowState'
+import {
+  getEnhancedSpellSuggestions,
+  warmSpellCheckers
+} from './spellcheckService'
+import { DiscordPresenceService } from './discordPresenceService'
+import type {
+  DiscordPresenceContext,
+  DiscordPresenceSettings,
+  DiscordPresenceStatus
+} from '../shared/discordPresence'
 
 // Hardware Acceleration & Chromium GPU Rendering Pipeline Optimization
 app.commandLine.appendSwitch('enable-gpu-rasterization')
@@ -23,11 +33,20 @@ app.commandLine.appendSwitch('enable-zero-copy')
 app.commandLine.appendSwitch('ignore-gpu-blocklist')
 
 let vaultWatcher: VaultWatcher | null = null
+let discordPresenceService: DiscordPresenceService | null = null
 
 function broadcastVaultChanged(snapshot: any): void {
   for (const win of BrowserWindow.getAllWindows()) {
     if (!win.isDestroyed()) {
       win.webContents.send('vault:changed', snapshot)
+    }
+  }
+}
+
+function broadcastDiscordPresenceStatus(status: DiscordPresenceStatus): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send('discord-presence:status', status)
     }
   }
 }
@@ -62,10 +81,30 @@ function createWindow(): void {
 
   // Transmit native spellchecker corrections and dictionary suggestions to custom editor context menu
   mainWindow.webContents.on('context-menu', (_event, params) => {
+    const misspelledWord = params.misspelledWord || ''
+    const nativeSuggestions = params.dictionarySuggestions || []
     mainWindow.webContents.send('editor:spellcheck-suggestions', {
-      misspelledWord: params.misspelledWord || '',
-      suggestions: params.dictionarySuggestions || []
+      misspelledWord,
+      suggestions: nativeSuggestions
     })
+
+    const usesEnhancedDictionary = mainWindow.webContents.session
+      .getSpellCheckerLanguages()
+      .some((language) => /^(pt|en)/i.test(language))
+
+    if (misspelledWord && usesEnhancedDictionary) {
+      void getEnhancedSpellSuggestions(
+        misspelledWord,
+        mainWindow.webContents.session.getSpellCheckerLanguages()
+      ).then((enhancedSuggestions) => {
+        if (enhancedSuggestions.length === 0 || mainWindow.isDestroyed()) return
+
+        mainWindow.webContents.send('editor:spellcheck-suggestions', {
+          misspelledWord,
+          suggestions: [...nativeSuggestions, ...enhancedSuggestions]
+        })
+      })
+    }
   })
 
   trackWindowState(mainWindow, windowStatePath)
@@ -75,6 +114,7 @@ function createWindow(): void {
       mainWindow.maximize()
     }
     mainWindow.show()
+    warmSpellCheckers(mainWindow.webContents.session.getSpellCheckerLanguages())
   })
 
   // Whenever the user returns to the app from Windows Explorer or another editor, verify immediately
@@ -96,6 +136,11 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.cristofer.notesmd')
+
+  discordPresenceService = new DiscordPresenceService({
+    getSystemIdleTime: () => powerMonitor.getSystemIdleTime(),
+    onStatusChange: broadcastDiscordPresenceStatus
+  })
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
@@ -309,6 +354,32 @@ app.whenReady().then(() => {
     }
   })
 
+  ipcMain.handle('spellcheck:get-enhanced-suggestions', async (_event, word: string) => {
+    return getEnhancedSpellSuggestions(word, session.defaultSession.getSpellCheckerLanguages())
+  })
+
+  ipcMain.handle(
+    'discord-presence:configure',
+    async (_event, settings: DiscordPresenceSettings) => {
+      return discordPresenceService?.configure(settings)
+    }
+  )
+
+  ipcMain.handle(
+    'discord-presence:update-context',
+    async (_event, context: DiscordPresenceContext) => {
+      return discordPresenceService?.updateContext(context)
+    }
+  )
+
+  ipcMain.handle('discord-presence:get-status', async () => {
+    return discordPresenceService?.getStatus()
+  })
+
+  ipcMain.handle('discord-presence:reconnect', async () => {
+    return discordPresenceService?.reconnect()
+  })
+
   // Initialize native spellchecker with Portuguese (Brazil) and English (US) simultaneously by default
   try {
     session.defaultSession.setSpellCheckerLanguages(['pt-BR', 'en-US'])
@@ -326,7 +397,12 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   vaultWatcher?.stop()
+  void discordPresenceService?.shutdown()
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+app.on('before-quit', () => {
+  void discordPresenceService?.shutdown()
 })

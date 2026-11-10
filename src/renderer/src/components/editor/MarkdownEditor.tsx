@@ -30,7 +30,8 @@ import { CustomCodeBlock, lowlight } from './extensions/CustomCodeBlock'
 import {
   generateFallbackSuggestions,
   getWordRangeAtPos,
-  isPosInsideCode
+  isPosInsideCode,
+  mergeSpellSuggestions
 } from '../../services/spellcheckService'
 import {
   preprocessMarkdownForEditor,
@@ -101,6 +102,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   const [spellSuggestions, setSpellSuggestions] = useState<{
     misspelledWord: string
     suggestions: string[]
+    isMisspelled: boolean
   } | null>(null)
   const [targetWordRange, setTargetWordRange] = useState<{
     from: number
@@ -373,6 +375,58 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     }
   })
 
+  const requestEnhancedSpellSuggestions = useCallback(
+    (word: string): void => {
+      const cleanWord = word.trim()
+      const spellcheckApi = window.electronAPI
+      const usesEnhancedDictionary = (settings.spellcheckLanguages || []).some((language) =>
+        /^(pt|en)/i.test(language)
+      )
+      const isIgnored = settings.ignoredWords?.some(
+        (ignoredWord) =>
+          ignoredWord.toLocaleLowerCase('pt-BR') === cleanWord.toLocaleLowerCase('pt-BR')
+      )
+
+      if (
+        !cleanWord ||
+        !settings.spellcheck ||
+        !usesEnhancedDictionary ||
+        isIgnored ||
+        !spellcheckApi?.getEnhancedSpellSuggestions
+      ) {
+        return
+      }
+
+      void spellcheckApi
+        .getEnhancedSpellSuggestions(cleanWord)
+        .then((enhancedSuggestions) => {
+          if (!enhancedSuggestions.length) return
+
+          setSpellSuggestions((current) => {
+            if (
+              !current ||
+              current.misspelledWord.toLocaleLowerCase('pt-BR') !==
+                cleanWord.toLocaleLowerCase('pt-BR')
+            ) {
+              return current
+            }
+
+            return {
+              ...current,
+              isMisspelled: true,
+              suggestions: mergeSpellSuggestions(
+                cleanWord,
+                current.suggestions,
+                enhancedSuggestions
+              )
+            }
+          })
+        })
+        .catch(() => {})
+    },
+    [settings.ignoredWords, settings.spellcheck, settings.spellcheckLanguages]
+  )
+
   // Listen to OS / Electron native spellchecker suggestions
   useEffect(() => {
     if (!window.electronAPI?.onSpellcheckSuggestions) return
@@ -387,15 +441,21 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
           return
         }
         const fallbacks = generateFallbackSuggestions(data.misspelledWord)
-        const combined = Array.from(new Set([...(data.suggestions || []), ...fallbacks]))
+        const combined = mergeSpellSuggestions(
+          data.misspelledWord,
+          data.suggestions,
+          fallbacks
+        )
         setSpellSuggestions({
           misspelledWord: data.misspelledWord,
-          suggestions: combined
+          suggestions: combined,
+          isMisspelled: true
         })
+        requestEnhancedSpellSuggestions(data.misspelledWord)
       }
     })
     return () => unsub()
-  }, [editor, settings.ignoredWords])
+  }, [editor, requestEnhancedSpellSuggestions, settings.ignoredWords])
 
   
   useEffect(() => {
@@ -604,17 +664,26 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       if (wordInfo && !inCode) {
         const cleanWord = wordInfo.word.replace(/^[\s.,;:!?()[\]{}"'`]+|[\s.,;:!?()[\]{}"'`]+$/g, '')
         const isIgnored = Boolean(settings.ignoredWords?.includes(cleanWord))
-        const nativeList = window.electronAPI?.getWordSuggestions?.(cleanWord) || []
-        const fallbackList = generateFallbackSuggestions(cleanWord)
-        const combinedList = Array.from(new Set([...nativeList, ...fallbackList])).filter(
-          (s) => s.toLowerCase() !== cleanWord.toLowerCase()
-        )
+        let isMisspelled = false
+        try {
+          isMisspelled =
+            !isIgnored && Boolean(window.electronAPI?.isWordMisspelled?.(cleanWord))
+        } catch {
+          isMisspelled = false
+        }
+        const nativeList = isMisspelled
+          ? window.electronAPI?.getWordSuggestions?.(cleanWord) || []
+          : []
+        const fallbackList = isMisspelled ? generateFallbackSuggestions(cleanWord) : []
+        const combinedList = mergeSpellSuggestions(cleanWord, nativeList, fallbackList)
 
         setTargetWordRange(wordInfo)
         setSpellSuggestions({
           misspelledWord: cleanWord,
-          suggestions: combinedList
+          suggestions: combinedList,
+          isMisspelled
         })
+        requestEnhancedSpellSuggestions(cleanWord)
 
         if (editor.state.selection.from === editor.state.selection.to) {
           editor.commands.setTextSelection({ from: wordInfo.from, to: wordInfo.to })
@@ -643,7 +712,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     } catch (err) {
       console.error('Falha ao abrir ferramentas de contexto no cursor:', err)
     }
-  }, [editor, settings.ignoredWords])
+  }, [editor, requestEnhancedSpellSuggestions, settings.ignoredWords])
 
   useEffect(() => {
     handleOpenQuickToolsAtCaretRef.current = handleOpenQuickToolsAtCaret
@@ -959,22 +1028,32 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
                       ''
                     )
                     const isIgnored = Boolean(settings.ignoredWords?.includes(cleanWord))
-                    const nativeList = window.electronAPI?.getWordSuggestions?.(cleanWord) || []
-                    const fallbackList = generateFallbackSuggestions(cleanWord)
-                    const combinedList = Array.from(
-                      new Set([...nativeList, ...fallbackList])
-                    ).filter((s) => s.toLowerCase() !== cleanWord.toLowerCase())
-
-                    const isMisspelled =
-                      !isIgnored &&
-                      (Boolean(window.electronAPI?.isWordMisspelled?.(cleanWord)) ||
-                        combinedList.length > 0)
+                    let isMisspelled = false
+                    try {
+                      isMisspelled =
+                        !isIgnored && Boolean(window.electronAPI?.isWordMisspelled?.(cleanWord))
+                    } catch {
+                      isMisspelled = false
+                    }
+                    const nativeList = isMisspelled
+                      ? window.electronAPI?.getWordSuggestions?.(cleanWord) || []
+                      : []
+                    const fallbackList = isMisspelled
+                      ? generateFallbackSuggestions(cleanWord)
+                      : []
+                    const combinedList = mergeSpellSuggestions(
+                      cleanWord,
+                      nativeList,
+                      fallbackList
+                    )
 
                     setTargetWordRange(wordInfo)
                     setSpellSuggestions({
                       misspelledWord: cleanWord,
-                      suggestions: combinedList
+                      suggestions: combinedList,
+                      isMisspelled
                     })
+                    requestEnhancedSpellSuggestions(cleanWord)
 
                     // Select the word in the editor for clear visual feedback and precise action target
                     if (editor.state.selection.from === editor.state.selection.to) {
