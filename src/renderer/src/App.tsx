@@ -1,10 +1,14 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import {
+  Download,
   PanelLeft,
-  PanelRight
+  PanelRight,
+  RotateCcw,
+  X
 } from 'lucide-react'
 import type { VaultFileEntry, VaultNoteData, VaultSnapshot } from '../../preload/index.d'
 import type { AppSettings, EditorPaneState, OpenTab, RecentVault, SplitLayoutMode } from './types/app'
+import type { AppUpdateState } from '../../shared/appUpdate'
 import {
   buildVaultIndex,
   resolveWikiLinkTarget,
@@ -14,13 +18,13 @@ import { getShortcutKey, matchesShortcut } from './services/shortcutService'
 import { FileExplorerSidebar } from './components/sidebar/FileExplorerSidebar'
 import { BacklinksSidebar } from './components/sidebar/BacklinksSidebar'
 import { EditorWorkspace } from './components/editor/EditorWorkspace'
-import { SettingsModal } from './components/modals/SettingsModal'
+import { SettingsModal, type SettingsTab } from './components/modals/SettingsModal'
 import { ImagePreviewModal } from './components/modals/ImagePreviewModal'
 import { QuickSwitcherModal } from './components/modals/QuickSwitcherModal'
 import { HelpShortcutsModal } from './components/modals/HelpShortcutsModal'
 import { InputPromptModal } from './components/modals/InputPromptModal'
 import { WikiLinkHoverPreview } from './components/editor/WikiLinkHoverPreview'
-import { IconButton } from './components/ui'
+import { Badge, Button, IconButton } from './components/ui'
 import {
   DEFAULT_DISCORD_PRESENCE_SETTINGS,
   normalizeDiscordPresenceSettings
@@ -157,6 +161,9 @@ export function App(): React.ReactElement {
 
   const [isZenMode, setIsZenMode] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTab>('appearance')
+  const [appUpdateState, setAppUpdateState] = useState<AppUpdateState | null>(null)
+  const [isUpdateBannerDismissed, setIsUpdateBannerDismissed] = useState(false)
   const [isQuickSwitcherOpen, setIsQuickSwitcherOpen] = useState(false)
   const [isHelpOpen, setIsHelpOpen] = useState(false)
   const [imageModal, setImageModal] = useState<{
@@ -538,6 +545,32 @@ export function App(): React.ReactElement {
         activeNotePath: nextActive || (remappedTabs[0]?.relativePath ?? null)
       }
     })
+  }, [])
+
+  // Sync app update notifications from main process
+  useEffect(() => {
+    if (!window.electronAPI?.getAppUpdateState) return
+    let mounted = true
+
+    window.electronAPI
+      .getAppUpdateState()
+      .then((state) => {
+        if (mounted && state) setAppUpdateState(state)
+      })
+      .catch(() => {})
+
+    const unsubscribe = window.electronAPI.onAppUpdateStateChanged?.((state) => {
+      if (!mounted) return
+      setAppUpdateState(state)
+      if (state.phase === 'available' || state.phase === 'downloaded') {
+        setIsUpdateBannerDismissed(false)
+      }
+    })
+
+    return () => {
+      mounted = false
+      unsubscribe?.()
+    }
   }, [])
 
   // Subscribe to real-time file system watcher events from Main process
@@ -1261,8 +1294,82 @@ export function App(): React.ReactElement {
         isOpen={isSettingsOpen}
         settings={settings}
         onUpdateSettings={updateSettings}
-        onClose={() => setIsSettingsOpen(false)}
+        onClose={() => {
+          setIsSettingsOpen(false)
+          setSettingsInitialTab('appearance')
+        }}
+        initialTab={settingsInitialTab}
       />
+
+      {!isUpdateBannerDismissed &&
+        appUpdateState &&
+        (appUpdateState.phase === 'available' ||
+          appUpdateState.phase === 'downloading' ||
+          appUpdateState.phase === 'downloaded') && (
+          <div className="fixed bottom-4 right-4 z-40 max-w-sm rounded-2xl border border-surface-border bg-surface-bg/95 backdrop-blur-md shadow-xl p-3.5 space-y-2.5 animate-in fade-in">
+            <div className="flex items-start justify-between gap-2">
+              <div className="space-y-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <Badge variant={appUpdateState.phase === 'downloaded' ? 'success' : 'accent'} size="sm">
+                    {appUpdateState.phase === 'downloaded'
+                      ? 'Atualização pronta'
+                      : appUpdateState.phase === 'downloading'
+                        ? `Baixando ${appUpdateState.downloadPercent ?? 0}%`
+                        : 'Nova versão'}
+                  </Badge>
+                  {appUpdateState.availableVersion && (
+                    <span className="text-xs font-mono text-content-secondary">
+                      v{appUpdateState.availableVersion}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-content-secondary leading-snug">
+                  {appUpdateState.message}
+                </p>
+              </div>
+              <IconButton
+                variant="ghost"
+                size="xs"
+                onClick={() => setIsUpdateBannerDismissed(true)}
+                tooltip="Dispensar aviso"
+                icon={<X className="w-3.5 h-3.5" />}
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              {appUpdateState.phase === 'available' && (
+                <Button
+                  variant="primary"
+                  size="xs"
+                  onClick={() => window.electronAPI?.downloadAppUpdate?.()}
+                  leftIcon={<Download className="w-3.5 h-3.5" />}
+                >
+                  Baixar
+                </Button>
+              )}
+              {appUpdateState.phase === 'downloaded' && (
+                <Button
+                  variant="primary"
+                  size="xs"
+                  onClick={() => window.electronAPI?.installAppUpdate?.()}
+                  leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
+                >
+                  Instalar e reiniciar
+                </Button>
+              )}
+              <Button
+                variant="secondary"
+                size="xs"
+                onClick={() => {
+                  setSettingsInitialTab('updates')
+                  setIsSettingsOpen(true)
+                }}
+              >
+                Detalhes
+              </Button>
+            </div>
+          </div>
+        )}
 
       <QuickSwitcherModal
         isOpen={isQuickSwitcherOpen}

@@ -15,11 +15,11 @@ function RootRouter(): React.ReactElement {
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [])
 
-  if (route.startsWith('#/image-viewer')) {
+  if (route.startsWith('#/image-viewer') || route.startsWith('#image-viewer')) {
     return <ImageViewerWindow />
   }
 
-  if (route.startsWith('#/settings')) {
+  if (route.startsWith('#/settings') || route.startsWith('#settings')) {
     return <SettingsWindow />
   }
 

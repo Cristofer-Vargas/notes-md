@@ -1,5 +1,6 @@
 import React from 'react'
 import { X, Keyboard, Sparkles } from 'lucide-react'
+import appLogo from '../../assets/logo.png'
 
 interface HelpShortcutsModalProps {
   isOpen: boolean
@@ -32,8 +33,8 @@ export const HelpShortcutsModal: React.FC<HelpShortcutsModalProps> = ({ isOpen, 
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 py-4 bg-surface-secondary border-b border-surface-border flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Keyboard className="w-4 h-4 text-accent" />
+          <div className="flex items-center gap-2.5">
+            <img src={appLogo} alt="Notes-MD" className="w-5 h-5 object-contain" />
             <h2 className="text-sm font-bold text-content-primary">
               Guia Rápido: WYSIWYG, Markdown & WikiLinks
             </h2>

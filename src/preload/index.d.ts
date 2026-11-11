@@ -3,6 +3,7 @@ import type {
   DiscordPresenceSettings,
   DiscordPresenceStatus
 } from '../shared/discordPresence'
+import type { AppRuntimeInfo, AppUpdateState } from '../shared/appUpdate'
 
 export interface VaultFileEntry {
   name: string
@@ -97,6 +98,12 @@ export interface ElectronAPI {
   closeCurrentWindow: () => Promise<void>
   broadcastSettings: (settings: unknown) => Promise<void>
   onSettingsChanged: (callback: (settings: unknown) => void) => () => void
+  getAppRuntimeInfo: () => Promise<AppRuntimeInfo>
+  getAppUpdateState: () => Promise<AppUpdateState | undefined>
+  checkForAppUpdates: () => Promise<AppUpdateState | undefined>
+  downloadAppUpdate: () => Promise<AppUpdateState | undefined>
+  installAppUpdate: () => Promise<boolean>
+  onAppUpdateStateChanged: (callback: (state: AppUpdateState) => void) => () => void
 }
 
 declare global {

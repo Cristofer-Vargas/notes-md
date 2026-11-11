@@ -43,6 +43,7 @@ import { getShortcutKey, matchesShortcut } from '../../services/shortcutService'
 import type { VaultNoteData } from '../../../../preload/index.d'
 import type { AppSettings, IndexedNoteMeta } from '../../types/app'
 import { CheckCircle2, Clock, ExternalLink, FolderOpen, Link2, RefreshCw, Sparkles, Unlink } from 'lucide-react'
+import appLogo from '../../assets/logo.png'
 
 interface MarkdownEditorProps {
   activeNote: VaultNoteData | null
@@ -847,9 +848,13 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
 
   if (!activeNote) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-surface-canvas p-8 text-center">
-        <div className="w-14 h-14 rounded-2xl bg-accent-soft text-accent flex items-center justify-center mb-4">
-          <Sparkles className="w-7 h-7" />
+      <div className="flex-1 flex flex-col items-center justify-center bg-surface-canvas p-8 text-center select-none">
+        <div className="w-16 h-16 rounded-2xl bg-surface-secondary/70 border border-surface-border flex items-center justify-center mb-4 p-3 shadow-xs">
+          <img
+            src={appLogo}
+            alt="Notes-MD"
+            className="w-full h-full object-contain select-none pointer-events-none drop-shadow-xs"
+          />
         </div>
         <h2 className="text-lg font-bold text-content-primary mb-1">
           Nenhuma nota aberta no momento

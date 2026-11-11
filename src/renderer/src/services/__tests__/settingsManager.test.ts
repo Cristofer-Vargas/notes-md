@@ -75,27 +75,32 @@ describe('settingsManager — Gerenciamento e Sincronização de Configurações
     delete globalThis.document
   })
 
-  it('retorna DEFAULT_SETTINGS quando localStorage está vazio', () => {
+  it('retorna DEFAULT_SETTINGS com padrões iniciais quando localStorage está vazio', () => {
     const settings = loadSettings()
     expect(settings).toEqual(DEFAULT_SETTINGS)
-    expect(settings.theme).toBe('light')
-    expect(settings.accent).toBe('blue')
+    expect(settings.theme).toBe('dark')
+    expect(settings.pageWidth).toBe('wide')
+    expect(settings.accent).toBe('emerald')
+    expect(settings.editorFontWeight).toBe('300')
+    expect(settings.discordPresence.enabled).toBe(true)
+    expect(settings.discordPresence.showNoteTitle).toBe(true)
+    expect(settings.discordPresence.applicationId).toBe('1569780500007096360')
   })
 
   it('persiste e recarrega configurações customizadas', () => {
     const custom: AppSettings = {
       ...DEFAULT_SETTINGS,
-      theme: 'dark',
+      theme: 'light',
       accent: 'purple',
       editorFontWeight: '400',
       baseFontSize: 18
     }
 
     saveSettings(custom)
-    expect(localStorage.getItem(SETTINGS_STORAGE_KEY)).toContain('"theme":"dark"')
+    expect(localStorage.getItem(SETTINGS_STORAGE_KEY)).toContain('"theme":"light"')
 
     const loaded = loadSettings()
-    expect(loaded.theme).toBe('dark')
+    expect(loaded.theme).toBe('light')
     expect(loaded.accent).toBe('purple')
     expect(loaded.editorFontWeight).toBe('400')
     expect(loaded.baseFontSize).toBe(18)

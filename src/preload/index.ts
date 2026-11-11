@@ -122,6 +122,21 @@ const api: ElectronAPI = {
     return () => {
       ipcRenderer.removeListener('settings:changed', listener)
     }
+  },
+  getAppRuntimeInfo: () => ipcRenderer.invoke('app:get-runtime-info'),
+  getAppUpdateState: () => ipcRenderer.invoke('app-update:get-state'),
+  checkForAppUpdates: () => ipcRenderer.invoke('app-update:check'),
+  downloadAppUpdate: () => ipcRenderer.invoke('app-update:download'),
+  installAppUpdate: () => ipcRenderer.invoke('app-update:install'),
+  onAppUpdateStateChanged: (callback) => {
+    const listener = (
+      _event: Electron.IpcRendererEvent,
+      state: Parameters<typeof callback>[0]
+    ): void => callback(state)
+    ipcRenderer.on('app-update:state-changed', listener)
+    return () => {
+      ipcRenderer.removeListener('app-update:state-changed', listener)
+    }
   }
 }
 

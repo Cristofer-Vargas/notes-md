@@ -1,0 +1,54 @@
+appId: com.cristofer.notesmd
+productName: Notes-MD
+copyright: Copyright © 2026 Cristofer Vargas
+
+directories:
+  buildResources: resources
+  output: release
+
+files:
+  - out/**/*
+  - package.json
+  - '!Vault-Notas/**'
+  - '!doc/**'
+  - '!.agents/**'
+
+extraResources:
+  - from: resources
+    to: app-resources
+    filter:
+      - '**/*'
+
+asarUnpack:
+  - '**/*.wasm'
+
+win:
+  icon: resources/icon.ico
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Notes-MD
+  artifactName: Notes-MD-Setup-${version}.${ext}
+  installerIcon: resources/icon.ico
+  uninstallerIcon: resources/icon.ico
+  installerHeaderIcon: resources/icon.ico
+  deleteAppDataOnUninstall: false
+
+portable:
+  artifactName: Notes-MD-${version}-portable.${ext}
+
+publish:
+  provider: github
+  owner: Cristofer-Vargas
+  repo: notes-md

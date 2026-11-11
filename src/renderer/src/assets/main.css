@@ -18,7 +18,7 @@
   --code-border: #334155;
   --code-text: #f1f5f9;
   --note-italic-color: #4f46e5;
-  --editor-font-weight: 200;
+  --editor-font-weight: 300;
 }
 
 [data-theme='dark'] {
@@ -36,7 +36,7 @@
   --code-border: #383a4c;
   --code-text: #f8f8f2;
   --note-italic-color: #f1fa8c; /* Dracula Pastel Yellow para destaque sutil e elegante */
-  --editor-font-weight: 200;
+  --editor-font-weight: 300;
 }
 
 [data-theme='sepia'] {
@@ -54,7 +54,7 @@
   --code-border: #443c30;
   --code-text: #f4eee3;
   --note-italic-color: #b45309; /* Âmbar / terracota acolhedor */
-  --editor-font-weight: 200;
+  --editor-font-weight: 300;
 }
 
 /* Accent Color Presets (Default & Light Mode) */
@@ -187,7 +187,7 @@ body {
 .ProseMirror p,
 .ProseMirror li,
 .ProseMirror blockquote {
-  font-weight: var(--editor-font-weight, 200);
+  font-weight: var(--editor-font-weight, 300);
 }
 
 .ProseMirror strong,

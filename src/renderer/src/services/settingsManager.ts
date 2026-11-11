@@ -7,13 +7,13 @@ import {
 export const SETTINGS_STORAGE_KEY = 'notes-md:settings:v1'
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  theme: 'light',
-  accent: 'blue',
+  theme: 'dark',
+  accent: 'emerald',
   fontFamily: 'sans',
-  editorFontWeight: '200',
+  editorFontWeight: '300',
   baseFontSize: 16,
   lineHeight: 1.7,
-  pageWidth: 'standard',
+  pageWidth: 'wide',
   canvasStyle: 'paper',
   showLeftSidebar: true,
   showRightSidebar: true,
@@ -54,6 +54,6 @@ export function applyThemeToDocument(settings: AppSettings): void {
   document.documentElement.classList.toggle('dark', settings.theme === 'dark')
   document.documentElement.style.setProperty(
     '--editor-font-weight',
-    settings.editorFontWeight || '200'
+    settings.editorFontWeight || '300'
   )
 }

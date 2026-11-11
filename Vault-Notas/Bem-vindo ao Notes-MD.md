@@ -1,4 +1,4 @@
-# Bem-vindo ao <span style="color: rgb(217, 119, 6);"><mark data-color="#fef08a" style="background-color: rgb(254, 240, 138); color: inherit;">Notes-MD</mark></span>
+# Bem-vindo ao Notes-MD
 
 Essenciais para desenvolvedores, escritores e criadores de conhecimento conectado.
 

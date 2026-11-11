@@ -6,10 +6,31 @@ import {
 import { buildDiscordPresenceActivity } from '../discordPresenceActivity'
 
 describe('Discord Rich Presence', () => {
-  it('oculta nomes privados por padrão e mantém o tempo da sessão', () => {
+  it('exibe o título da nota e oculta o nome do cofre por padrão mantendo o tempo da sessão', () => {
     const startedAt = Date.now() - 30_000
     const activity = buildDiscordPresenceActivity(
       DEFAULT_DISCORD_PRESENCE_SETTINGS,
+      { vaultName: 'Trabalho', noteName: 'Plano confidencial' },
+      startedAt,
+      false
+    )
+
+    expect(DEFAULT_DISCORD_PRESENCE_SETTINGS.enabled).toBe(true)
+    expect(DEFAULT_DISCORD_PRESENCE_SETTINGS.showNoteTitle).toBe(true)
+    expect(DEFAULT_DISCORD_PRESENCE_SETTINGS.applicationId).toBe('1569780500007096360')
+    expect(activity.details).toBe('Editando uma nota: Plano confidencial')
+    expect(activity.state).toBeUndefined()
+    expect(activity.startTimestamp).toEqual(new Date(startedAt))
+  })
+
+  it('oculta nomes privados quando desativados pelo usuário', () => {
+    const startedAt = Date.now() - 30_000
+    const activity = buildDiscordPresenceActivity(
+      {
+        ...DEFAULT_DISCORD_PRESENCE_SETTINGS,
+        showNoteTitle: false,
+        showVaultName: false
+      },
       { vaultName: 'Trabalho', noteName: 'Plano confidencial' },
       startedAt,
       false
@@ -64,5 +85,9 @@ describe('Discord Rich Presence', () => {
 
     expect(settings.idleTimeoutMinutes).toBe(120)
     expect(settings.activeText).toBe('Escrevendo   agora')
+    expect(settings.applicationId).toBe('1569780500007096360')
+
+    const cleared = normalizeDiscordPresenceSettings({ applicationId: '   ' })
+    expect(cleared.applicationId).toBe('')
   })
 })

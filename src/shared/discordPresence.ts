@@ -32,11 +32,11 @@ export interface DiscordPresenceStatus {
 }
 
 export const DEFAULT_DISCORD_PRESENCE_SETTINGS: DiscordPresenceSettings = {
-  enabled: false,
-  applicationId: '',
+  enabled: true,
+  applicationId: '1569780500007096360',
   activeText: 'Editando uma nota',
   idleText: 'Inativo',
-  showNoteTitle: false,
+  showNoteTitle: true,
   showVaultName: false,
   showElapsedTime: true,
   idleDetectionEnabled: true,
@@ -58,7 +58,11 @@ export function normalizeDiscordPresenceSettings(
   return {
     ...DEFAULT_DISCORD_PRESENCE_SETTINGS,
     ...source,
-    applicationId: String(source.applicationId || '').trim(),
+    applicationId: String(
+      source.applicationId !== undefined
+        ? source.applicationId
+        : DEFAULT_DISCORD_PRESENCE_SETTINGS.applicationId
+    ).trim(),
     activeText: String(source.activeText || DEFAULT_DISCORD_PRESENCE_SETTINGS.activeText)
       .trim()
       .slice(0, 96),

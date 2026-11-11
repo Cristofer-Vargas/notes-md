@@ -24,7 +24,8 @@ import {
   Clock3,
   ExternalLink,
   RefreshCw,
-  ImageIcon
+  ImageIcon,
+  Info
 } from 'lucide-react'
 import type {
   AccentPreset,
@@ -52,6 +53,9 @@ import {
   type DiscordPresenceSettings,
   type DiscordPresenceStatus
 } from '../../../../shared/discordPresence'
+import type { AppRuntimeInfo, AppUpdateState } from '../../../../shared/appUpdate'
+import { AppUpdatesSection } from './AppUpdatesSection'
+import appLogo from '../../assets/logo.png'
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -59,9 +63,16 @@ interface SettingsModalProps {
   onUpdateSettings: (partial: Partial<AppSettings>) => void
   onClose: () => void
   isStandalone?: boolean
+  initialTab?: SettingsTab
 }
 
-type SettingsTab = 'appearance' | 'typography' | 'spellcheck' | 'discord' | 'shortcuts'
+export type SettingsTab =
+  | 'appearance'
+  | 'typography'
+  | 'spellcheck'
+  | 'discord'
+  | 'shortcuts'
+  | 'updates'
 
 function getDiscordStatusPresentation(status: DiscordPresenceStatus): {
   label: string
@@ -161,8 +172,8 @@ const FONT_WEIGHT_OPTIONS: Array<{
   desc: string
   weight: number
 }> = [
-  { id: '200', label: 'Extra Fina (200)', desc: 'Padrão suave, leve e respirável', weight: 200 },
-  { id: '300', label: 'Fina (300)', desc: 'Leve com traço sutilmente mais definido', weight: 300 },
+  { id: '200', label: 'Extra Fina (200)', desc: 'Suave, leve e respirável', weight: 200 },
+  { id: '300', label: 'Fina (300)', desc: 'Padrão leve com traço bem definido', weight: 300 },
   { id: '400', label: 'Regular (400)', desc: 'Espessura clássica e encorpada', weight: 400 },
   { id: '500', label: 'Média (500)', desc: 'Traço firme para leitura com alto contraste', weight: 500 }
 ]
@@ -183,9 +194,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   settings,
   onUpdateSettings,
   onClose,
-  isStandalone = false
+  isStandalone = false,
+  initialTab = 'appearance'
 }) => {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('appearance')
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab)
   const [newIgnoredWord, setNewIgnoredWord] = useState('')
   const [recordingActionId, setRecordingActionId] = useState<ShortcutActionId | null>(null)
   const [shortcutSearch, setShortcutSearch] = useState('')
@@ -195,10 +207,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     updatedAt: Date.now()
   })
   const [isReconnectingDiscord, setIsReconnectingDiscord] = useState(false)
+  const [runtimeInfo, setRuntimeInfo] = useState<AppRuntimeInfo | null>(null)
+  const [updateState, setUpdateState] = useState<AppUpdateState | null>(null)
+  const [isCheckingUpdates, setIsCheckingUpdates] = useState(false)
   const [conflictNotice, setConflictNotice] = useState<{
     actionName: string
     candidateKey: string
   } | null>(null)
+
+  useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab)
+    }
+  }, [isOpen, initialTab])
 
   // Listen to keyboard events when recording a shortcut
   useEffect(() => {
@@ -257,9 +278,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       if (mounted) setDiscordStatus(status)
     })
 
+    window.electronAPI
+      .getAppRuntimeInfo?.()
+      .then((info) => {
+        if (mounted && info) setRuntimeInfo(info)
+      })
+      .catch(() => {})
+
+    window.electronAPI
+      .getAppUpdateState?.()
+      .then((state) => {
+        if (mounted && state) setUpdateState(state)
+      })
+      .catch(() => {})
+
+    const unsubscribeUpdate = window.electronAPI.onAppUpdateStateChanged?.((state) => {
+      if (mounted) setUpdateState(state)
+    })
+
     return () => {
       mounted = false
       unsubscribe()
+      unsubscribeUpdate?.()
     }
   }, [isOpen])
 
@@ -360,7 +400,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   }
 
-  const currentWeight = settings.editorFontWeight || '200'
+  const currentWeight = settings.editorFontWeight || '300'
   const discordSettings = settings.discordPresence
   const discordApplicationIdIsValid = isValidDiscordApplicationId(
     discordSettings.applicationId
@@ -389,10 +429,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         )}
       >
         <div className="flex items-center gap-2.5 pointer-events-none min-w-0 flex-1">
-          <div className="w-7 h-7 rounded-lg bg-accent-soft text-accent flex items-center justify-center shrink-0">
-            <Sliders className="w-4 h-4" />
-            </div>
-            <div className="min-w-0 flex-1 pr-2">
+          <img src={appLogo} alt="Notes-MD" className="w-7 h-7 object-contain shrink-0" />
+          <div className="min-w-0 flex-1 pr-2">
               <h2 className="text-sm font-bold text-content-primary truncate">Configurações do Notes-MD</h2>
               <p className="text-[11px] text-content-muted truncate">
                 Personalize tema, editor, ortografia, integrações e atalhos do aplicativo.
@@ -473,12 +511,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               >
                 Atalhos de Teclado
               </Button>
+
+              <Button
+                variant={activeTab === 'updates' ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={() => setActiveTab('updates')}
+                className="w-full justify-start rounded-xl py-2"
+                leftIcon={<Info className="w-4 h-4" />}
+              >
+                Sobre & Atualizações
+              </Button>
             </nav>
 
-            <div className="p-2 bg-surface-bg/60 rounded-xl border border-surface-border/60 text-[10px] text-content-muted leading-tight">
-              Versão <span className="font-mono text-content-secondary">0.2.0-alpha.1</span>
-              <br />
-              Armazenamento local ativo
+            <div className="p-2.5 bg-surface-bg/60 rounded-xl border border-surface-border/60 text-[10px] text-content-muted leading-tight space-y-1">
+              <div className="flex items-center justify-between gap-1.5">
+                <span>
+                  Versão{' '}
+                  <span className="font-mono text-content-secondary">
+                    {runtimeInfo?.version || '0.2.0-alpha.1'}
+                  </span>
+                </span>
+                <Badge
+                  variant={runtimeInfo?.environment === 'dev' ? 'warning' : 'success'}
+                  size="sm"
+                >
+                  {runtimeInfo?.environment === 'dev' ? 'DEV' : 'Estável'}
+                </Badge>
+              </div>
+              <div>Armazenamento local ativo</div>
             </div>
           </aside>
 
@@ -661,7 +721,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       Espessura do Texto das Notas (Font Weight)
                     </div>
                     <Badge variant="accent" size="sm">
-                      Padrão 200 ativo
+                      Atual: {currentWeight} (Padrão 300)
                     </Badge>
                   </div>
                   <p className="text-xs text-content-secondary leading-relaxed">
@@ -1345,6 +1405,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   )}
                 </div>
               </div>
+            )}
+
+            {/* 6. SOBRE & ATUALIZAÇÕES */}
+            {activeTab === 'updates' && (
+              <AppUpdatesSection
+                runtimeInfo={runtimeInfo}
+                updateState={updateState}
+                isCheckingUpdates={isCheckingUpdates}
+                onCheckUpdates={() => {
+                  setIsCheckingUpdates(true)
+                  window.electronAPI
+                    ?.checkForAppUpdates?.()
+                    .then((state) => {
+                      if (state) setUpdateState(state)
+                    })
+                    .finally(() => setIsCheckingUpdates(false))
+                }}
+                onDownloadUpdate={() => {
+                  window.electronAPI?.downloadAppUpdate?.().then((state) => {
+                    if (state) setUpdateState(state)
+                  })
+                }}
+                onInstallUpdate={() => {
+                  window.electronAPI?.installAppUpdate?.().catch(() => {})
+                }}
+                onOpenFolder={(targetPath) => {
+                  window.electronAPI?.openInExplorer?.(targetPath).catch(() => {})
+                }}
+              />
             )}
           </main>
         </div>

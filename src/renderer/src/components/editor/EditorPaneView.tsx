@@ -22,6 +22,7 @@ import type {
 } from '../../types/app'
 import type { VaultNoteData } from '../../../../preload/index.d'
 import { MarkdownEditor } from './MarkdownEditor'
+import appLogo from '../../assets/logo.png'
 
 export interface DraggedTabInfo {
   paneId: 'pane-1' | 'pane-2'
@@ -457,8 +458,12 @@ export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
           />
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center select-none bg-surface-canvas/30 space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-surface-secondary border border-surface-border flex items-center justify-center text-content-muted shadow-sm">
-              <FilePlus2 className="w-7 h-7 text-accent/80" />
+            <div className="w-16 h-16 rounded-2xl bg-surface-secondary/70 border border-surface-border flex items-center justify-center shadow-xs p-3">
+              <img
+                src={appLogo}
+                alt="Notes-MD"
+                className="w-full h-full object-contain select-none pointer-events-none drop-shadow-xs"
+              />
             </div>
 
             <div className="max-w-xs space-y-1">

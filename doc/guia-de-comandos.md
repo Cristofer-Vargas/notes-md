@@ -14,7 +14,11 @@ Todos os comandos devem ser executados na raiz da pasta do projeto através do s
 | `npm test` | Executa a suíte de **testes unitários automatizados** com o Vitest. | Antes de salvar ou commitar qualquer alteração para ter certeza de que nada quebrou. |
 | `npm run typecheck` | Executa o compilador TypeScript para verificar se todos os tipos de dados estão corretos. | Para validar a integridade estática do código sem rodar a aplicação inteira. |
 | `npm run build` | Compila o aplicativo e gera os pacotes otimizados para produção na pasta `out/`. | Quando você quiser testar a versão final pronta para distribuição. |
+| `npm run dist:dir` | Compila e empacota o aplicativo descompactado em `release/win-unpacked/`. | Para testar rapidamente o executável final sem gerar instalador. |
+| `npm run dist:win` | Compila e gera o instalador atualizável (`Notes-MD-Setup-*.exe`) e portátil em `release/`. | Sempre que quiser gerar ou atualizar o executável estável no Windows. |
+| `npm run dist:win:ci` | Gera o instalador e os manifestos (`latest.yml`, `.blockmap`) sem publicar diretamente (usado pelo CI). | Uso automatizado pelo `semantic-release` no GitHub Actions. |
 | `npm run commit` | Abre o assistente interativo do **Commitizen** no terminal para montar uma mensagem de commit perfeita. | Sempre que você for criar um novo commit no Git. |
+| `npm run release:dry-run` | Simula a análise do **Semantic Release** sem criar tags ou publicar no GitHub. | Para conferir qual será a próxima versão gerada a partir dos commits. |
 
 ---
 

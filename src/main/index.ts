@@ -21,19 +21,53 @@ import {
   warmSpellCheckers
 } from './spellcheckService'
 import { DiscordPresenceService } from './discordPresenceService'
+import {
+  formatWindowTitle,
+  resolveAppIconPath,
+  resolveRuntimeConfig
+} from './runtimeEnv'
+import { AppUpdateService } from './updateService'
 import type {
   DiscordPresenceContext,
   DiscordPresenceSettings,
   DiscordPresenceStatus
 } from '../shared/discordPresence'
+import type { AppRuntimeInfo, AppUpdateState } from '../shared/appUpdate'
+
+const runtimeConfig = resolveRuntimeConfig({
+  isPackaged: app.isPackaged,
+  appDataPath: app.getPath('appData'),
+  documentsPath: app.getPath('documents'),
+  cwdPath: process.cwd()
+})
+
+// Isolate Dev Chromium profile, localStorage, and window-state from Stable executable
+app.setPath('userData', runtimeConfig.userDataPath)
+if (!app.isPackaged) {
+  app.setName(runtimeConfig.appName)
+}
 
 // Hardware Acceleration & Chromium GPU Rendering Pipeline Optimization
 app.commandLine.appendSwitch('enable-gpu-rasterization')
 app.commandLine.appendSwitch('enable-zero-copy')
 app.commandLine.appendSwitch('ignore-gpu-blocklist')
 
+let primaryWindow: BrowserWindow | null = null
 let vaultWatcher: VaultWatcher | null = null
 let discordPresenceService: DiscordPresenceService | null = null
+let appUpdateService: AppUpdateService | null = null
+
+const hasStableLock = !app.isPackaged || app.requestSingleInstanceLock()
+if (!hasStableLock) {
+  app.quit()
+} else if (app.isPackaged) {
+  app.on('second-instance', () => {
+    if (primaryWindow && !primaryWindow.isDestroyed()) {
+      if (primaryWindow.isMinimized()) primaryWindow.restore()
+      primaryWindow.focus()
+    }
+  })
+}
 
 function broadcastVaultChanged(snapshot: any): void {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -51,9 +85,31 @@ function broadcastDiscordPresenceStatus(status: DiscordPresenceStatus): void {
   }
 }
 
+function broadcastAppUpdateState(state: AppUpdateState): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send('app-update:state-changed', state)
+    }
+  }
+}
+
+function applyWindowEnvironmentTitle(win: BrowserWindow): void {
+  if (!runtimeConfig.windowTitleSuffix) return
+  win.on('page-title-updated', (event, title) => {
+    event.preventDefault()
+    if (!win.isDestroyed()) {
+      win.setTitle(formatWindowTitle(title, runtimeConfig.windowTitleSuffix))
+    }
+  })
+}
+
 function getAppIcon(): string | undefined {
-  const iconPath = join(__dirname, '../../resources/icon.png')
-  return existsSync(iconPath) ? iconPath : undefined
+  return resolveAppIconPath({
+    isPackaged: app.isPackaged,
+    mainDir: __dirname,
+    resourcesPath: process.resourcesPath,
+    fileExists: existsSync
+  })
 }
 
 function createWindow(): void {
@@ -70,13 +126,19 @@ function createWindow(): void {
     minHeight: 540,
     show: false,
     autoHideMenuBar: true,
-    backgroundColor: '#f8fafc',
-    title: 'Notes-MD',
+    backgroundColor: '#282a36',
+    title: formatWindowTitle('Notes-MD', runtimeConfig.windowTitleSuffix),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
       spellcheck: true
     }
+  })
+
+  primaryWindow = mainWindow
+  applyWindowEnvironmentTitle(mainWindow)
+  mainWindow.on('focus', () => {
+    appUpdateService?.maybeCheckOnFocus()
   })
 
   try {
@@ -134,6 +196,9 @@ function createWindow(): void {
   })
 
   mainWindow.on('closed', () => {
+    if (primaryWindow === mainWindow) {
+      primaryWindow = null
+    }
     for (const win of BrowserWindow.getAllWindows()) {
       if (!win.isDestroyed()) {
         win.close()
@@ -150,7 +215,7 @@ function loadWindowRoute(win: BrowserWindow, routeWithHash: string): void {
     win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}${hash}`)
   } else {
     win.loadFile(join(__dirname, '../renderer/index.html'), {
-      hash: hash ? hash.replace(/^#\/?/, '') : undefined
+      hash: hash ? hash.replace(/^#/, '') : undefined
     })
   }
 }
@@ -173,13 +238,15 @@ function openSettingsWindow(): void {
     show: false,
     autoHideMenuBar: true,
     backgroundColor: '#181825',
-    title: 'Configurações — Notes-MD',
+    title: formatWindowTitle('Configurações — Notes-MD', runtimeConfig.windowTitleSuffix),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
       spellcheck: true
     }
   })
+
+  applyWindowEnvironmentTitle(settingsWindow)
 
   settingsWindow.on('ready-to-show', () => {
     settingsWindow?.show()
@@ -202,12 +269,14 @@ function openImageWindow(vaultPath: string, relativePath: string, fileName: stri
     show: false,
     autoHideMenuBar: true,
     backgroundColor: '#11111b',
-    title: `${fileName} — Notes-MD`,
+    title: formatWindowTitle(`${fileName} — Notes-MD`, runtimeConfig.windowTitleSuffix),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
     }
   })
+
+  applyWindowEnvironmentTitle(imageWin)
 
   imageWin.on('ready-to-show', () => {
     imageWin.show()
@@ -223,11 +292,19 @@ function openImageWindow(vaultPath: string, relativePath: string, fileName: stri
 }
 
 app.whenReady().then(() => {
-  electronApp.setAppUserModelId('com.cristofer.notesmd')
+  if (!hasStableLock) return
+
+  electronApp.setAppUserModelId(runtimeConfig.appUserModelId)
 
   discordPresenceService = new DiscordPresenceService({
     getSystemIdleTime: () => powerMonitor.getSystemIdleTime(),
     onStatusChange: broadcastDiscordPresenceStatus
+  })
+
+  appUpdateService = new AppUpdateService({
+    isPackaged: app.isPackaged,
+    currentVersion: app.getVersion(),
+    onStateChange: broadcastAppUpdateState
   })
 
   app.on('browser-window-created', (_, window) => {
@@ -238,7 +315,7 @@ app.whenReady().then(() => {
     broadcastVaultChanged(snapshot)
   })
 
-  const defaultVaultDir = join(process.cwd(), 'Vault-Notas')
+  const defaultVaultDir = runtimeConfig.defaultVaultDir
 
   ipcMain.handle('vault:get-default', async () => {
     const snapshot = await ensureDefaultVault(defaultVaultDir)
@@ -499,6 +576,30 @@ app.whenReady().then(() => {
     return true
   })
 
+  ipcMain.handle('app:get-runtime-info', async (): Promise<AppRuntimeInfo> => ({
+    version: app.getVersion(),
+    environment: runtimeConfig.environment,
+    isPackaged: app.isPackaged,
+    userDataPath: runtimeConfig.userDataPath,
+    defaultVaultDir: runtimeConfig.defaultVaultDir
+  }))
+
+  ipcMain.handle('app-update:get-state', async () => {
+    return appUpdateService?.getState()
+  })
+
+  ipcMain.handle('app-update:check', async () => {
+    return appUpdateService?.checkForUpdates({ silentIfUnavailable: false })
+  })
+
+  ipcMain.handle('app-update:download', async () => {
+    return appUpdateService?.downloadUpdate()
+  })
+
+  ipcMain.handle('app-update:install', async () => {
+    return appUpdateService?.installUpdate() ?? false
+  })
+
   // Initialize native spellchecker with Portuguese (Brazil) and English (US) simultaneously by default
   try {
     session.defaultSession.setSpellCheckerLanguages(['pt-BR', 'en-US'])
@@ -509,12 +610,15 @@ app.whenReady().then(() => {
 
   createWindow()
 
+  appUpdateService?.startAutoCheck()
+
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })
 
 app.on('window-all-closed', () => {
+  appUpdateService?.stopAutoCheck()
   vaultWatcher?.stop()
   void discordPresenceService?.shutdown()
   if (process.platform !== 'darwin') {
@@ -523,5 +627,6 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', () => {
+  appUpdateService?.stopAutoCheck()
   void discordPresenceService?.shutdown()
 })
