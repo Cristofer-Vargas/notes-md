@@ -117,4 +117,22 @@ Outra linha apontando para [[Nota A]].`
     expect(tree[1].text).toBe('H1 Segundo')
     expect(tree[1].children).toHaveLength(0)
   })
+
+  it('preserva destaques <mark> e blocos de código/mermaid intactos no preprocess e postprocess', () => {
+    const md = `# Guia
+Texto com <mark data-color="#fef08a">Amarelo Solar</mark>.
+
+\`\`\`typescript
+export const x: number = 42
+\`\`\`
+
+\`\`\`mermaid
+graph TD
+  A[Inicio] --> B[[Nota]]
+\`\`\``
+
+    const prepared = preprocessMarkdownForEditor(md)
+    expect(prepared).toBe(md)
+    expect(postprocessMarkdownFromEditor(prepared)).toBe(md)
+  })
 })

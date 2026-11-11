@@ -24,6 +24,11 @@ describe('vaultService — Operações de Sistema de Arquivos e Watcher em Tempo
     const welcome = snapshot.notes.find((n) => n.name === 'Bem-vindo ao Notes-MD')
     expect(welcome).toBeDefined()
     expect(welcome?.content).toContain('[[Guia do Editor WYSIWYG]]')
+
+    const guide = snapshot.notes.find((n) => n.name === 'Guia do Editor WYSIWYG')
+    expect(guide).toBeDefined()
+    expect(guide?.content).toContain('C["Inserir [[WikiLink]]"]')
+    expect(guide?.content).not.toContain('C[Inserir [[WikiLink]]]')
   })
 
   it('cria, renomeia e exclui uma nota Markdown no disco', async () => {

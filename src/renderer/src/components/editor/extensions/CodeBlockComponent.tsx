@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { NodeViewContent, NodeViewWrapper, type NodeViewProps } from '@tiptap/react'
+import { Button } from '../../ui'
 import { MermaidViewer } from './MermaidViewer'
 import {
   Code2,
@@ -47,12 +48,29 @@ export const CodeBlockComponent: React.FC<NodeViewProps> = ({
 }) => {
   const currentLang = (node.attrs.language || 'plaintext').toLowerCase()
   const isMermaid = currentLang === 'mermaid'
+  const hasCodeContent = node.textContent.trim().length > 0
 
   // Para Mermaid: se houver código já salvo, inicia no modo diagrama visual (estilo Obsidian)
   const [viewMode, setViewMode] = useState<'preview' | 'code'>(
-    isMermaid && node.textContent.trim().length > 0 ? 'preview' : 'code'
+    isMermaid && hasCodeContent ? 'preview' : 'code'
   )
+  const hasAutoPreviewedRef = useRef(isMermaid && hasCodeContent)
   const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    if (!isMermaid) {
+      hasAutoPreviewedRef.current = false
+      if (viewMode !== 'code') {
+        setViewMode('code')
+      }
+      return
+    }
+
+    if (hasCodeContent && !hasAutoPreviewedRef.current) {
+      hasAutoPreviewedRef.current = true
+      setViewMode('preview')
+    }
+  }, [isMermaid, hasCodeContent, viewMode])
 
   const handleCopyCode = async (e: React.MouseEvent): Promise<void> => {
     e.stopPropagation()
@@ -136,107 +154,98 @@ export const CodeBlockComponent: React.FC<NodeViewProps> = ({
         {/* Lado Direito: Alternância Mermaid (Diagrama ↔ Código) e Botão Copiar */}
         <div className="flex items-center gap-1.5">
           {isMermaid && (
-            <div className="flex items-center p-0.5 rounded-lg bg-surface-tertiary border border-surface-border mr-1">
-              <button
-                type="button"
+            <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-surface-tertiary border border-surface-border mr-1">
+              <Button
+                variant={viewMode === 'preview' ? 'secondary' : 'ghost'}
+                size="xs"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => setViewMode('preview')}
                 title="Visualizar Diagrama Mermaid renderizado"
-                className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium transition-colors ${
+                leftIcon={<Eye className="w-3 h-3" />}
+                className={
                   viewMode === 'preview'
-                    ? 'bg-emerald-600 text-white shadow-sm'
-                    : 'text-content-muted hover:text-content-primary hover:bg-surface-bg/50'
-                }`}
+                    ? 'px-2 py-0.5 text-[11px] rounded-md bg-accent-soft text-accent border-accent/35 font-semibold hover:bg-accent-soft'
+                    : 'px-2 py-0.5 text-[11px] rounded-md'
+                }
               >
-                <Eye className="w-3 h-3" />
-                <span>Diagrama</span>
-              </button>
+                Diagrama
+              </Button>
 
-              <button
-                type="button"
+              <Button
+                variant={viewMode === 'code' ? 'secondary' : 'ghost'}
+                size="xs"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => setViewMode('code')}
                 title="Editar código fonte do diagrama Mermaid"
-                className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium transition-colors ${
-                  viewMode === 'code'
-                    ? 'bg-surface-bg text-content-primary shadow-sm'
-                    : 'text-content-muted hover:text-content-primary hover:bg-surface-bg/50'
-                }`}
+                leftIcon={<Code2 className="w-3 h-3" />}
+                className="px-2 py-0.5 text-[11px] rounded-md"
               >
-                <Code2 className="w-3 h-3" />
-                <span>Código</span>
-              </button>
+                Código
+              </Button>
             </div>
           )}
 
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="xs"
             onMouseDown={(e) => e.preventDefault()}
             onClick={handleCopyCode}
             title="Copiar código para a área de transferência"
-            className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] text-content-secondary hover:text-content-primary bg-surface-tertiary hover:bg-surface-tertiary/80 border border-surface-border transition-colors"
-          >
-            {copied ? (
-              <>
-                <Check className="w-3 h-3 text-emerald-400" />
-                <span className="text-emerald-400 font-medium">Copiado!</span>
-              </>
-            ) : (
-              <>
+            leftIcon={
+              copied ? (
+                <Check className="w-3 h-3 text-accent" />
+              ) : (
                 <Copy className="w-3 h-3 text-content-muted" />
-                <span>Copiar</span>
-              </>
-            )}
-          </button>
+              )
+            }
+            className="text-[11px] rounded-md"
+          >
+            {copied ? <span className="text-accent font-medium">Copiado!</span> : 'Copiar'}
+          </Button>
         </div>
       </div>
 
       {/* Conteúdo do Bloco: Diagrama Mermaid VS Código com Syntax Highlighting */}
-      {isMermaid && viewMode === 'preview' ? (
-        <>
-          <MermaidViewer
-            code={node.textContent}
-            onEditCode={() => setViewMode('code')}
-            onInsertExample={handleInsertExample}
-          />
-          {/* Mantém NodeViewContent ativo no DOM oculto para preservar o estado do ProseMirror */}
-          <div className="hidden">
-            <NodeViewContent as="code" spellCheck={false} className="language-mermaid font-mono" />
-          </div>
-        </>
-      ) : (
-        <div className="relative">
-          <pre
-            spellCheck={false}
-            className="code-block-pre font-mono text-[13px] leading-relaxed p-4 overflow-x-auto bg-[var(--code-bg,#21222c)] text-[var(--code-text,#f8f8f2)] min-h-[50px] m-0"
-          >
-            <NodeViewContent
-              as="code"
-              spellCheck={false}
-              data-gramm={false}
-              className={`language-${currentLang} font-mono focus:outline-none`}
-            />
-          </pre>
-
-          {isMermaid && (
-            <div
-              contentEditable={false}
-              className="flex items-center justify-between px-3 py-1 bg-[var(--code-header-bg,#1e1f29)] border-t border-[var(--code-border,#383a4c)] text-[11px] text-content-muted select-none"
-            >
-              <span>Edite o código Mermaid acima</span>
-              <button
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => setViewMode('preview')}
-                className="text-emerald-400 hover:underline flex items-center gap-1 font-medium"
-              >
-                <Eye className="w-3 h-3" />
-                <span>Visualizar Diagrama</span>
-              </button>
-            </div>
-          )}
-        </div>
+      {isMermaid && viewMode === 'preview' && (
+        <MermaidViewer
+          code={node.textContent}
+          onEditCode={() => setViewMode('code')}
+          onInsertExample={handleInsertExample}
+        />
       )}
+
+      <div className={isMermaid && viewMode === 'preview' ? 'hidden' : 'relative'}>
+        <pre
+          spellCheck={false}
+          className="code-block-pre font-mono text-[13px] leading-relaxed p-4 overflow-x-auto bg-[var(--code-bg,#21222c)] text-[var(--code-text,#f8f8f2)] min-h-[50px] m-0"
+        >
+          <NodeViewContent
+            as="code"
+            spellCheck={false}
+            data-gramm={false}
+            className={`language-${currentLang} font-mono focus:outline-none`}
+          />
+        </pre>
+
+        {isMermaid && (
+          <div
+            contentEditable={false}
+            className="flex items-center justify-between px-3 py-1 bg-[var(--code-header-bg,#1e1f29)] border-t border-[var(--code-border,#383a4c)] text-[11px] text-content-muted select-none"
+          >
+            <span>Edite o código Mermaid acima</span>
+            <Button
+              variant="ghost"
+              size="xs"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => setViewMode('preview')}
+              leftIcon={<Eye className="w-3 h-3" />}
+              className="text-accent hover:underline px-1.5 py-0.5 text-[11px]"
+            >
+              Visualizar Diagrama
+            </Button>
+          </div>
+        )}
+      </div>
     </NodeViewWrapper>
   )
 }

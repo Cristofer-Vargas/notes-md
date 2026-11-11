@@ -1,9 +1,8 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react'
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from 'tiptap-markdown'
 import Underline from '@tiptap/extension-underline'
-import Highlight from '@tiptap/extension-highlight'
 import TextStyle from '@tiptap/extension-text-style'
 import Color from '@tiptap/extension-color'
 import TextAlign from '@tiptap/extension-text-align'
@@ -27,6 +26,7 @@ import { EditorContextMenu, type EditorContextMenuPosition } from './EditorConte
 import { WikiLinkSuggestion } from './WikiLinkSuggestion'
 import { WikiLinkHoverPreview } from './WikiLinkHoverPreview'
 import { CustomCodeBlock, lowlight } from './extensions/CustomCodeBlock'
+import { CustomHighlight } from './extensions/CustomHighlight'
 import {
   generateFallbackSuggestions,
   getWordRangeAtPos,
@@ -124,20 +124,48 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   } | null>(null)
   const isMouseOverPreviewRef = useRef(false)
   const activeNotePathRef = useRef<string | null>(null)
+  const hydratedEditorRef = useRef<{ editor: unknown; path: string } | null>(null)
   const isInternalUpdateRef = useRef(false)
+  const hasPendingSaveRef = useRef(false)
   const lastSavedMarkdownRef = useRef<string>('')
   const lastInternalEditTimeRef = useRef<number>(0)
+  const isSourceModeRef = useRef(isSourceMode)
+  isSourceModeRef.current = isSourceMode
+  const rawMarkdownRef = useRef(rawMarkdown)
+  rawMarkdownRef.current = rawMarkdown
   const allNotesRef = useRef<VaultNoteData[]>(allNotes)
   allNotesRef.current = allNotes
 
-  
   const flushPendingSave = useCallback(() => {
+    const hadPendingTimeout = Boolean(saveTimeoutRef.current)
     if (saveTimeoutRef.current) {
       window.clearTimeout(saveTimeoutRef.current)
       saveTimeoutRef.current = null
     }
+    if (!hadPendingTimeout && !hasPendingSaveRef.current) {
+      return
+    }
+    hasPendingSaveRef.current = false
+
+    const notePath = activeNotePathRef.current
+    if (!notePath) return
+
+    if (isSourceModeRef.current) {
+      const nextMd = rawMarkdownRef.current
+      if (nextMd !== lastSavedMarkdownRef.current) {
+        lastSavedMarkdownRef.current = nextMd
+        lastInternalEditTimeRef.current = Date.now()
+        setSaveStatus('saving')
+        onSaveContentRef.current(notePath, nextMd)
+        window.setTimeout(() => setSaveStatus('saved'), 350)
+      } else {
+        setSaveStatus('saved')
+      }
+      return
+    }
+
     const ed = editorRef.current
-    if (ed && activeNotePathRef.current) {
+    if (ed) {
       try {
         const raw = (ed.storage as any).markdown.getMarkdown() as string
         const cleanMd = postprocessMarkdownFromEditor(raw)
@@ -146,7 +174,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
           lastInternalEditTimeRef.current = Date.now()
           setRawMarkdown(cleanMd)
           setSaveStatus('saving')
-          onSaveContentRef.current(activeNotePathRef.current, cleanMd)
+          onSaveContentRef.current(notePath, cleanMd)
           window.setTimeout(() => setSaveStatus('saved'), 350)
         } else {
           setSaveStatus('saved')
@@ -172,8 +200,8 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
 
   const handleOpenQuickToolsAtCaretRef = useRef<() => void>(() => {})
 
-  const editor = useEditor({
-    extensions: [
+  const editorExtensions = useMemo(
+    () => [
       StarterKit.configure({
         heading: { levels: [1, 2, 3, 4, 5, 6] },
         codeBlock: false,
@@ -195,7 +223,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         transformCopiedText: true
       }),
       Underline,
-      Highlight.configure({ multicolor: true }),
+      CustomHighlight.configure({ multicolor: true }),
       TextStyle,
       Color,
       FontSizeExtension,
@@ -228,6 +256,11 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       }),
       CharacterCount
     ],
+    []
+  )
+
+  const editor = useEditor({
+    extensions: editorExtensions,
     content: '',
     onUpdate: ({ editor: ed }) => {
       if (isInternalUpdateRef.current) return
@@ -268,8 +301,11 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       if (saveTimeoutRef.current) {
         window.clearTimeout(saveTimeoutRef.current)
       }
+      hasPendingSaveRef.current = true
 
       saveTimeoutRef.current = window.setTimeout(() => {
+        saveTimeoutRef.current = null
+        hasPendingSaveRef.current = false
         if (!activeNotePathRef.current) return
         try {
           const rawSerialized = (ed.storage as any).markdown.getMarkdown() as string
@@ -508,15 +544,25 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     if (!activeNote) {
       flushPendingSave()
       activeNotePathRef.current = null
+      hydratedEditorRef.current = null
+      hasPendingSaveRef.current = false
       lastSavedMarkdownRef.current = ''
       setRawMarkdown('')
       setNoteTitleInput('')
       return
     }
 
-    if (activeNotePathRef.current !== activeNote.relativePath) {
+    const isNewPath = activeNotePathRef.current !== activeNote.relativePath
+    const canHydrateEditor = Boolean(editor && !editor.isDestroyed)
+    const needsEditorHydration =
+      canHydrateEditor &&
+      (hydratedEditorRef.current?.editor !== editor ||
+        hydratedEditorRef.current?.path !== activeNote.relativePath)
+
+    if (isNewPath) {
       flushPendingSave()
       activeNotePathRef.current = activeNote.relativePath
+      hasPendingSaveRef.current = false
       lastSavedMarkdownRef.current = activeNote.content
       setNoteTitleInput(activeNote.name)
       setRawMarkdown(activeNote.content)
@@ -524,12 +570,15 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       setHoverPreview(null)
       setContextMenuPos(null)
       setActiveLinkEdit(null)
+    }
 
-      if (editor) {
+    if (isNewPath || needsEditorHydration) {
+      if (editor && !editor.isDestroyed) {
         isInternalUpdateRef.current = true
         const prepared = preprocessMarkdownForEditor(activeNote.content)
         editor.commands.setContent(prepared, false)
         isInternalUpdateRef.current = false
+        hydratedEditorRef.current = { editor, path: activeNote.relativePath }
       }
       return
     }
@@ -543,15 +592,17 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
 
     if (isExternalModification) {
       lastSavedMarkdownRef.current = activeNote.content
+      hasPendingSaveRef.current = false
       setRawMarkdown(activeNote.content)
-      if (editor) {
+      if (editor && !editor.isDestroyed) {
         isInternalUpdateRef.current = true
         const prepared = preprocessMarkdownForEditor(activeNote.content)
         editor.commands.setContent(prepared, false)
         isInternalUpdateRef.current = false
+        hydratedEditorRef.current = { editor, path: activeNote.relativePath }
       }
     }
-  }, [activeNote, editor])
+  }, [activeNote, editor, flushPendingSave])
 
   // Update visual styling of existing vs non-existing [[WikiLinks]] in DOM
   useEffect(() => {
@@ -743,8 +794,11 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     if (saveTimeoutRef.current) {
       window.clearTimeout(saveTimeoutRef.current)
     }
+    hasPendingSaveRef.current = true
 
     saveTimeoutRef.current = window.setTimeout(() => {
+      saveTimeoutRef.current = null
+      hasPendingSaveRef.current = false
       if (activeNotePathRef.current) {
         lastSavedMarkdownRef.current = nextMd
         lastInternalEditTimeRef.current = Date.now()

@@ -4,7 +4,6 @@ import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from 'tiptap-markdown'
 import Underline from '@tiptap/extension-underline'
-import Highlight from '@tiptap/extension-highlight'
 import TextStyle from '@tiptap/extension-text-style'
 import Color from '@tiptap/extension-color'
 import TextAlign from '@tiptap/extension-text-align'
@@ -21,6 +20,7 @@ import Superscript from '@tiptap/extension-superscript'
 import { FontSizeExtension } from './extensions/FontSizeExtension'
 import { WikiLinkExtension } from './extensions/WikiLinkExtension'
 import { CustomCodeBlock, lowlight } from './extensions/CustomCodeBlock'
+import { CustomHighlight } from './extensions/CustomHighlight'
 import { preprocessMarkdownForEditor } from '../../services/noteIndexer'
 import type { VaultNoteData } from '../../../../preload/index.d'
 import type { IndexedNoteMeta } from '../../types/app'
@@ -55,7 +55,7 @@ const NoteWysiwygContent: React.FC<{ content: string }> = ({ content }) => {
         tightLists: true
       }),
       Underline,
-      Highlight.configure({ multicolor: true }),
+      CustomHighlight.configure({ multicolor: true }),
       TextStyle,
       Color,
       FontSizeExtension,

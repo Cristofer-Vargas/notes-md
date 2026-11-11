@@ -87,12 +87,12 @@ Assim como no Obsidian, você pode criar fluxogramas, sequências e grafos diret
 
 \`\`\`mermaid
 graph TD
-  A[💡 Nova Ideia] --> B{Conectar a Nota?}
-  B -->|Sim| C[Inserir [[WikiLink]]]
-  B -->|Não| D[Salvar como Rascunho]
-  C --> E[Explorar Backlinks]
+  A["💡 Nova Ideia"] --> B{"Conectar a Nota?"}
+  B -->|Sim| C["Inserir [[WikiLink]]"]
+  B -->|Não| D["Salvar como Rascunho"]
+  C --> E["Explorar Backlinks"]
   D --> E
-  E --> F[✨ Conhecimento Integrado]
+  E --> F["✨ Conhecimento Integrado"]
 \`\`\`
 
 ## 4. Citações e Listas
