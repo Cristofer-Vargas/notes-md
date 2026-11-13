@@ -760,7 +760,7 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
           title={`Cofre atual: ${vaultName} (${vaultPath})\nClique para ver cofres recentes ou abrir outro`}
           className="flex items-center gap-2 min-w-0 flex-1 px-2 py-1 rounded-sm hover:bg-surface-tertiary transition-colors text-left group cursor-pointer"
         >
-          <img src={appLogo} alt="" className="w-6 h-6 object-contain shrink-0" />
+          <img src={appLogo} alt="" className="app-logo w-6 h-6 object-contain shrink-0" />
           <div className="min-w-0 flex-1">
             <div className="text-xs font-bold text-content-primary truncate group-hover:text-accent transition-colors flex items-center gap-1">
               <span className="truncate">{vaultName}</span>

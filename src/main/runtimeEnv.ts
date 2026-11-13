@@ -64,15 +64,16 @@ export function resolveAppIconPath(options: {
 
   if (isPackaged && resourcesPath) {
     candidates.push(
-      join(resourcesPath, 'app-resources', 'logo-transparente.png'),
-      join(resourcesPath, 'app-resources', 'icon.ico')
+      join(resourcesPath, 'app-resources', 'icon.png'),
+      join(resourcesPath, 'app-resources', 'icon.ico'),
+      join(resourcesPath, 'app-resources', 'logo-transparente.png')
     )
   }
 
   candidates.push(
-    join(mainDir, '../../resources/logo-transparente.png'),
+    join(mainDir, '../../resources/icon.png'),
     join(mainDir, '../../resources/icon.ico'),
-    join(mainDir, '../../resources/icon.png')
+    join(mainDir, '../../resources/logo-transparente.png')
   )
 
   return candidates.find((candidate) => fileExists(candidate))

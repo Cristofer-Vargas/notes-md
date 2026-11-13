@@ -448,7 +448,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         )}
       >
         <div className="flex items-center gap-2.5 pointer-events-none min-w-0 flex-1">
-          <img src={appLogo} alt="Notes-MD" className="w-7 h-7 object-contain shrink-0" />
+          <img src={appLogo} alt="Notes-MD" className="app-logo w-7 h-7 object-contain shrink-0" />
           <div className="min-w-0 flex-1 pr-2">
               <h2 className="text-sm font-semibold text-content-primary truncate">Configurações</h2>
             </div>

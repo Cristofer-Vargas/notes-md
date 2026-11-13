@@ -467,7 +467,7 @@ export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
               <img
                 src={appLogo}
                 alt="Notes-MD"
-                className="w-full h-full object-contain select-none pointer-events-none drop-shadow-xs"
+                className="app-logo w-full h-full object-contain select-none pointer-events-none drop-shadow-xs"
               />
             </div>
 

@@ -193,6 +193,8 @@ body {
 button svg { stroke-width: 1.7; }
 
 .settings-window { font-family: Geist, 'Segoe UI', sans-serif; }
+[data-theme='light'] .app-logo { content: url('./logo-black.png'); }
+[data-theme='dark'] .app-logo { content: url('./logo-white.png'); }
 .settings-nav { display: flex; flex-direction: column; gap: 2px; }
 .settings-nav .settings-nav-item {
   width: 100%;

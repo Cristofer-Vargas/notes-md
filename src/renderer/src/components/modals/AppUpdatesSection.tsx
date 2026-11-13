@@ -76,7 +76,7 @@ export const AppUpdatesSection: React.FC<AppUpdatesSectionProps> = ({
       <section className="rounded-xl border border-surface-border bg-surface-secondary/50 p-4 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <img src={appLogo} alt="Notes-MD" className="w-10 h-10 object-contain shrink-0" />
+            <img src={appLogo} alt="Notes-MD" className="app-logo w-10 h-10 object-contain shrink-0" />
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-sm font-bold text-content-primary">Notes-MD</h3>

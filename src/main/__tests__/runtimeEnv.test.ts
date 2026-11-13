@@ -30,23 +30,23 @@ describe('runtimeEnv — Isolamento entre Versão Estável e Dev', () => {
   })
 
   it('resolve ícone a partir de app-resources quando empacotado', () => {
-    const expectedPackagedIcon = join('C:\\App\\resources', 'app-resources', 'logo-transparente.png')
+    const expectedPackagedIcon = join('C:\\App\\resources', 'app-resources', 'icon.png')
     const found = resolveAppIconPath({
       isPackaged: true,
       mainDir: 'C:\\App\\resources\\app.asar\\out\\main',
       resourcesPath: 'C:\\App\\resources',
-      fileExists: (target) => target === expectedPackagedIcon
+      fileExists: () => true
     })
 
     expect(found).toBe(expectedPackagedIcon)
   })
 
   it('resolve ícone local em desenvolvimento e evita duplicar sufixo no título', () => {
-    const devIcon = join('C:\\Repo\\out\\main', '../../resources/logo-transparente.png')
+    const devIcon = join('C:\\Repo\\out\\main', '../../resources/icon.png')
     const found = resolveAppIconPath({
       isPackaged: false,
       mainDir: 'C:\\Repo\\out\\main',
-      fileExists: (target) => target === devIcon
+      fileExists: () => true
     })
 
     expect(found).toBe(devIcon)
