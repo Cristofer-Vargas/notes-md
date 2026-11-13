@@ -933,7 +933,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         <div className="w-16 h-16 rounded-2xl bg-surface-secondary/70 border border-surface-border flex items-center justify-center mb-4 p-3 shadow-xs">
           <img
             src={appLogo}
-            alt="Notes-MD"
+            alt="Notes MD"
             className="app-logo w-full h-full object-contain select-none pointer-events-none drop-shadow-xs"
           />
         </div>

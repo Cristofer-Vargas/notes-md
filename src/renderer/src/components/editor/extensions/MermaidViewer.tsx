@@ -32,7 +32,7 @@ const MERMAID_EXAMPLES = [
     code: `sequenceDiagram
   autonumber
   actor Usuário
-  participant App as Notes-MD
+  participant App as Notes MD
   participant Disco as Vault Local
   Usuário->>App: Escrever Nota Markdown
   App->>Disco: Salvar Arquivo (.md)

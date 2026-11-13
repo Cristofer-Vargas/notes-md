@@ -12,7 +12,7 @@ function normalizeActivityText(value: string, fallback: string): string {
 }
 
 function appendContext(baseText: string, contextText: string | null): string {
-  if (!contextText) return normalizeActivityText(baseText, 'Notes-MD')
+  if (!contextText) return normalizeActivityText(baseText, 'Notes MD')
   return normalizeActivityText(`${baseText}: ${contextText}`, baseText)
 }
 
@@ -28,17 +28,17 @@ export function buildDiscordPresenceActivity(
     ? idleText
     : appendContext(activeText, settings.showNoteTitle ? context.noteName : null)
   const state = settings.showVaultName && context.vaultName
-    ? normalizeActivityText(`Cofre: ${context.vaultName}`, 'Notes-MD')
+    ? normalizeActivityText(`Cofre: ${context.vaultName}`, 'Notes MD')
     : undefined
 
   return {
-    name: 'Notes-MD',
+    name: 'Notes MD',
     details,
     state,
     startTimestamp: settings.showElapsedTime ? new Date(sessionStartedAt) : undefined,
     largeImageKey: settings.largeImageKey || undefined,
     largeImageText: settings.largeImageKey
-      ? normalizeActivityText(settings.largeImageText, 'Notes-MD')
+      ? normalizeActivityText(settings.largeImageText, 'Notes MD')
       : undefined,
     instance: false
   }

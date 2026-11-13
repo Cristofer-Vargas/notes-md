@@ -76,10 +76,10 @@ export const AppUpdatesSection: React.FC<AppUpdatesSectionProps> = ({
       <section className="rounded-xl border border-surface-border bg-surface-secondary/50 p-4 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <img src={appLogo} alt="Notes-MD" className="app-logo w-10 h-10 object-contain shrink-0" />
+            <img src={appLogo} alt="Notes MD" className="app-logo w-10 h-10 object-contain shrink-0" />
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-sm font-bold text-content-primary">Notes-MD</h3>
+                <h3 className="text-sm font-bold text-content-primary">Notes MD</h3>
                 <Badge variant="default" size="sm">
                   v{runtimeInfo?.version || '...'}
                 </Badge>
@@ -166,7 +166,7 @@ export const AppUpdatesSection: React.FC<AppUpdatesSectionProps> = ({
         </div>
 
         <p className="text-xs text-content-secondary leading-relaxed">
-          {updateState?.message || 'Pronto para verificar novas versões do Notes-MD.'}
+          {updateState?.message || 'Pronto para verificar novas versões do Notes MD.'}
         </p>
 
         {updateState?.phase === 'downloading' && (
@@ -240,7 +240,7 @@ export const AppUpdatesSection: React.FC<AppUpdatesSectionProps> = ({
         </div>
         <ul className="space-y-1.5 text-content-secondary list-disc pl-4 leading-relaxed">
           <li>
-            No executável instalado, o Notes-MD verifica novas releases do GitHub automaticamente ao iniciar, ao focar a janela e a cada 30 minutos, baixando as alterações em segundo plano.
+            No executável instalado, o Notes MD verifica novas releases do GitHub automaticamente ao iniciar, ao focar a janela e a cada 30 minutos, baixando as alterações em segundo plano.
           </li>
           <li>
             Commits semânticos feitos com{' '}

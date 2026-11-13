@@ -62,17 +62,22 @@ describe('vaultService — Operações de Sistema de Arquivos e Watcher em Tempo
   })
 
   it('inicializa o Vault padrão com notas Markdown interconectadas', async () => {
-    const snapshot = await ensureDefaultVault(defaultVaultDir)
-    expect(snapshot.vaultName).toBe('Vault-Notas')
-    expect(snapshot.notes.length).toBeGreaterThanOrEqual(4)
-    const welcome = snapshot.notes.find((n) => n.name === 'Bem-vindo ao Notes-MD')
-    expect(welcome).toBeDefined()
-    expect(welcome?.content).toContain('[[Guia do Editor WYSIWYG]]')
+    const vaultDir = await fs.mkdtemp(path.join(os.tmpdir(), 'notes-md-seed-'))
+    try {
+      const snapshot = await ensureDefaultVault(vaultDir)
+      expect(snapshot.notes.length).toBeGreaterThanOrEqual(4)
+      const welcome = snapshot.notes.find((n) => n.name === 'Bem-vindo ao Notes MD')
+      expect(welcome).toBeDefined()
+      expect(welcome?.content).toContain('[[Guia do Editor WYSIWYG]]')
 
-    const guide = snapshot.notes.find((n) => n.name === 'Guia do Editor WYSIWYG')
-    expect(guide).toBeDefined()
-    expect(guide?.content).toContain('C["Inserir [[WikiLink]]"]')
-    expect(guide?.content).not.toContain('C[Inserir [[WikiLink]]]')
+      const guide = snapshot.notes.find((n) => n.name === 'Guia do Editor WYSIWYG')
+      expect(guide).toBeDefined()
+      expect(guide?.content).toContain('[[Bem-vindo ao Notes MD]]')
+      expect(guide?.content).toContain('C["Inserir [[WikiLink]]"]')
+      expect(guide?.content).not.toContain('C[Inserir [[WikiLink]]]')
+    } finally {
+      await fs.rm(vaultDir, { recursive: true, force: true })
+    }
   })
 
   it('cria, renomeia e exclui uma nota Markdown no disco', async () => {
@@ -80,7 +85,7 @@ describe('vaultService — Operações de Sistema de Arquivos e Watcher em Tempo
       defaultVaultDir,
       '',
       'Nota Temporaria de Teste',
-      '# Teste\nConteúdo ligado a [[Bem-vindo ao Notes-MD]].'
+      '# Teste\nConteúdo ligado a [[Bem-vindo ao Notes MD]].'
     )
     expect(created.name).toBe('Nota Temporaria de Teste')
 

@@ -1,5 +1,5 @@
 appId: com.cristofer.notesmd
-productName: Notes-MD
+productName: Notes MD
 copyright: Copyright © 2026 Cristofer Vargas
 
 directories:
@@ -38,7 +38,7 @@ nsis:
   allowToChangeInstallationDirectory: false
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: Notes-MD
+  shortcutName: Notes MD
   artifactName: Notes-MD-Setup-${version}.${ext}
   installerIcon: resources/icon.ico
   uninstallerIcon: resources/icon.ico

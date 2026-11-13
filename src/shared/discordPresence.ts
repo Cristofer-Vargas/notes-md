@@ -42,7 +42,7 @@ export const DEFAULT_DISCORD_PRESENCE_SETTINGS: DiscordPresenceSettings = {
   idleDetectionEnabled: true,
   idleTimeoutMinutes: 5,
   largeImageKey: '',
-  largeImageText: 'Notes-MD'
+  largeImageText: 'Notes MD'
 }
 
 export function isValidDiscordApplicationId(applicationId: string): boolean {

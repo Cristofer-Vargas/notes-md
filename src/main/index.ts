@@ -127,7 +127,7 @@ function createWindow(): void {
     show: false,
     autoHideMenuBar: true,
     backgroundColor: '#282a36',
-    title: formatWindowTitle('Notes-MD', runtimeConfig.windowTitleSuffix),
+    title: formatWindowTitle('Notes MD - Editor Markdown', runtimeConfig.windowTitleSuffix),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -238,7 +238,7 @@ function openSettingsWindow(): void {
     show: false,
     autoHideMenuBar: true,
     backgroundColor: '#181825',
-    title: formatWindowTitle('Configurações — Notes-MD', runtimeConfig.windowTitleSuffix),
+    title: formatWindowTitle('Configurações — Notes MD', runtimeConfig.windowTitleSuffix),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -269,7 +269,7 @@ function openImageWindow(vaultPath: string, relativePath: string, fileName: stri
     show: false,
     autoHideMenuBar: true,
     backgroundColor: '#11111b',
-    title: formatWindowTitle(`${fileName} — Notes-MD`, runtimeConfig.windowTitleSuffix),
+    title: formatWindowTitle(`${fileName} — Notes MD`, runtimeConfig.windowTitleSuffix),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false

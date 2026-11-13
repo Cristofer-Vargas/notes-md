@@ -9,8 +9,8 @@ function normalizeRelPath(relPath: string): string {
 
 const DEFAULT_NOTES: Array<{ relativePath: string; content: string }> = [
   {
-    relativePath: 'Bem-vindo ao Notes-MD.md',
-    content: `# Bem-vindo ao <mark data-color="#fef08a">Notes-MD</mark>
+    relativePath: 'Bem-vindo ao Notes MD.md',
+    content: `# Bem-vindo ao <mark data-color="#fef08a">Notes MD</mark>
 
 Essenciais para desenvolvedores, escritores e criadores de conhecimento conectado.
 
@@ -20,7 +20,7 @@ Os editores de texto rico e o **Markdown** evoluíram para unir a velocidade da 
 
 ## Capítulo 1: O Poder das Notas Conectadas
 
-O grande diferencial do **Notes-MD** é combinar uma barra de ferramentas completa (no topo) com conexões bidirecionais entre arquivos Markdown reais no seu computador.
+O grande diferencial do **Notes MD** é combinar uma barra de ferramentas completa (no topo) com conexões bidirecionais entre arquivos Markdown reais no seu computador.
 
 Experimente passar o mouse ou clicar nos links abaixo:
 - Explore todas as ferramentas visuais em [[Guia do Editor WYSIWYG]]
@@ -32,7 +32,7 @@ Experimente passar o mouse ou clicar nos links abaixo:
 
 ### Comparativo de Produtividade
 
-| Recurso | Editor Comum | Notes-MD (WYSIWYG + Obsidian) |
+| Recurso | Editor Comum | Notes MD (WYSIWYG + Obsidian) |
 | :--- | :--- | :--- |
 | **Formatação Visual** | Apenas texto ou pesado | Barra WYSIWYG completa + Markdown puro |
 | **Conexão entre Notas** | Pastas isoladas | \`[[WikiLinks]]\`, Backlinks e Hover Preview |
@@ -40,7 +40,7 @@ Experimente passar o mouse ou clicar nos links abaixo:
 
 ### Primeiros Passos
 
-- [x] Abrir o Vault inicial no Notes-MD
+- [x] Abrir o Vault inicial no Notes MD
 - [x] Testar os destaques coloridos e tabelas
 - [ ] Passar o mouse sobre um \`[[WikiLink]]\` para ver o **Hover Preview**
 - [ ] Conferir o painel de **Backlinks** na barra lateral direita
@@ -51,7 +51,7 @@ Experimente passar o mouse ou clicar nos links abaixo:
     relativePath: 'Guia do Editor WYSIWYG.md',
     content: `# Guia Completo do Editor WYSIWYG
 
-Esta nota está conectada à página inicial [[Bem-vindo ao Notes-MD]] e demonstra todas as ferramentas disponíveis na barra superior.
+Esta nota está conectada à página inicial [[Bem-vindo ao Notes MD]] e demonstra todas as ferramentas disponíveis na barra superior.
 
 ---
 
@@ -107,14 +107,14 @@ graph TD
     relativePath: 'Sistema Zettelkasten e Links.md',
     content: `# Sistema Zettelkasten e Conexões
 
-No **Notes-MD**, cada nota é um arquivo \`.md\` independente, mas todas fazem parte de uma rede viva de conhecimento.
+No **Notes MD**, cada nota é um arquivo \`.md\` independente, mas todas fazem parte de uma rede viva de conhecimento.
 
 ---
 
 ## Como funcionam os Links Bidirecionais?
 
-1. **Links Diretos (\`[[WikiLinks]]\`)**: Quando você escreve [[Bem-vindo ao Notes-MD]] ou [[Guia do Editor WYSIWYG]], o editor cria um vínculo ativo.
-2. **Backlinks Automáticos**: Abra a nota [[Bem-vindo ao Notes-MD]] e olhe o painel lateral direito — você verá que esta nota aparece listada automaticamente nas **Menções Vinculadas (Backlinks)** com o trecho exato onde foi citada!
+1. **Links Diretos (\`[[WikiLinks]]\`)**: Quando você escreve [[Bem-vindo ao Notes MD]] ou [[Guia do Editor WYSIWYG]], o editor cria um vínculo ativo.
+2. **Backlinks Automáticos**: Abra a nota [[Bem-vindo ao Notes MD]] e olhe o painel lateral direito — você verá que esta nota aparece listada automaticamente nas **Menções Vinculadas (Backlinks)** com o trecho exato onde foi citada!
 3. **Hover Preview**: Passe o cursor sobre [[Projetos/Ideias de Projetos]] para ler o resumo da nota sem sair da página atual.
 `
   },
@@ -122,7 +122,7 @@ No **Notes-MD**, cada nota é um arquivo \`.md\` independente, mas todas fazem p
     relativePath: 'Projetos/Ideias de Projetos.md',
     content: `# Ideias de Projetos e Roadmap
 
-Nota organizada dentro da pasta \`Projetos/\` e vinculada a [[Bem-vindo ao Notes-MD]] e [[Sistema Zettelkasten e Links]].
+Nota organizada dentro da pasta \`Projetos/\` e vinculada a [[Bem-vindo ao Notes MD]] e [[Sistema Zettelkasten e Links]].
 
 ---
 

@@ -177,7 +177,7 @@ export function App(): React.ReactElement {
   const [appUpdateState, setAppUpdateState] = useState<AppUpdateState | null>(null)
   const [isUpdateBannerDismissed, setIsUpdateBannerDismissed] = useState(false)
   const [isStartupLoading, setIsStartupLoading] = useState(true)
-  const [startupMessage, setStartupMessage] = useState('Iniciando o Notes-MD...')
+  const [startupMessage, setStartupMessage] = useState('Iniciando o Notes MD...')
   const [showUpdateOverlay, setShowUpdateOverlay] = useState(false)
   const [isQuickSwitcherOpen, setIsQuickSwitcherOpen] = useState(false)
   const [isHelpOpen, setIsHelpOpen] = useState(false)
@@ -1450,7 +1450,7 @@ export function App(): React.ReactElement {
       {showUpdateOverlay && appUpdateState?.phase === 'downloading' && (
         <DiscordLoadingScreen
           mode="update"
-          title="Atualizando o Notes-MD"
+          title="Atualizando o Notes MD"
           subtitle={`Baixando atualização ${appUpdateState.availableVersion ? `v${appUpdateState.availableVersion}` : ''} (${appUpdateState.downloadPercent ?? 0}%)...`}
           progress={appUpdateState.downloadPercent ?? 0}
           version={appUpdateState.availableVersion}

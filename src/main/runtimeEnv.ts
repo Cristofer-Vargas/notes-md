@@ -30,7 +30,7 @@ export function resolveRuntimeConfig(inputs: RuntimeEnvInputs): RuntimeConfig {
     return {
       environment: 'stable',
       isPackaged: true,
-      appName: 'Notes-MD',
+      appName: 'Notes MD',
       appUserModelId: 'com.cristofer.notesmd',
       userDataPath: join(appDataPath, 'Notes-MD'),
       defaultVaultDir: join(documentsPath, 'Notes-MD', 'Vault-Notas'),
@@ -41,7 +41,7 @@ export function resolveRuntimeConfig(inputs: RuntimeEnvInputs): RuntimeConfig {
   return {
     environment: 'dev',
     isPackaged: false,
-    appName: 'Notes-MD Dev',
+    appName: 'Notes MD Dev',
     appUserModelId: 'com.cristofer.notesmd.dev',
     userDataPath: join(appDataPath, 'Notes-MD-Dev'),
     defaultVaultDir: join(cwdPath, 'Vault-Notas'),

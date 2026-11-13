@@ -7,7 +7,7 @@ const DISCORD_STYLE_TIPS = [
   'Conecte notas digitando [[ e selecionando a ideia desejada para criar um WikiLink.',
   'Pressione Ctrl + \\ para dividir o editor e visualizar duas notas lado a lado.',
   'Seus blocos de código com linguagem mermaid geram diagramas interativos instantaneamente.',
-  'O Notes-MD salva suas notas como arquivos .md locais: seus dados são 100% seus.',
+  'O Notes MD salva suas notas como arquivos .md locais: seus dados são 100% seus.',
   'Pressione Ctrl + P para abrir o Localizador Rápido e navegar entre notas em milissegundos.',
   'O corretor ortográfico nativo analisa português (Brasil) e inglês simultaneamente.',
   'Você pode personalizar o tema entre Dracula, Claro e Sépia nas Configurações.',
@@ -41,7 +41,7 @@ export const DiscordLoadingScreen: React.FC<DiscordLoadingScreenProps> = ({
     return () => clearInterval(timer)
   }, [])
 
-  const defaultTitle = mode === 'startup' ? 'Notes-MD' : 'Atualizando o Notes-MD'
+  const defaultTitle = mode === 'startup' ? 'Notes MD' : 'Atualizando o Notes MD'
   const isDeterminate = typeof progress === 'number' && !isNaN(progress)
   const clampedProgress = isDeterminate ? Math.max(0, Math.min(100, Math.round(progress))) : null
 
@@ -70,7 +70,7 @@ export const DiscordLoadingScreen: React.FC<DiscordLoadingScreenProps> = ({
           <div className="relative z-10 w-24 h-24 flex items-center justify-center animate-discord-logo filter drop-shadow-xl">
             <img
               src={logoImg}
-              alt="Notes-MD Logo"
+              alt="Notes MD Logo"
               className="w-full h-full object-contain pointer-events-none"
             />
           </div>
@@ -115,7 +115,7 @@ export const DiscordLoadingScreen: React.FC<DiscordLoadingScreenProps> = ({
                   : 'Sincronizando'}
             </span>
             <span>
-              {isDeterminate ? `${clampedProgress}%` : mode === 'startup' ? 'Notes-MD' : 'Aguarde...'}
+              {isDeterminate ? `${clampedProgress}%` : mode === 'startup' ? 'Notes MD' : 'Aguarde...'}
             </span>
           </div>
         </div>

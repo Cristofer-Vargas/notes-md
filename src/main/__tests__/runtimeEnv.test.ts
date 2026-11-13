@@ -15,6 +15,8 @@ describe('runtimeEnv — Isolamento entre Versão Estável e Dev', () => {
 
     expect(stable.environment).toBe('stable')
     expect(dev.environment).toBe('dev')
+    expect(stable.appName).toBe('Notes MD')
+    expect(dev.appName).toBe('Notes MD Dev')
     expect(stable.userDataPath).not.toBe(dev.userDataPath)
     expect(stable.userDataPath).toBe(join(baseInputs.appDataPath, 'Notes-MD'))
     expect(dev.userDataPath).toBe(join(baseInputs.appDataPath, 'Notes-MD-Dev'))
@@ -50,8 +52,8 @@ describe('runtimeEnv — Isolamento entre Versão Estável e Dev', () => {
     })
 
     expect(found).toBe(devIcon)
-    expect(formatWindowTitle('Notes-MD', '')).toBe('Notes-MD')
-    expect(formatWindowTitle('Notes-MD', ' [DEV]')).toBe('Notes-MD [DEV]')
-    expect(formatWindowTitle('Notes-MD [DEV]', ' [DEV]')).toBe('Notes-MD [DEV]')
+    expect(formatWindowTitle('Notes MD - Editor Markdown', '')).toBe('Notes MD - Editor Markdown')
+    expect(formatWindowTitle('Notes MD - Editor Markdown', ' [DEV]')).toBe('Notes MD - Editor Markdown [DEV]')
+    expect(formatWindowTitle('Notes MD - Editor Markdown [DEV]', ' [DEV]')).toBe('Notes MD - Editor Markdown [DEV]')
   })
 })

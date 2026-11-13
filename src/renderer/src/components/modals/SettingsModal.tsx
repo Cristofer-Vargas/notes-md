@@ -448,7 +448,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         )}
       >
         <div className="flex items-center gap-2.5 pointer-events-none min-w-0 flex-1">
-          <img src={appLogo} alt="Notes-MD" className="app-logo w-7 h-7 object-contain shrink-0" />
+          <img src={appLogo} alt="Notes MD" className="app-logo w-7 h-7 object-contain shrink-0" />
           <div className="min-w-0 flex-1 pr-2">
               <h2 className="text-sm font-semibold text-content-primary truncate">Configurações</h2>
             </div>
@@ -959,7 +959,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           </Badge>
                         </div>
                         <p className="mt-1 text-xs leading-relaxed text-content-secondary">
-                          Mostre no seu perfil do Discord que você está escrevendo no Notes-MD.
+                          Mostre no seu perfil do Discord que você está escrevendo no Notes MD.
                           A integração é local e compartilha apenas os dados autorizados abaixo.
                         </p>
                       </div>
@@ -1121,7 +1121,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         onChange={(event) =>
                           updateDiscordPresence({ largeImageText: event.target.value.slice(0, 128) })
                         }
-                        placeholder="Notes-MD"
+                        placeholder="Notes MD"
                         maxLength={128}
                         disabled={!discordSettings.largeImageKey}
                       />
@@ -1142,7 +1142,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <SettingToggleRow
                       title="Mostrar tempo da sessão"
-                      description="Exibe há quanto tempo o Notes-MD está em atividade."
+                      description="Exibe há quanto tempo o Notes MD está em atividade."
                       checked={discordSettings.showElapsedTime}
                       onCheckedChange={(showElapsedTime) =>
                         updateDiscordPresence({ showElapsedTime })
@@ -1190,7 +1190,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div className="text-[10px] font-bold uppercase tracking-wider text-accent">
                     Prévia da atividade
                   </div>
-                  <div className="mt-2 text-sm font-bold text-content-primary">Notes-MD</div>
+                  <div className="mt-2 text-sm font-bold text-content-primary">Notes MD</div>
                   <div className="mt-1 text-xs text-content-secondary">
                     {discordSettings.activeText || 'Editando uma nota'}
                     {discordSettings.showNoteTitle ? ': Minha nota' : ''}

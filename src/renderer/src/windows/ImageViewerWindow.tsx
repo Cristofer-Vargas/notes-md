@@ -67,7 +67,7 @@ export const ImageViewerWindow: React.FC = () => {
 
   // Sync document title
   useEffect(() => {
-    document.title = `${params.fileName} — Notes-MD Visualizador`
+    document.title = `${params.fileName} — Notes MD Visualizador`
   }, [params.fileName])
 
   // Hash change listener (if route updates)

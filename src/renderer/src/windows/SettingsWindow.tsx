@@ -10,6 +10,10 @@ import { SettingsModal } from '../components/modals/SettingsModal'
 export const SettingsWindow: React.FC = () => {
   const [settings, setSettings] = useState<AppSettings>(() => loadSettings())
 
+  useEffect(() => {
+    document.title = 'Configurações — Notes MD'
+  }, [])
+
   // Apply theme & sync to HTML root
   useEffect(() => {
     applyThemeToDocument(settings)
