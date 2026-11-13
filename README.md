@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Versão](https://img.shields.io/badge/versão-0.1.0--alpha.1-blue?style=for-the-badge)
+![Versão](https://img.shields.io/badge/versão-1.0.0-blue?style=for-the-badge)
 ![Status](https://img.shields.io/badge/estágio-ALPHA-orange?style=for-the-badge)
 ![Licença](https://img.shields.io/badge/licença-MIT-green?style=for-the-badge)
 ![Electron](https://img.shields.io/badge/Electron-31.0-47848F?style=for-the-badge&logo=electron&logoColor=white)
@@ -68,7 +68,7 @@ O **Notes-MD** nasceu da busca pelo equilíbrio perfeito no gerenciamento diári
 
 ### Pré-requisitos
 Antes de começar, certifique-se de ter instalado em sua máquina:
-- **[Node.js](https://nodejs.org/)** (versão 18 ou superior recomendada).
+- **[Node.js](https://nodejs.org/)** (versão 22.14 ou superior da série 22, ou 24.10 ou superior).
 - **Git** instalado no sistema.
 
 ### 1. Clonar o Repositório
@@ -146,7 +146,8 @@ Deseja entender como o aplicativo funciona por dentro, mesmo sem ser um desenvol
 - **[Como o App Funciona por Debaixo dos Panos (`doc/arquitetura-do-app.md`)](doc/arquitetura-do-app.md)**: O que é o Electron, processo principal vs visual, e por que suas notas são 100% suas.
 - **[Como Funciona o Editor e o Markdown (`doc/como-funciona-o-editor.md`)](doc/como-funciona-o-editor.md)**: A tecnologia por trás da mágica do WYSIWYG e das janelas divididas.
 - **[O Grafo e Conexões de Notas (`doc/conexoes-e-wikilinks.md`)](doc/conexoes-e-wikilinks.md)**: Como o sistema cria o cérebro conectado sem precisar de internet.
-- **[Guia de Comandos e Versionamento (`doc/guia-de-comandos.md`)](doc/guia-de-comandos.md)**: Scripts npm, padronização de commits semânticos e controle de versões alpha.
+- **[Identidade Visual e Experiência (`doc/identidade-visual-e-experiencia.md`)](doc/identidade-visual-e-experiencia.md)**: Direção visual, marca, temas e padrões de interação do aplicativo.
+- **[Guia de Comandos e Versionamento (`doc/guia-de-comandos.md`)](doc/guia-de-comandos.md)**: Scripts npm, padronização de commits semânticos e controle de versões.
 
 ---
 

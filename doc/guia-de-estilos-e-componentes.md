@@ -2,7 +2,7 @@
 
 Para manter o código do **Notes-MD** limpo, rápido e fácil de manter, adotamos o princípio da **Componentização de Interface (Atomic UI)**.
 
-Este guia explica como os componentes reutilizáveis de interface funcionam e como usá-los no dia a dia.
+Este guia explica como os componentes reutilizáveis de interface funcionam e como usá-los no dia a dia. Para a direção visual oficial, a aplicação da marca e os padrões de experiência, consulte [Identidade visual e experiência](identidade-visual-e-experiencia.md).
 
 ---
 
@@ -152,7 +152,7 @@ Para misturar classes condicionais de forma segura, criamos o utilitário `cn` e
 import { cn } from '../../utils/cn'
 
 <div className={cn(
-  'p-3 rounded-lg border transition-colors',
+  'p-3 rounded-sm border transition-colors',
   ativo ? 'bg-accent-soft border-accent text-accent' : 'bg-surface-secondary border-surface-border',
   className // Permite que quem usa o componente passe classes extras!
 )}>

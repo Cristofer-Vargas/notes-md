@@ -497,7 +497,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <span>
                   Versão{' '}
                   <span className="font-mono text-content-secondary">
-                    {runtimeInfo?.version || '0.2.0-alpha.1'}
+                    {runtimeInfo?.version || '...'}
                   </span>
                 </span>
                 <Badge

@@ -22,20 +22,14 @@ Todos os comandos devem ser executados na raiz da pasta do projeto através do s
 
 ---
 
-## 📦 2. Ciclo de Versões em Estágio Alpha (Pré-v1.0.0)
+## 📦 2. Ciclo de Versões Estáveis
 
-O Notes-MD segue o padrão de **Versionamento Semântico (SemVer)** adaptado para projetos em fase ativa de evolução inicial:
-
-> [!IMPORTANT]
-> **Fase Alpha Pré-Lançamento**:
-> Até que o autor ([Cristofer Vargas](https://github.com/Cristofer-Vargas)) considere que o aplicativo atingiu maturidade completa para lançamento geral, todas as versões permanecem identificadas no ciclo **Alpha**:
-> - **Versão Atual**: `0.1.0-alpha.1`
-> - **Tags de Release**: `v0.1.0-alpha.1`, `v0.1.0-alpha.2`, etc.
+O Notes-MD segue o **Versionamento Semântico (SemVer)**. A primeira versão estável é `1.0.0`; as versões anteriores com sufixo `alpha` permanecem no histórico como pré-lançamentos.
 
 ### Como as versões sobem de número?
-- **Correções e melhorias pequenas**: sobe o sufixo alpha (`0.1.0-alpha.1` ➔ `0.1.0-alpha.2`).
-- **Grandes novos módulos ou refatorações**: sobe o número secundário (`0.1.0-alpha.X` ➔ `0.2.0-alpha.1`).
-- **Versão Oficial `1.0.0`**: apenas quando o aplicativo for considerado estável e pronto para lançamento ao público geral.
+- **Correções compatíveis**: incrementam a versão de correção (`1.0.0` ➔ `1.0.1`).
+- **Novas funcionalidades compatíveis**: incrementam a versão secundária (`1.0.0` ➔ `1.1.0`).
+- **Alterações incompatíveis**: incrementam a versão principal (`1.0.0` ➔ `2.0.0`).
 
 ---
 
@@ -78,7 +72,7 @@ Se você estiver utilizando um assistente de IA configurado com o Antigravity ne
 O assistente ativará automaticamente a skill [.agents/skills/git-semantic-workflow/SKILL.md](../.agents/skills/git-semantic-workflow/SKILL.md), executando sozinho:
 1. Validação de testes (`npm test`) e tipos (`npm run typecheck`).
 2. Limpeza de arquivos temporários respeitando o `.gitignore`.
-3. Bump da versão Alpha no `package.json` se for uma release.
+3. Atualização da versão no `package.json` se for uma release.
 4. Redação de mensagem semântica completa e descritiva em português.
-5. Criação de tags de release (`v0.x.y-alpha.z`).
+5. Criação de tags de release estável (`v1.0.0`, por exemplo).
 6. Sincronização automática com o GitHub (`git push origin main --tags`).

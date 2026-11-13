@@ -85,6 +85,19 @@ describe('AppUpdateService', () => {
     expect(states.some((s) => s.phase === 'installing')).toBe(true)
   })
 
+  it('não oferece pré-lançamentos para uma instalação estável', async () => {
+    const mock = createMockUpdater()
+    const service = new AppUpdateService({
+      isPackaged: true,
+      currentVersion: '1.0.0',
+      onStateChange: vi.fn(),
+      loadAutoUpdater: async () => mock.updater
+    })
+
+    await service.checkForUpdates()
+    expect(mock.updater.allowPrerelease).toBe(false)
+  })
+
   it('oculta erro de release inexistente em checagem silenciosa mas informa em checagem manual', async () => {
     const mock = createMockUpdater()
     mock.updater.checkForUpdates = vi.fn(async () => {

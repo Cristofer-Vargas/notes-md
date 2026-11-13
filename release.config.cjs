@@ -1,19 +1,12 @@
 module.exports = {
-  branches: [
-    'development',
-    {
-      name: 'main',
-      prerelease: 'alpha',
-      channel: false
-    }
-  ],
+  branches: ['main'],
   plugins: [
     [
       '@semantic-release/commit-analyzer',
       {
         preset: 'angular',
         releaseRules: [
-          { breaking: true, release: 'minor' },
+          { breaking: true, release: 'major' },
           { revert: true, release: 'patch' },
           { type: 'feat', release: 'minor' },
           { type: 'fix', release: 'patch' },

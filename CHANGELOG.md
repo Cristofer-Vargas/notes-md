@@ -1,3 +1,21 @@
+# [1.0.0](https://github.com/Cristofer-Vargas/notes-md/compare/v0.2.0-alpha.4...v1.0.0) (2026-11-13)
+
+Primeiro lançamento estável do Notes-MD.
+
+### Destaques
+
+* Interface renovada, com temas, identidade visual e configurações simplificadas.
+* Explorador e menus de contexto com navegação por teclado, além de criação e renomeação rápidas de notas.
+* Editor Markdown visual com blocos de código, diagramas Mermaid e links entre notas.
+* Espaço de trabalho com abas e painéis divididos, corretor ortográfico e integração opcional com Discord.
+* Instalador e versão portátil para Windows, com atualizações estáveis.
+
+# [0.2.0-alpha.4](https://github.com/Cristofer-Vargas/notes-md/compare/v0.2.0-alpha.3...v0.2.0-alpha.4) (2026-11-13)
+
+### Correções
+
+* **code-block:** solucionando bug de preview e code block do mermaid ([c2429d3](https://github.com/Cristofer-Vargas/notes-md/commit/c2429d311a6af989851849de5ba0e2f9b31d7b8f))
+
 # [0.2.0-alpha.3](https://github.com/Cristofer-Vargas/notes-md/compare/v0.2.0-alpha.2...v0.2.0-alpha.3) (2026-11-13)
 
 

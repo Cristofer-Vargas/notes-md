@@ -32,7 +32,7 @@ Bem-vindo ao repositório do **Notes-MD**. Este arquivo serve como referência p
 
 > Todos os commits e releases devem seguir a skill [.agents/skills/git-semantic-workflow/SKILL.md](.agents/skills/git-semantic-workflow/SKILL.md).
 
-1. **Estágio Alpha Pré-v1.0.0**: O projeto está em fase Alpha. Versões atuais são `0.x.y-alpha.z`. Nenhuma versão `1.0.0` deve ser lançada sem aprovação explícita do usuário.
+1. **Versões estáveis**: O projeto segue SemVer a partir da versão `1.0.0`. Correções incrementam a versão patch, funcionalidades compatíveis a versão minor e mudanças incompatíveis a versão major.
 2. **Padrão de Commit**: `<tipo>(<escopo>): <descrição no imperativo em português>` (ex: `feat(editor): adicionar suporte a tabelas`).
 3. **Corpo do Commit**: Detalhado, explicando o porquê da alteração, solução técnica e arquivos envolvidos.
 4. **Validação Obrigatória**: Antes de qualquer commit, execute `npm test` e `npm run typecheck`.

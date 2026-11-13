@@ -8,7 +8,7 @@ Este guia foi elaborado especialmente para explicar, em **linguagem simples e ac
 
 ## 🗺️ Mapa dos Documentos
 
-Para navegar pelos conceitos no seu próprio ritmo, dividimos o conteúdo em quatro capítulos temáticos:
+Para navegar pelos conceitos no seu próprio ritmo, dividimos o conteúdo em capítulos temáticos:
 
 1. **[Arquitetura do Aplicativo (`arquitetura-do-app.md`)](arquitetura-do-app.md)**  
    *Entenda o que é o Electron, a separação entre a "Cozinha" (Processo Principal) e o "Salão" (Interface Visual), e por que suas notas ficam salvas no seu computador em formato Markdown puro, sem bancos de dados misteriosos.*
@@ -27,6 +27,8 @@ Para navegar pelos conceitos no seu próprio ritmo, dividimos o conteúdo em qua
 
 6. **[Arquitetura do Canvas Infinito (`arquitetura-do-canvas.md`)](arquitetura-do-canvas.md)**  
    *Como funciona o Canvas visual estilo Obsidian (.canvas), a especificação aberta JSON Canvas, os tipos de nós (textos, notas, imagens, grupos) e as opções arquiteturais de implementação.*
+
+7. **[Identidade Visual e Experiência (`identidade-visual-e-experiencia.md`)](identidade-visual-e-experiencia.md)**: direção visual oficial do aplicativo, temas, marca e padrões de interação dos principais componentes.
 
 ---
 

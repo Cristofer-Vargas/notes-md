@@ -241,7 +241,7 @@ export class AppUpdateService {
         }
         updater.autoDownload = true
         updater.autoInstallOnAppQuit = true
-        updater.allowPrerelease = true
+        updater.allowPrerelease = /^\d+\.\d+\.\d+-/.test(this.options.currentVersion)
         this.bindEvents(updater)
         return updater
       })().catch((error) => {

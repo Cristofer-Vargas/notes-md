@@ -1,28 +1,22 @@
 ---
 name: git-semantic-workflow
-description: Automatiza o fluxo de versionamento Git com Semantic Commits (padrão Commitizen / Conventional Commits), controle de versões em estágio Alpha pré-v1.0.0, criação de tags de release e sincronização com o GitHub.
+description: Automatiza o fluxo de versionamento Git com Semantic Commits (padrão Commitizen / Conventional Commits), controle de versões estáveis, criação de tags de release e sincronização com o GitHub.
 ---
 
 # Git Semantic Workflow & Release Skill
 
 Esta skill define o protocolo oficial e automatizado para commits, controle de versões (SemVer) e sincronização do repositório **Notes-MD** no GitHub.
 
-## 1. Diretrizes de Versionamento (Fase Alpha Pré-v1.0.0)
+## 1. Diretrizes de Versionamento Estável
 
-> [!IMPORTANT]
-> **O projeto está atualmente em fase de desenvolvimento ALPHA.**
-> Nenhuma versão de lançamento `1.0.0` deve ser gerada até que o usuário declare formalmente que o aplicativo está pronto para lançamento estável.
+O projeto segue o Versionamento Semântico a partir da versão `1.0.0`, autorizada pelo usuário como primeiro lançamento estável. As tags alpha anteriores permanecem no histórico.
 
-- **Formato da Versão**: `0.x.y-alpha.z` (ex: `0.1.0-alpha.1`).
-- **Versão no `package.json`**: Sempre sincronizada com o ciclo alpha atual.
-- **Regras de incremento (Bump de Versão)**:
-  - `alpha patch / fix`: `0.1.0-alpha.1` ➔ `0.1.0-alpha.2` (correções de bugs, ajustes visuais, refatorações menores).
-  - `alpha minor / feat`: `0.1.0-alpha.X` ➔ `0.2.0-alpha.1` (novas funcionalidades de destaque, módulos grandes).
-  - **Lançamento v1.0.0**: Somente quando aprovado explicitamente pelo usuário.
-- **Tags de Release Git**: Tags anotadas no formato `v0.x.y-alpha.z` (ex: `git tag -a v0.1.0-alpha.1 -m "Release v0.1.0-alpha.1: Janelas flexíveis e tema Dracula"`).
+- **Formato da versão**: `major.minor.patch`, sincronizado entre `package.json` e `package-lock.json`.
+- **Incrementos**: correções compatíveis elevam o patch; funcionalidades compatíveis, o minor; mudanças incompatíveis, o major.
+- **Tags de release Git**: use o prefixo `v`, por exemplo `v1.0.0`.
+- **Atualizações**: instalações estáveis recebem releases estáveis; pré-lançamentos não são oferecidos por padrão.
 
 ---
-
 ## 2. Padrão de Semantic Commits (Commitizen / Conventional Commits)
 
 Cada commit deve seguir rigorosamente a especificação do **Conventional Commits 1.0.0** e o padrão de seleção do **Commitizen**:
@@ -86,7 +80,7 @@ Certifique-se de que nenhum artefato temporário, cache (`*.tsbuildinfo`, `dist/
 
 ### Passo 3: Bump de Versão (se for release/marco)
 Se a alteração encerra um ciclo de tarefas ou o usuário pediu release:
-- Atualize `"version"` no `package.json` para o próximo passo alpha (ex: `0.1.0-alpha.1`).
+- Atualize `"version"` no `package.json` conforme o incremento SemVer aplicável (ex: `1.0.1`).
 
 ### Passo 4: Git Staging
 ```powershell
@@ -101,7 +95,7 @@ git commit -m "<tipo>(<escopo>): <descrição>" -m "<corpo detalhado em portugu�
 
 ### Passo 6: Tag de Release (quando aplicável)
 ```powershell
-git tag -a v0.x.y-alpha.z -m "Release v0.x.y-alpha.z: <resumo>"
+git tag -a v1.0.0 -m "Release v1.0.0: <resumo>"
 ```
 
 ### Passo 7: Enviar para o GitHub
