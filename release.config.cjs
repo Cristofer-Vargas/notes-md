@@ -11,7 +11,7 @@ module.exports = {
     [
       '@semantic-release/commit-analyzer',
       {
-        preset: 'conventionalcommits',
+        preset: 'angular',
         releaseRules: [
           { breaking: true, release: 'minor' },
           { revert: true, release: 'patch' },
@@ -24,21 +24,18 @@ module.exports = {
     [
       '@semantic-release/release-notes-generator',
       {
-        preset: 'conventionalcommits',
-        presetConfig: {
-          types: [
-            { type: 'feat', section: 'Novos Recursos' },
-            { type: 'fix', section: 'Correcoes' },
-            { type: 'perf', section: 'Desempenho' },
-            { type: 'revert', section: 'Reversoes' },
-            { type: 'docs', section: 'Documentacao', hidden: false },
-            { type: 'style', section: 'Estilo e UI', hidden: true },
-            { type: 'refactor', section: 'Refatoracoes', hidden: true },
-            { type: 'test', section: 'Testes', hidden: true },
-            { type: 'build', section: 'Build e Empacotamento', hidden: true },
-            { type: 'ci', section: 'CI/CD', hidden: true },
-            { type: 'chore', section: 'Manutencao', hidden: true }
-          ]
+        preset: 'angular',
+        writerOpts: {
+          transform: (commit) => {
+            const c = { ...commit }
+            if (c.type === 'feat') c.type = 'Novos Recursos'
+            else if (c.type === 'fix') c.type = 'Correções'
+            else if (c.type === 'perf') c.type = 'Desempenho'
+            else if (c.type === 'revert') c.type = 'Reversões'
+            else if (c.type === 'docs') c.type = 'Documentação'
+            else return null
+            return c
+          }
         }
       }
     ],
