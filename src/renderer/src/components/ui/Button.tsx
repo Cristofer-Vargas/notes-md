@@ -28,13 +28,13 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-150 select-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none active:scale-[0.98]'
+      'inline-flex items-center justify-center font-medium rounded-sm transition-colors duration-150 select-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none'
 
     const variantStyles: Record<ButtonVariant, string> = {
       primary:
-        'bg-accent text-white hover:bg-accent-hover shadow-2xs border border-transparent font-semibold',
+        'bg-accent text-[var(--accent-foreground)] hover:bg-accent-hover border border-transparent font-semibold',
       secondary:
-        'bg-surface-secondary text-content-primary border border-surface-border hover:bg-surface-tertiary hover:border-surface-border/80 shadow-2xs',
+        'bg-surface-secondary text-content-primary border border-surface-border hover:bg-surface-tertiary',
       ghost:
         'bg-transparent text-content-secondary hover:text-content-primary hover:bg-surface-tertiary border border-transparent',
       danger:

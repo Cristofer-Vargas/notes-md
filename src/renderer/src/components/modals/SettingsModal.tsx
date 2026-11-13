@@ -25,7 +25,10 @@ import {
   ExternalLink,
   RefreshCw,
   ImageIcon,
-  Info
+  PanelTop,
+  Languages,
+  TextCursorInput,
+  CircleHelp
 } from 'lucide-react'
 import type {
   AccentPreset,
@@ -38,6 +41,8 @@ import type {
   ThemeMode
 } from '../../types/app'
 import { Button, IconButton, Badge, Input, Switch } from '../ui'
+import { SelectionButton } from '../ui/SelectionButton'
+import { RangeInput } from '../ui/RangeInput'
 import {
   SHORTCUT_DEFINITIONS,
   formatShortcutDisplay,
@@ -73,6 +78,20 @@ export type SettingsTab =
   | 'discord'
   | 'shortcuts'
   | 'updates'
+
+const SETTINGS_SECTIONS: Array<{
+  id: SettingsTab
+  label: string
+  description: string
+  icon: React.ReactNode
+}> = [
+  { id: 'appearance', label: 'Aparência', description: 'Cores e organização do espaço de escrita.', icon: <PanelTop className="w-4 h-4" /> },
+  { id: 'typography', label: 'Editor', description: 'Tipografia e conforto de leitura.', icon: <TextCursorInput className="w-4 h-4" /> },
+  { id: 'spellcheck', label: 'Ortografia', description: 'Idiomas e dicionário pessoal.', icon: <Languages className="w-4 h-4" /> },
+  { id: 'discord', label: 'Discord', description: 'Controle o que aparece no seu perfil.', icon: <Radio className="w-4 h-4" /> },
+  { id: 'shortcuts', label: 'Atalhos', description: 'Personalize os comandos do teclado.', icon: <Keyboard className="w-4 h-4" /> },
+  { id: 'updates', label: 'Sobre', description: 'Versão e atualizações do Notes-MD.', icon: <CircleHelp className="w-4 h-4" /> }
+]
 
 function getDiscordStatusPresentation(status: DiscordPresenceStatus): {
   label: string
@@ -111,7 +130,7 @@ const SettingToggleRow: React.FC<SettingToggleRowProps> = ({
   disabled,
   icon
 }) => (
-  <div className="flex items-center justify-between gap-4 rounded-xl border border-surface-border bg-surface-secondary/60 p-3">
+  <div className="flex items-center justify-between gap-4 border-b border-surface-border py-3">
     <div className="flex items-start gap-2.5 min-w-0">
       {icon && <div className="mt-0.5 text-accent shrink-0">{icon}</div>}
       <div className="min-w-0">
@@ -134,25 +153,26 @@ const THEME_OPTIONS: Array<{ id: ThemeMode; label: string; desc: string; icon: R
   [
     {
       id: 'light',
-      label: 'Claro (Clean Paper)',
-      desc: 'Visual limpo e moderno inspirado em documentos reais',
+      label: 'Claro',
+      desc: 'Superfícies claras e contraste suave.',
       icon: <Sun className="w-4 h-4" />
     },
     {
       id: 'dark',
-      label: 'Escuro (Dracula VS Code)',
-      desc: 'Inspirado no tema Dracula do VS Code: tons aveludados, baixo contraste e sem fadiga visual',
+      label: 'Escuro',
+      desc: 'A paleta Dracula para trabalhar com menos luz.',
       icon: <Moon className="w-4 h-4" />
     },
     {
       id: 'sepia',
-      label: 'Sépia Editorial',
-      desc: 'Tom quente ideal para sessões longas de leitura e escrita',
+      label: 'Sépia',
+      desc: 'Tons quentes para leitura prolongada.',
       icon: <BookOpen className="w-4 h-4" />
     }
   ]
 
 const ACCENT_OPTIONS: Array<{ id: AccentPreset; label: string; hex: string; darkHex: string }> = [
+  { id: 'lime', label: 'Lima', hex: '#536614', darkHex: '#def855' },
   { id: 'purple', label: 'Roxo Dracula', hex: '#7c3aed', darkHex: '#bd93f9' },
   { id: 'blue', label: 'Azul / Ciano', hex: '#2563eb', darkHex: '#8be9fd' },
   { id: 'emerald', label: 'Verde Esmeralda', hex: '#059669', darkHex: '#50fa7b' },
@@ -161,9 +181,9 @@ const ACCENT_OPTIONS: Array<{ id: AccentPreset; label: string; hex: string; dark
 ]
 
 const FONT_OPTIONS: Array<{ id: FontFamilyPreset; label: string; sample: string }> = [
-  { id: 'sans', label: 'Sans-Serif Moderna (Inter)', sample: 'Abc 123' },
+  { id: 'sans', label: 'Geist', sample: 'Abc 123' },
   { id: 'serif', label: 'Serifada Editorial (Georgia)', sample: 'Abc 123' },
-  { id: 'mono', label: 'Monoespaçada (JetBrains Mono)', sample: 'Abc 123' }
+  { id: 'mono', label: 'IBM Plex Mono', sample: 'Abc 123' }
 ]
 
 const FONT_WEIGHT_OPTIONS: Array<{
@@ -411,10 +431,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     <div
       style={isStandalone ? undefined : modalStyle}
       className={cn(
-        'bg-surface-bg flex flex-col overflow-hidden select-none',
+        'settings-window bg-surface-bg flex flex-col overflow-hidden select-none',
         isStandalone
           ? 'w-full h-full'
-          : 'rounded-2xl border border-surface-border shadow-2xl'
+          : 'rounded-lg border border-surface-border shadow-xl'
       )}
       onClick={isStandalone ? undefined : (e) => e.stopPropagation()}
     >
@@ -424,16 +444,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       <div
         {...(isStandalone ? {} : headerDragProps)}
         className={cn(
-          'px-5 py-3.5 bg-surface-secondary border-b border-surface-border flex items-center justify-between shrink-0 transition-colors',
+          'px-5 py-3 bg-surface-secondary border-b border-surface-border flex items-center justify-between shrink-0 transition-colors',
           !isStandalone && headerDragProps.className
         )}
       >
         <div className="flex items-center gap-2.5 pointer-events-none min-w-0 flex-1">
           <img src={appLogo} alt="Notes-MD" className="w-7 h-7 object-contain shrink-0" />
           <div className="min-w-0 flex-1 pr-2">
-              <h2 className="text-sm font-bold text-content-primary truncate">Configurações do Notes-MD</h2>
+              <h2 className="text-sm font-semibold text-content-primary truncate">Configurações</h2>
               <p className="text-[11px] text-content-muted truncate">
-                Personalize tema, editor, ortografia, integrações e atalhos do aplicativo.
+                Um espaço de trabalho do seu jeito.
               </p>
             </div>
           </div>
@@ -460,70 +480,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         {/* Modal Body: Left Tab Navigation + Right Sector Content */}
         <div className="flex-1 flex min-h-0 overflow-hidden">
           {/* Left Sidebar Navigation */}
-          <aside className="w-56 bg-surface-secondary/70 border-r border-surface-border p-2 space-y-1 shrink-0 select-none flex flex-col justify-between">
-            <nav className="space-y-1">
-              <Button
-                variant={activeTab === 'appearance' ? 'primary' : 'ghost'}
-                size="sm"
-                onClick={() => setActiveTab('appearance')}
-                className="w-full justify-start rounded-xl py-2"
-                leftIcon={<Palette className="w-4 h-4" />}
-              >
-                Aparência & Tema
-              </Button>
-
-              <Button
-                variant={activeTab === 'typography' ? 'primary' : 'ghost'}
-                size="sm"
-                onClick={() => setActiveTab('typography')}
-                className="w-full justify-start rounded-xl py-2"
-                leftIcon={<Type className="w-4 h-4" />}
-              >
-                Tipografia & Editor
-              </Button>
-
-              <Button
-                variant={activeTab === 'spellcheck' ? 'primary' : 'ghost'}
-                size="sm"
-                onClick={() => setActiveTab('spellcheck')}
-                className="w-full justify-start rounded-xl py-2"
-                leftIcon={<SpellCheck className="w-4 h-4" />}
-              >
-                Ortografia & Idiomas
-              </Button>
-
-              <Button
-                variant={activeTab === 'discord' ? 'primary' : 'ghost'}
-                size="sm"
-                onClick={() => setActiveTab('discord')}
-                className="w-full justify-start rounded-xl py-2"
-                leftIcon={<Radio className="w-4 h-4" />}
-              >
-                Discord Presence
-              </Button>
-
-              <Button
-                variant={activeTab === 'shortcuts' ? 'primary' : 'ghost'}
-                size="sm"
-                onClick={() => setActiveTab('shortcuts')}
-                className="w-full justify-start rounded-xl py-2"
-                leftIcon={<Keyboard className="w-4 h-4" />}
-              >
-                Atalhos de Teclado
-              </Button>
-
-              <Button
-                variant={activeTab === 'updates' ? 'primary' : 'ghost'}
-                size="sm"
-                onClick={() => setActiveTab('updates')}
-                className="w-full justify-start rounded-xl py-2"
-                leftIcon={<Info className="w-4 h-4" />}
-              >
-                Sobre & Atualizações
-              </Button>
+          <aside className="settings-sidebar w-56 bg-surface-secondary border-r border-surface-border p-3 shrink-0 select-none flex flex-col justify-between">
+            <nav aria-label="Seções das configurações" className="settings-nav">
+              <div className="settings-nav-label">Preferências / 06</div>
+              {SETTINGS_SECTIONS.map((section, index) => (
+                <Button
+                  key={section.id}
+                  variant="ghost"
+                  aria-current={activeTab === section.id ? 'page' : undefined}
+                  onClick={() => setActiveTab(section.id)}
+                  className="settings-nav-item"
+                  leftIcon={section.icon}
+                  rightIcon={<span className="settings-nav-number">{String(index + 1).padStart(2, '0')}</span>}
+                >
+                  {section.label}
+                </Button>
+              ))}
             </nav>
 
-            <div className="p-2.5 bg-surface-bg/60 rounded-xl border border-surface-border/60 text-[10px] text-content-muted leading-tight space-y-1">
+            <div className="p-2.5 text-[11px] text-content-muted leading-tight space-y-1">
               <div className="flex items-center justify-between gap-1.5">
                 <span>
                   Versão{' '}
@@ -543,7 +518,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </aside>
 
           {/* Right Panel: Active Sector Content */}
-          <main className="flex-1 overflow-y-auto p-5 space-y-6">
+          <main className="settings-content flex-1 min-w-0 overflow-y-auto px-6 py-6">
+            <div className="settings-page-heading">
+              <div className="settings-eyebrow">NOTES-MD / CONFIGURAÇÕES</div>
+              <h1>{SETTINGS_SECTIONS.find((section) => section.id === activeTab)?.label}<span>.</span></h1>
+              <p>{SETTINGS_SECTIONS.find((section) => section.id === activeTab)?.description}</p>
+            </div>
             {/* 1. APARÊNCIA & TEMA */}
             {activeTab === 'appearance' && (
               <div className="space-y-6 animate-in fade-in duration-150">
@@ -551,20 +531,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <section className="space-y-2.5">
                   <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-content-muted">
                     <Palette className="w-3.5 h-3.5 text-accent" />
-                    <span>Tema de Cores</span>
+                    <span>Tema</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                     {THEME_OPTIONS.map((t) => {
                       const active = settings.theme === t.id
                       return (
-                        <button
+                        <SelectionButton
                           key={t.id}
+                          aria-pressed={active}
                           type="button"
                           onClick={() => onUpdateSettings({ theme: t.id })}
                           className={cn(
-                            'p-3 rounded-xl border text-left transition-all cursor-pointer',
+                            'p-3 rounded-md border text-left transition-all cursor-pointer',
                             active
-                              ? 'border-accent bg-accent-soft ring-1 ring-accent'
+                              ? 'border-accent bg-accent-soft ring-1 ring-accent/50'
                               : 'border-surface-border bg-surface-secondary hover:border-accent/40'
                           )}
                         >
@@ -575,7 +556,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             <span>{t.label}</span>
                           </div>
                           <p className="text-[11px] text-content-secondary leading-snug">{t.desc}</p>
-                        </button>
+                        </SelectionButton>
                       )
                     })}
                   </div>
@@ -584,20 +565,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 {/* Accent Color */}
                 <section className="space-y-2.5">
                   <div className="text-xs font-bold uppercase tracking-wider text-content-muted">
-                    Cor de Destaque (Links, Botões e Seleções)
+                    Cor de destaque
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {ACCENT_OPTIONS.map((a) => {
                       const active = settings.accent === a.id
                       return (
-                        <button
+                        <SelectionButton
                           key={a.id}
+                          aria-pressed={active}
                           type="button"
                           onClick={() => onUpdateSettings({ accent: a.id })}
                           className={cn(
-                            'flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-medium transition-all cursor-pointer',
+                            'flex items-center gap-2 px-3 py-2 rounded-md border text-xs font-medium transition-all cursor-pointer',
                             active
-                              ? 'border-accent bg-accent-soft text-content-primary ring-1 ring-accent'
+                              ? 'border-accent bg-accent-soft text-content-primary ring-1 ring-accent/50'
                               : 'border-surface-border bg-surface-secondary text-content-secondary hover:text-content-primary'
                           )}
                         >
@@ -606,7 +588,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             style={{ backgroundColor: settings.theme === 'dark' ? a.darkHex : a.hex }}
                           />
                           <span>{a.label}</span>
-                        </button>
+                        </SelectionButton>
                       )
                     })}
                   </div>
@@ -616,23 +598,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <section className="space-y-3">
                   <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-content-muted">
                     <Layout className="w-3.5 h-3.5 text-accent" />
-                    <span>Layout do Documento</span>
+                    <span>Espaço de escrita</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-content-secondary">
-                        Estilo da Folha
+                        Superfície do editor
                       </label>
                       <div className="grid grid-cols-2 gap-2">
                         {(
                           [
-                            { id: 'paper', label: 'Folha Destacada' },
-                            { id: 'flat', label: 'Contínuo (Flat)' }
+                            { id: 'paper', label: 'Destacada' },
+                            { id: 'flat', label: 'Contínua' }
                           ] as Array<{ id: CanvasStylePreset; label: string }>
                         ).map((c) => (
-                          <button
+                          <SelectionButton
                             key={c.id}
+                            aria-pressed={settings.canvasStyle === c.id}
                             type="button"
                             onClick={() => onUpdateSettings({ canvasStyle: c.id })}
                             className={cn(
@@ -643,7 +626,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             )}
                           >
                             {c.label}
-                          </button>
+                          </SelectionButton>
                         ))}
                       </div>
                     </div>
@@ -660,8 +643,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             { id: 'full', label: 'Total' }
                           ] as Array<{ id: PageWidthPreset; label: string }>
                         ).map((w) => (
-                          <button
+                          <SelectionButton
                             key={w.id}
+                            aria-pressed={settings.pageWidth === w.id}
                             type="button"
                             onClick={() => onUpdateSettings({ pageWidth: w.id })}
                             className={cn(
@@ -672,7 +656,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             )}
                           >
                             {w.label}
-                          </button>
+                          </SelectionButton>
                         ))}
                       </div>
                     </div>
@@ -688,27 +672,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <section className="space-y-2.5">
                   <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-content-muted">
                     <Type className="w-3.5 h-3.5 text-accent" />
-                    <span>Família de Fontes</span>
+                    <span>Fonte do editor</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                     {FONT_OPTIONS.map((f) => {
                       const active = settings.fontFamily === f.id
                       return (
-                        <button
+                        <SelectionButton
                           key={f.id}
+                          aria-pressed={active}
                           type="button"
                           onClick={() => onUpdateSettings({ fontFamily: f.id })}
                           className={cn(
-                            'p-3 rounded-xl border text-left transition-all cursor-pointer',
+                            'p-3 rounded-md border text-left transition-all cursor-pointer',
                             active
-                              ? 'border-accent bg-accent-soft ring-1 ring-accent'
+                              ? 'border-accent bg-accent-soft ring-1 ring-accent/50'
                               : 'border-surface-border bg-surface-secondary hover:border-accent/40'
                           )}
                         >
-                          <div className="text-sm font-bold text-content-primary mb-0.5">{f.sample}</div>
+                          <div className={cn('text-sm font-bold text-content-primary mb-0.5', f.id === 'serif' ? 'font-serif' : f.id === 'mono' ? 'font-mono' : 'font-sans')}>{f.sample}</div>
                           <div className="text-xs text-content-secondary">{f.label}</div>
-                        </button>
+                        </SelectionButton>
                       )
                     })}
                   </div>
@@ -718,7 +703,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <section className="space-y-2.5">
                   <div className="flex items-center justify-between">
                     <div className="text-xs font-bold uppercase tracking-wider text-content-muted">
-                      Espessura do Texto das Notas (Font Weight)
+                      Espessura do texto
                     </div>
                     <Badge variant="accent" size="sm">
                       Atual: {currentWeight} (Padrão 300)
@@ -732,14 +717,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     {FONT_WEIGHT_OPTIONS.map((w) => {
                       const active = currentWeight === w.id
                       return (
-                        <button
+                        <SelectionButton
                           key={w.id}
+                          aria-pressed={active}
                           type="button"
                           onClick={() => onUpdateSettings({ editorFontWeight: w.id })}
                           className={cn(
-                            'p-3 rounded-xl border text-left transition-all cursor-pointer',
+                            'p-3 rounded-md border text-left transition-all cursor-pointer',
                             active
-                              ? 'border-accent bg-accent-soft ring-1 ring-accent'
+                              ? 'border-accent bg-accent-soft ring-1 ring-accent/50'
                               : 'border-surface-border bg-surface-secondary hover:border-accent/40'
                           )}
                         >
@@ -751,7 +737,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             {active && <Check className="w-4 h-4 text-accent" />}
                           </div>
                           <div className="text-[11px] text-content-muted">{w.desc}</div>
-                        </button>
+                        </SelectionButton>
                       )
                     })}
                   </div>
@@ -760,48 +746,46 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 {/* Font Size & Line Height */}
                 <section className="space-y-3">
                   <div className="text-xs font-bold uppercase tracking-wider text-content-muted">
-                    Dimensões do Texto
+                    Tamanho e espaçamento
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="p-3 rounded-xl bg-surface-secondary border border-surface-border space-y-1.5">
+                    <div className="p-3 rounded-md bg-surface-secondary border border-surface-border space-y-1.5">
                       <div className="flex justify-between text-xs">
                         <span className="font-medium text-content-primary">Tamanho Base da Fonte</span>
                         <span className="font-bold text-accent">{settings.baseFontSize}px</span>
                       </div>
-                      <input
-                        type="range"
+                      <RangeInput
                         min={13}
                         max={22}
                         step={1}
                         value={settings.baseFontSize}
                         onChange={(e) => onUpdateSettings({ baseFontSize: Number(e.target.value) })}
-                        className="w-full accent-[var(--accent-color)] cursor-pointer"
+                        aria-label="Tamanho base da fonte"
                       />
                     </div>
 
-                    <div className="p-3 rounded-xl bg-surface-secondary border border-surface-border space-y-1.5">
+                    <div className="p-3 rounded-md bg-surface-secondary border border-surface-border space-y-1.5">
                       <div className="flex justify-between text-xs">
                         <span className="font-medium text-content-primary">Espaçamento entre Linhas</span>
                         <span className="font-bold text-accent">{settings.lineHeight.toFixed(1)}</span>
                       </div>
-                      <input
-                        type="range"
+                      <RangeInput
                         min={1.4}
                         max={2.1}
                         step={0.1}
                         value={settings.lineHeight}
                         onChange={(e) => onUpdateSettings({ lineHeight: Number(e.target.value) })}
-                        className="w-full accent-[var(--accent-color)] cursor-pointer"
+                        aria-label="Espaçamento entre linhas"
                       />
                     </div>
                   </div>
                 </section>
 
                 {/* Interactive Live Sample Box */}
-                <section className="p-3.5 rounded-xl bg-surface-secondary border border-surface-border space-y-2">
+                <section className="p-3.5 rounded-md bg-surface-secondary border border-surface-border space-y-2">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-content-muted flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-accent" />
-                    <span>Amostra Visual da Tipografia</span>
+                    <span>Prévia</span>
                   </div>
                   <div
                     className="p-3 rounded-lg bg-surface-bg border border-surface-border/80 text-content-primary leading-relaxed"
@@ -846,8 +830,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         {SPELLCHECK_LANG_OPTIONS.map((lang) => {
                           const isSelected = settings.spellcheckLanguages?.includes(lang.id)
                           return (
-                            <button
+                            <SelectionButton
                               key={lang.id}
+                              aria-pressed={isSelected}
                               type="button"
                               onClick={() => {
                                 const current = settings.spellcheckLanguages || []
@@ -861,9 +846,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 onUpdateSettings({ spellcheckLanguages: next })
                               }}
                               className={cn(
-                                'flex items-center justify-between p-2.5 rounded-xl border text-left transition-all cursor-pointer',
+                                'flex items-center justify-between p-2.5 rounded-md border text-left transition-all cursor-pointer',
                                 isSelected
-                                  ? 'border-accent bg-accent-soft text-content-primary ring-1 ring-accent'
+                                  ? 'border-accent bg-accent-soft text-content-primary ring-1 ring-accent/50'
                                   : 'border-surface-border bg-surface-secondary text-content-secondary hover:border-accent/40'
                               )}
                             >
@@ -888,7 +873,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               >
                                 {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
                               </div>
-                            </button>
+                            </SelectionButton>
                           )
                         })}
                       </div>
@@ -901,13 +886,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             <span>Dicionário Pessoal (Palavras Ignoradas)</span>
                           </div>
                           {settings.ignoredWords && settings.ignoredWords.length > 0 && (
-                            <button
+                            <SelectionButton
                               type="button"
                               onClick={handleClearAllIgnoredWords}
                               className="text-[10px] text-rose-500 hover:text-rose-600 hover:underline cursor-pointer"
                             >
                               Limpar todas
-                            </button>
+                            </SelectionButton>
                           )}
                         </div>
 
@@ -935,7 +920,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           </Button>
                         </div>
 
-                        <div className="p-2.5 rounded-xl bg-surface-secondary/60 border border-surface-border min-h-[52px] max-h-36 overflow-y-auto flex flex-wrap gap-1.5 items-center">
+                        <div className="p-2.5 rounded-md bg-surface-secondary/60 border border-surface-border min-h-[52px] max-h-36 overflow-y-auto flex flex-wrap gap-1.5 items-center">
                           {settings.ignoredWords && settings.ignoredWords.length > 0 ? (
                             settings.ignoredWords.map((word) => (
                               <span
@@ -943,14 +928,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-surface-bg border border-surface-border text-content-primary shadow-2xs group"
                               >
                                 <span>{word}</span>
-                                <button
+                                <SelectionButton
                                   type="button"
                                   onClick={() => handleRemoveIgnoredWord(word)}
                                   title={`Remover "${word}" das palavras ignoradas`}
                                   className="text-content-muted hover:text-rose-500 rounded p-0.5 transition-colors cursor-pointer"
                                 >
                                   <X className="w-3 h-3" />
-                                </button>
+                                </SelectionButton>
                               </span>
                             ))
                           ) : (
@@ -970,9 +955,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             {activeTab === 'discord' && (
               <div className="space-y-5 animate-in fade-in duration-150">
                 <section className="space-y-3">
-                  <div className="flex items-start justify-between gap-4 rounded-xl border border-surface-border bg-surface-secondary p-3.5">
+                  <div className="flex items-start justify-between gap-4 rounded-md border border-surface-border bg-surface-secondary p-3.5">
                     <div className="flex items-start gap-3 min-w-0">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent">
                         <Radio className="h-4.5 w-4.5" />
                       </div>
                       <div className="min-w-0">
@@ -997,7 +982,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     />
                   </div>
 
-                  <div className="flex flex-col gap-2 rounded-xl border border-surface-border bg-surface-bg p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col gap-2 rounded-md border border-surface-border bg-surface-bg p-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
                       <div className="text-xs font-semibold text-content-primary">
                         Estado da conexão
@@ -1026,7 +1011,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <span>Conexão e privacidade</span>
                   </div>
 
-                  <div className="rounded-xl border border-surface-border bg-surface-secondary/40 p-3 space-y-2.5">
+                  <div className="rounded-md border border-surface-border bg-surface-secondary/40 p-3 space-y-2.5">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
                       <label className="flex-1 min-w-0 space-y-1.5">
                         <span className="text-[11px] font-semibold text-content-secondary">
@@ -1212,7 +1197,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </label>
                 </section>
 
-                <section className="rounded-xl border border-accent/30 bg-accent-soft p-3.5">
+                <section className="rounded-md border border-accent/30 bg-accent-soft p-3.5">
                   <div className="text-[10px] font-bold uppercase tracking-wider text-accent">
                     Prévia da atividade
                   </div>
@@ -1273,7 +1258,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   />
 
                   {conflictNotice && (
-                    <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-2 text-xs text-amber-500 animate-in fade-in">
+                    <div className="p-2.5 rounded-md bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-2 text-xs text-amber-500 animate-in fade-in">
                       <div className="flex items-center gap-2">
                         <AlertTriangle className="w-4 h-4 shrink-0" />
                         <span>
@@ -1291,7 +1276,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   )}
 
                   {recordingActionId && (
-                    <div className="p-3 rounded-xl bg-accent-soft border border-accent/40 flex items-center justify-between gap-2 text-xs text-accent animate-pulse">
+                    <div className="p-3 rounded-md bg-accent-soft border border-accent/40 flex items-center justify-between gap-2 text-xs text-accent animate-pulse">
                       <div className="flex items-center gap-2">
                         <Keyboard className="w-4 h-4 shrink-0" />
                         <span>
@@ -1315,7 +1300,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           {category === 'Geral' ? '🚀 Geral' : category === 'Navegação' ? '🧭 Navegação & Janelas' : '✍️ Editor & Ferramentas'}
                         </div>
 
-                        <div className="divide-y divide-surface-border/60 border border-surface-border rounded-xl overflow-hidden bg-surface-secondary/40">
+                        <div className="divide-y divide-surface-border/60 border border-surface-border rounded-md overflow-hidden bg-surface-secondary/40">
                           {items.map((def) => {
                             const currentKey = getShortcutKey(settings, def.id)
                             const isCustom = Boolean(
@@ -1349,7 +1334,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 </div>
 
                                 <div className="flex items-center gap-1.5 shrink-0">
-                                  <button
+                                  <SelectionButton
                                     type="button"
                                     onClick={() => {
                                       setConflictNotice(null)
@@ -1378,7 +1363,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                         </React.Fragment>
                                       ))
                                     )}
-                                  </button>
+                                  </SelectionButton>
 
                                   {isCustom && !isRecording && (
                                     <IconButton
@@ -1399,7 +1384,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   })}
 
                   {filteredDefinitions.length === 0 && (
-                    <div className="p-8 text-center text-xs text-content-muted bg-surface-secondary/30 rounded-xl border border-dashed border-surface-border">
+                    <div className="p-8 text-center text-xs text-content-muted bg-surface-secondary/30 rounded-md border border-dashed border-surface-border">
                       Nenhum atalho encontrado para &ldquo;{shortcutSearch}&rdquo;.
                     </div>
                   )}

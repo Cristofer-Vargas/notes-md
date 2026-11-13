@@ -249,8 +249,8 @@ export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
           e.preventDefault()
           setDropZone(null)
         }}
-        className={`h-9 bg-surface-secondary border-b border-surface-border px-2 flex items-center justify-between gap-1.5 shrink-0 select-none ${
-          isActivePane ? 'border-b-accent/30' : ''
+        className={`h-11 bg-surface-secondary border-b border-surface-border px-2 flex items-center justify-between gap-1.5 shrink-0 select-none ${
+          isActivePane && splitLayout !== 'single' ? 'border-b-accent/30' : ''
         } ${hasLeftFloatingToggle ? 'pl-11' : ''} ${hasRightFloatingToggle ? 'pr-11' : ''}`}
       >
         {/* Left Side: Tabs in this pane */}
@@ -333,14 +333,14 @@ export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
                   }
                 }}
                 title={`${tab.title}\n(Clique com botão do meio para fechar • Arraste para reposicionar)`}
-                className={`group flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-all max-w-[190px] shrink-0 border select-none ${
+                className={`group flex items-center gap-1.5 px-2.5 h-8 rounded-sm text-xs font-medium cursor-pointer transition-colors max-w-[190px] shrink-0 select-none ${
                   isDragging ? 'opacity-35 scale-95' : ''
                 } ${
                   isDragOverThis
-                    ? 'ring-2 ring-accent border-accent bg-accent-soft/40 text-accent font-bold scale-[1.02]'
+                    ? 'ring-2 ring-accent bg-accent-soft text-accent'
                     : isTabActive
-                      ? 'bg-surface-bg text-content-primary border-surface-border shadow-2xs font-semibold'
-                      : 'bg-transparent text-content-secondary border-transparent hover:bg-surface-tertiary/70 hover:text-content-primary'
+                      ? 'bg-surface-bg text-content-primary font-semibold'
+                      : 'bg-transparent text-content-secondary hover:bg-surface-tertiary/70 hover:text-content-primary'
                 }`}
               >
                 <FileText
@@ -349,17 +349,16 @@ export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
                   }`}
                 />
                 <span className="truncate">{tab.title}</span>
-                <button
-                  type="button"
+                <IconButton
+                  size="xs"
                   onClick={(e) => {
                     e.stopPropagation()
                     onCloseTab(tab.relativePath, e)
                   }}
-                  title="Fechar guia"
-                  className="opacity-50 group-hover:opacity-100 p-0.5 rounded hover:bg-surface-tertiary text-content-muted hover:text-content-primary transition-opacity"
-                >
-                  <X className="w-3 h-3" />
-                </button>
+                  tooltip="Fechar guia"
+                  icon={<X className="w-3 h-3" />}
+                  className="!w-5 !h-5 opacity-50 group-hover:opacity-100"
+                />
               </div>
             )
           })}
@@ -458,7 +457,7 @@ export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
           />
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center select-none bg-surface-canvas/30 space-y-4">
-            <div className="w-16 h-16 rounded-2xl bg-surface-secondary/70 border border-surface-border flex items-center justify-center shadow-xs p-3">
+            <div className="w-16 h-16 rounded-sm bg-surface-secondary/70 border border-surface-border flex items-center justify-center shadow-xs p-3">
               <img
                 src={appLogo}
                 alt="Notes-MD"
@@ -510,7 +509,7 @@ export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
 
         {/* Dynamic Drag-and-Drop Drop Zone Overlays */}
         {dropZone === 'right' && (
-          <div className="absolute right-0 top-0 bottom-0 w-1/2 bg-accent/20 border-2 border-dashed border-accent rounded-xl flex flex-col items-center justify-center gap-2 pointer-events-none z-50 backdrop-blur-2xs animate-in fade-in duration-100 m-1.5 shadow-xl">
+          <div className="absolute right-0 top-0 bottom-0 w-1/2 bg-accent/20 border-2 border-dashed border-accent rounded-sm flex flex-col items-center justify-center gap-2 pointer-events-none z-50 backdrop-blur-2xs animate-in fade-in duration-100 m-1.5 shadow-xl">
             <div className="p-3 rounded-full bg-accent text-white shadow-md">
               <Columns2 className="w-6 h-6" />
             </div>
@@ -522,7 +521,7 @@ export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
         )}
 
         {dropZone === 'left' && (
-          <div className="absolute left-0 top-0 bottom-0 w-1/2 bg-accent/20 border-2 border-dashed border-accent rounded-xl flex flex-col items-center justify-center gap-2 pointer-events-none z-50 backdrop-blur-2xs animate-in fade-in duration-100 m-1.5 shadow-xl">
+          <div className="absolute left-0 top-0 bottom-0 w-1/2 bg-accent/20 border-2 border-dashed border-accent rounded-sm flex flex-col items-center justify-center gap-2 pointer-events-none z-50 backdrop-blur-2xs animate-in fade-in duration-100 m-1.5 shadow-xl">
             <div className="p-3 rounded-full bg-accent text-white shadow-md">
               <Columns2 className="w-6 h-6" />
             </div>
@@ -534,7 +533,7 @@ export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
         )}
 
         {dropZone === 'bottom' && (
-          <div className="absolute left-0 right-0 bottom-0 h-1/2 bg-accent/20 border-2 border-dashed border-accent rounded-xl flex flex-col items-center justify-center gap-2 pointer-events-none z-50 backdrop-blur-2xs animate-in fade-in duration-100 m-1.5 shadow-xl">
+          <div className="absolute left-0 right-0 bottom-0 h-1/2 bg-accent/20 border-2 border-dashed border-accent rounded-sm flex flex-col items-center justify-center gap-2 pointer-events-none z-50 backdrop-blur-2xs animate-in fade-in duration-100 m-1.5 shadow-xl">
             <div className="p-3 rounded-full bg-accent text-white shadow-md">
               <Rows2 className="w-6 h-6" />
             </div>
@@ -546,7 +545,7 @@ export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
         )}
 
         {dropZone === 'top' && (
-          <div className="absolute left-0 right-0 top-0 h-1/2 bg-accent/20 border-2 border-dashed border-accent rounded-xl flex flex-col items-center justify-center gap-2 pointer-events-none z-50 backdrop-blur-2xs animate-in fade-in duration-100 m-1.5 shadow-xl">
+          <div className="absolute left-0 right-0 top-0 h-1/2 bg-accent/20 border-2 border-dashed border-accent rounded-sm flex flex-col items-center justify-center gap-2 pointer-events-none z-50 backdrop-blur-2xs animate-in fade-in duration-100 m-1.5 shadow-xl">
             <div className="p-3 rounded-full bg-accent text-white shadow-md">
               <Rows2 className="w-6 h-6" />
             </div>
@@ -558,7 +557,7 @@ export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
         )}
 
         {dropZone === 'center' && (
-          <div className="absolute inset-2 bg-accent/15 border-2 border-dashed border-accent/70 rounded-xl flex flex-col items-center justify-center gap-2 pointer-events-none z-50 backdrop-blur-2xs animate-in fade-in duration-100 shadow-lg">
+          <div className="absolute inset-2 bg-accent/15 border-2 border-dashed border-accent/70 rounded-sm flex flex-col items-center justify-center gap-2 pointer-events-none z-50 backdrop-blur-2xs animate-in fade-in duration-100 shadow-lg">
             <div className="p-2.5 rounded-full bg-accent text-white shadow-sm">
               <ArrowRightLeft className="w-5 h-5" />
             </div>

@@ -44,6 +44,7 @@ import type { VaultNoteData } from '../../../../preload/index.d'
 import type { AppSettings, IndexedNoteMeta } from '../../types/app'
 import { CheckCircle2, Clock, ExternalLink, FolderOpen, Link2, RefreshCw, Sparkles, Unlink } from 'lucide-react'
 import appLogo from '../../assets/logo.png'
+import { IconButton, Input } from '../ui'
 
 interface MarkdownEditorProps {
   activeNote: VaultNoteData | null
@@ -944,7 +945,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         : 'font-sans'
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 h-full bg-surface-canvas overflow-hidden">
+    <div className={`flex-1 flex flex-col min-w-0 h-full overflow-hidden ${settings.canvasStyle === 'paper' ? 'bg-surface-canvas' : 'bg-surface-bg'}`}>
       {/* Top Rich WYSIWYG Toolbar (inspired by reference image) */}
       <EditorToolbar
         editor={editor}
@@ -973,19 +974,19 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
           }
           className={`mx-auto transition-all duration-200 ${maxWidthClass} ${fontClass} ${
             settings.canvasStyle === 'paper'
-              ? 'bg-surface-bg border border-surface-border rounded-xl document-paper-shadow px-8 py-8 md:px-14 md:py-10 min-h-full'
+              ? 'bg-surface-bg border border-surface-border rounded-lg px-8 py-8 md:px-14 md:py-10 min-h-full'
               : 'bg-surface-bg px-8 py-8 md:px-14 md:py-10 min-h-full'
           }`}
         >
           {/* Document Header: Breadcrumb & Editable Note Title */}
-          <div className="flex items-center justify-between gap-2 pb-4 mb-5 border-b border-surface-border/70">
+          <div className="flex items-center justify-between gap-4 pb-3 mb-6 border-b border-surface-border/60">
             <div className="flex items-center gap-2 text-xs text-content-muted min-w-0 flex-1">
               <FolderOpen className="w-3.5 h-3.5 text-accent shrink-0" />
               <span className="truncate">{activeNote.relativePath}</span>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
-              <input
+            <div className="flex items-center gap-2 shrink-0 max-w-[45%]">
+              <Input
                 type="text"
                 value={noteTitleInput}
                 onChange={(e) => setNoteTitleInput(e.target.value)}
@@ -1151,7 +1152,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
           className="fixed z-40 flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-surface-border bg-surface-bg/98 backdrop-blur-md shadow-xl animate-in fade-in zoom-in-95 duration-100"
         >
           <Link2 className="w-3.5 h-3.5 text-accent shrink-0" />
-          <input
+          <Input
             type="text"
             value={activeLinkEdit.href}
             onChange={(e) => {
@@ -1168,28 +1169,25 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
             className="w-56 text-xs px-2 py-1 rounded-md bg-surface-secondary border border-surface-border text-content-primary focus:outline-none focus:border-accent"
           />
           {activeLinkEdit.href && (
-            <button
-              type="button"
+            <IconButton
+              size="sm"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => window.electronAPI.openExternal(activeLinkEdit.href)}
-              title="Abrir link no navegador (ou Ctrl+Clique)"
-              className="p-1.5 rounded-md text-accent hover:bg-accent-soft transition-colors"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-            </button>
+              tooltip="Abrir link no navegador (ou Ctrl+Clique)"
+              icon={<ExternalLink className="w-3.5 h-3.5" />}
+            />
           )}
-          <button
-            type="button"
+          <IconButton
+            variant="danger"
+            size="sm"
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => {
               editor.chain().focus().extendMarkRange('link').unsetLink().run()
               setActiveLinkEdit(null)
             }}
-            title="Remover link"
-            className="p-1.5 rounded-md text-rose-500 hover:bg-rose-500/10 transition-colors"
-          >
-            <Unlink className="w-3.5 h-3.5" />
-          </button>
+            tooltip="Remover link"
+            icon={<Unlink className="w-3.5 h-3.5" />}
+          />
         </div>
       )}
 

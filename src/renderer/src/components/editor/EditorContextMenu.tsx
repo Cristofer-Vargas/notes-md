@@ -1,3 +1,4 @@
+import { SelectionButton } from '../ui/SelectionButton'
 import React, { useEffect, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/react'
 import {
@@ -392,7 +393,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
       ref={menuRef}
       style={{ top: safeTop, left: safeLeft, width: menuWidth }}
       onContextMenu={(e) => e.preventDefault()}
-      className="fixed z-50 rounded-xl border border-surface-border bg-surface-bg/98 backdrop-blur-md shadow-2xl p-1.5 select-none animate-in fade-in zoom-in-95 duration-100"
+      className="app-context-menu fixed z-50 border border-surface-border bg-surface-bg shadow-xl p-1.5 select-none"
     >
       {/* Seção de Ortografia e Dicionário */}
       {showSpellSection && (
@@ -426,7 +427,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               actionableSuggestions.slice(0, 5).map((sug, idx) => {
                 const isSelected = idx === selectedSugIndex
                 return (
-                  <button
+                  <SelectionButton
                     key={sug}
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
@@ -434,20 +435,20 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
                     className={cn(
                       'w-full flex items-center justify-between px-2 py-1.5 rounded-md text-xs font-medium text-left transition-colors group cursor-pointer',
                       isSelected
-                        ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 ring-1 ring-emerald-500/50'
-                        : 'text-content-primary hover:bg-emerald-500/15 hover:text-emerald-700 dark:hover:text-emerald-300'
+                        ? 'bg-accent-soft text-accent ring-1 ring-accent-border'
+                        : 'text-content-primary hover:bg-surface-tertiary hover:text-content-primary'
                     )}
                   >
                     <div className="flex items-center gap-1.5 truncate">
-                      <span className="w-4 h-4 rounded bg-surface-tertiary flex items-center justify-center text-[10px] font-mono font-bold text-content-muted shrink-0 group-hover:bg-emerald-500/30 group-hover:text-emerald-600">
+                      <span className="w-4 h-4 rounded bg-surface-tertiary flex items-center justify-center text-[10px] font-mono font-bold text-content-muted shrink-0 group-hover:bg-accent-soft group-hover:text-accent">
                         {idx + 1}
                       </span>
                       <span className="truncate font-semibold">{sug}</span>
                     </div>
-                    <span className="text-[10px] text-content-muted group-hover:text-emerald-600 dark:group-hover:text-emerald-400 font-normal shrink-0 ml-1">
+                    <span className="text-[10px] text-content-muted group-hover:text-accent font-normal shrink-0 ml-1">
                       {isSelected ? 'Enter ↵' : 'Corrigir'}
                     </span>
-                  </button>
+                  </SelectionButton>
                 )
               })
             ) : hasTypo ? (
@@ -463,7 +464,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
                   : ''
               }`}
             >
-              <button
+              <SelectionButton
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => handleAddWordToDict(activeWord)}
@@ -475,9 +476,9 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
                 <kbd className="text-[9px] px-1 rounded bg-surface-tertiary font-mono text-content-muted group-hover:text-content-primary">
                   D
                 </kbd>
-              </button>
+              </SelectionButton>
 
-              <button
+              <SelectionButton
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => handleIgnoreWord(activeWord)}
@@ -489,7 +490,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
                 <kbd className="text-[9px] px-1 rounded bg-surface-tertiary font-mono text-content-muted group-hover:text-content-primary">
                   I
                 </kbd>
-              </button>
+              </SelectionButton>
             </div>
           </div>
         </div>
@@ -497,7 +498,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
 
       {/* Top Quick Mini-Bar (1-Click Basic Formatting) */}
       <div className="flex items-center justify-between gap-0.5 px-1 py-1 mb-1 rounded-lg bg-surface-secondary border border-surface-border/60">
-        <button
+        <SelectionButton
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => runAction(() => editor.chain().focus().toggleBold().run())}
@@ -509,8 +510,8 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
           }`}
         >
           <Bold className="w-3.5 h-3.5" />
-        </button>
-        <button
+        </SelectionButton>
+        <SelectionButton
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => runAction(() => editor.chain().focus().toggleItalic().run())}
@@ -522,8 +523,8 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
           }`}
         >
           <Italic className="w-3.5 h-3.5" />
-        </button>
-        <button
+        </SelectionButton>
+        <SelectionButton
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => runAction(() => editor.chain().focus().toggleUnderline().run())}
@@ -535,8 +536,8 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
           }`}
         >
           <UnderlineIcon className="w-3.5 h-3.5" />
-        </button>
-        <button
+        </SelectionButton>
+        <SelectionButton
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => runAction(() => editor.chain().focus().toggleStrike().run())}
@@ -548,8 +549,8 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
           }`}
         >
           <Strikethrough className="w-3.5 h-3.5" />
-        </button>
-        <button
+        </SelectionButton>
+        <SelectionButton
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() =>
@@ -563,8 +564,8 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
           }`}
         >
           <Highlighter className="w-3.5 h-3.5" />
-        </button>
-        <button
+        </SelectionButton>
+        <SelectionButton
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => runAction(() => editor.chain().focus().unsetAllMarks().clearNodes().run())}
@@ -572,7 +573,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
           className="p-1.5 rounded-md text-content-secondary hover:bg-surface-tertiary hover:text-content-primary transition-colors"
         >
           <RemoveFormatting className="w-3.5 h-3.5" />
-        </button>
+        </SelectionButton>
       </div>
 
       {/* 1. Submenu: Formatar Texto ▸ */}
@@ -580,7 +581,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
         className="relative"
         onMouseEnter={() => setActiveSubmenu('format')}
       >
-        <button
+        <SelectionButton
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => setActiveSubmenu((prev) => (prev === 'format' ? null : 'format'))}
@@ -595,13 +596,13 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
             <span>Formatar Texto</span>
           </span>
           <ChevronRight className="w-3.5 h-3.5 text-content-muted" />
-        </button>
+        </SelectionButton>
 
         {activeSubmenu === 'format' && (
           <div
-            className={`absolute ${submenuPositionClass} w-52 rounded-xl border border-surface-border bg-surface-bg shadow-2xl p-1.5 space-y-0.5 z-50`}
+            className={`absolute ${submenuPositionClass} w-52 rounded-sm border border-surface-border bg-surface-bg shadow-xl p-1.5 space-y-0.5 z-50`}
           >
-            <button
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().toggleBold().run())}
@@ -611,8 +612,8 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
                 <Bold className="w-3.5 h-3.5 text-accent" /> Negrito
               </span>
               <span className="text-[10px] text-content-muted">Ctrl+B</span>
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().toggleItalic().run())}
@@ -622,8 +623,8 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
                 <Italic className="w-3.5 h-3.5 text-accent" /> Itálico
               </span>
               <span className="text-[10px] text-content-muted">Ctrl+I</span>
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().toggleUnderline().run())}
@@ -633,48 +634,48 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
                 <UnderlineIcon className="w-3.5 h-3.5 text-accent" /> Sublinhado
               </span>
               <span className="text-[10px] text-content-muted">Ctrl+U</span>
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().toggleStrike().run())}
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary"
             >
               <Strikethrough className="w-3.5 h-3.5 text-accent" /> Tachado
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().toggleCode().run())}
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary"
             >
               <Code2 className="w-3.5 h-3.5 text-accent" /> Código Inline
-            </button>
+            </SelectionButton>
             <div className="h-px bg-surface-border my-1" />
-            <button
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => transformSelectedCase('upper')}
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary"
             >
               <CaseSensitive className="w-3.5 h-3.5 text-accent" /> MAIÚSCULAS
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => transformSelectedCase('lower')}
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary"
             >
               <CaseSensitive className="w-3.5 h-3.5 text-accent" /> minúsculas
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => transformSelectedCase('capitalize')}
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary"
             >
               <CaseSensitive className="w-3.5 h-3.5 text-accent" /> Capitalizar Palavras
-            </button>
+            </SelectionButton>
           </div>
         )}
       </div>
@@ -684,7 +685,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
         className="relative"
         onMouseEnter={() => setActiveSubmenu('headings')}
       >
-        <button
+        <SelectionButton
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => setActiveSubmenu((prev) => (prev === 'headings' ? null : 'headings'))}
@@ -699,21 +700,21 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
             <span>Títulos e Blocos</span>
           </span>
           <ChevronRight className="w-3.5 h-3.5 text-content-muted" />
-        </button>
+        </SelectionButton>
 
         {activeSubmenu === 'headings' && (
           <div
-            className={`absolute ${submenuPositionClass} w-52 rounded-xl border border-surface-border bg-surface-bg shadow-2xl p-1.5 space-y-0.5 z-50`}
+            className={`absolute ${submenuPositionClass} w-52 rounded-sm border border-surface-border bg-surface-bg shadow-xl p-1.5 space-y-0.5 z-50`}
           >
-            <button
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().setParagraph().run())}
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary"
             >
               <Pilcrow className="w-3.5 h-3.5 text-accent" /> Parágrafo Normal
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() =>
@@ -722,8 +723,8 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-bold text-content-primary hover:bg-surface-secondary"
             >
               <Heading1 className="w-3.5 h-3.5 text-accent" /> Título 1 (H1)
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() =>
@@ -732,8 +733,8 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-content-primary hover:bg-surface-secondary"
             >
               <Heading2 className="w-3.5 h-3.5 text-accent" /> Título 2 (H2)
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() =>
@@ -742,8 +743,8 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-content-primary hover:bg-surface-secondary"
             >
               <Heading3 className="w-3.5 h-3.5 text-accent" /> Título 3 (H3)
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() =>
@@ -752,34 +753,34 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary"
             >
               <Heading4 className="w-3.5 h-3.5 text-accent" /> Título 4 (H4)
-            </button>
+            </SelectionButton>
             <div className="h-px bg-surface-border my-1" />
-            <button
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().toggleBlockquote().run())}
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary"
             >
               <MessageSquareQuote className="w-3.5 h-3.5 text-accent" /> Citação (Blockquote)
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().toggleCodeBlock().run())}
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary"
             >
               <Code2 className="w-3.5 h-3.5 text-accent" /> Bloco de Código
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() =>
                 runAction(() => editor.chain().focus().setCodeBlock({ language: 'mermaid' }).run())
               }
-              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-emerald-400 hover:bg-surface-secondary font-medium"
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-accent hover:bg-surface-secondary font-medium"
             >
-              <Workflow className="w-3.5 h-3.5 text-emerald-400" /> Diagrama Mermaid (Obsidian)
-            </button>
+              <Workflow className="w-3.5 h-3.5 text-accent" /> Diagrama Mermaid (Obsidian)
+            </SelectionButton>
           </div>
         )}
       </div>
@@ -789,7 +790,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
         className="relative"
         onMouseEnter={() => setActiveSubmenu('colors')}
       >
-        <button
+        <SelectionButton
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => setActiveSubmenu((prev) => (prev === 'colors' ? null : 'colors'))}
@@ -804,11 +805,11 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
             <span>Destaques e Cores</span>
           </span>
           <ChevronRight className="w-3.5 h-3.5 text-content-muted" />
-        </button>
+        </SelectionButton>
 
         {activeSubmenu === 'colors' && (
           <div
-            className={`absolute ${submenuPositionClass} w-56 rounded-xl border border-surface-border bg-surface-bg shadow-2xl p-2 space-y-2 z-50`}
+            className={`absolute ${submenuPositionClass} w-56 rounded-sm border border-surface-border bg-surface-bg shadow-xl p-2 space-y-2 z-50`}
           >
             <div>
               <div className="text-[10px] font-bold uppercase tracking-wider text-content-muted px-1 mb-1">
@@ -816,7 +817,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               </div>
               <div className="grid grid-cols-3 gap-1">
                 {HIGHLIGHT_COLORS.map((h) => (
-                  <button
+                  <SelectionButton
                     key={h.color}
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
@@ -830,17 +831,17 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
                     style={{ backgroundColor: h.color }}
                   >
                     Aa
-                  </button>
+                  </SelectionButton>
                 ))}
               </div>
-              <button
+              <SelectionButton
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => runAction(() => editor.chain().focus().unsetHighlight().run())}
                 className="w-full mt-1 py-1 text-[11px] text-content-secondary hover:bg-surface-secondary rounded"
               >
                 Remover destaque
-              </button>
+              </SelectionButton>
             </div>
 
             <div className="h-px bg-surface-border" />
@@ -851,7 +852,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               </div>
               <div className="space-y-0.5">
                 {TEXT_COLORS.map((item) => (
-                  <button
+                  <SelectionButton
                     key={item.name}
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
@@ -871,7 +872,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
                       style={{ backgroundColor: item.color || 'var(--text-primary)' }}
                     />
                     <span>{item.name}</span>
-                  </button>
+                  </SelectionButton>
                 ))}
               </div>
             </div>
@@ -884,7 +885,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
         className="relative"
         onMouseEnter={() => setActiveSubmenu('lists')}
       >
-        <button
+        <SelectionButton
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => setActiveSubmenu((prev) => (prev === 'lists' ? null : 'lists'))}
@@ -899,69 +900,69 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
             <span>Listas e Alinhamento</span>
           </span>
           <ChevronRight className="w-3.5 h-3.5 text-content-muted" />
-        </button>
+        </SelectionButton>
 
         {activeSubmenu === 'lists' && (
           <div
-            className={`absolute ${submenuPositionClass} w-52 rounded-xl border border-surface-border bg-surface-bg shadow-2xl p-1.5 space-y-0.5 z-50`}
+            className={`absolute ${submenuPositionClass} w-52 rounded-sm border border-surface-border bg-surface-bg shadow-xl p-1.5 space-y-0.5 z-50`}
           >
-            <button
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().toggleBulletList().run())}
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary"
             >
               <List className="w-3.5 h-3.5 text-accent" /> Lista com Marcadores
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().toggleOrderedList().run())}
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary"
             >
               <ListOrdered className="w-3.5 h-3.5 text-accent" /> Lista Numerada
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().toggleTaskList().run())}
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary"
             >
               <CheckSquare className="w-3.5 h-3.5 text-accent" /> Checklist de Tarefas
-            </button>
+            </SelectionButton>
             <div className="h-px bg-surface-border my-1" />
-            <button
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().setTextAlign('left').run())}
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary"
             >
               <AlignLeft className="w-3.5 h-3.5 text-accent" /> Alinhar à Esquerda
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().setTextAlign('center').run())}
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary"
             >
               <AlignCenter className="w-3.5 h-3.5 text-accent" /> Centralizar
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().setTextAlign('right').run())}
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary"
             >
               <AlignRight className="w-3.5 h-3.5 text-accent" /> Alinhar à Direita
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().setTextAlign('justify').run())}
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary"
             >
               <AlignJustify className="w-3.5 h-3.5 text-accent" /> Justificar
-            </button>
+            </SelectionButton>
           </div>
         )}
       </div>
@@ -971,7 +972,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
         className="relative"
         onMouseEnter={() => setActiveSubmenu('insert')}
       >
-        <button
+        <SelectionButton
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => setActiveSubmenu((prev) => (prev === 'insert' ? null : 'insert'))}
@@ -986,13 +987,13 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
             <span>Inserir e Tabelas</span>
           </span>
           <ChevronRight className="w-3.5 h-3.5 text-content-muted" />
-        </button>
+        </SelectionButton>
 
         {activeSubmenu === 'insert' && (
           <div
-            className={`absolute ${submenuPositionClass} w-56 rounded-xl border border-surface-border bg-surface-bg shadow-2xl p-1.5 space-y-0.5 z-50`}
+            className={`absolute ${submenuPositionClass} w-56 rounded-sm border border-surface-border bg-surface-bg shadow-xl p-1.5 space-y-0.5 z-50`}
           >
-            <button
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() =>
@@ -1007,84 +1008,84 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-content-primary hover:bg-surface-secondary"
             >
               <Plus className="w-3.5 h-3.5 text-accent" /> Inserir Tabela (3×3)
-            </button>
+            </SelectionButton>
             {editor.isActive('table') && (
               <>
-                <button
+                <SelectionButton
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => runAction(() => editor.chain().focus().addRowAfter().run())}
                   className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-content-secondary hover:bg-surface-secondary"
                 >
                   + Adicionar Linha Abaixo
-                </button>
-                <button
+                </SelectionButton>
+                <SelectionButton
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => runAction(() => editor.chain().focus().addColumnAfter().run())}
                   className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-content-secondary hover:bg-surface-secondary"
                 >
                   + Adicionar Coluna à Direita
-                </button>
-                <button
+                </SelectionButton>
+                <SelectionButton
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => runAction(() => editor.chain().focus().deleteRow().run())}
                   className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-content-secondary hover:bg-surface-secondary"
                 >
                   − Remover Linha Atual
-                </button>
-                <button
+                </SelectionButton>
+                <SelectionButton
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => runAction(() => editor.chain().focus().deleteColumn().run())}
                   className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-content-secondary hover:bg-surface-secondary"
                 >
                   − Remover Coluna Atual
-                </button>
-                <button
+                </SelectionButton>
+                <SelectionButton
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => runAction(() => editor.chain().focus().deleteTable().run())}
                   className="w-full flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-rose-500 hover:bg-rose-500/10"
                 >
                   <Trash2 className="w-3.5 h-3.5" /> Excluir Tabela
-                </button>
+                </SelectionButton>
               </>
             )}
             <div className="h-px bg-surface-border my-1" />
-            <button
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().setHorizontalRule().run())}
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary"
             >
               <Minus className="w-3.5 h-3.5 text-accent" /> Linha Divisória (---)
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().toggleCodeBlock().run())}
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary"
             >
               <Code2 className="w-3.5 h-3.5 text-accent" /> Bloco de Código
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() =>
                 runAction(() => editor.chain().focus().setCodeBlock({ language: 'mermaid' }).run())
               }
-              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-emerald-400 hover:bg-surface-secondary font-medium"
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-accent hover:bg-surface-secondary font-medium"
             >
-              <Workflow className="w-3.5 h-3.5 text-emerald-400" /> Diagrama Mermaid (Obsidian)
-            </button>
+              <Workflow className="w-3.5 h-3.5 text-accent" /> Diagrama Mermaid (Obsidian)
+            </SelectionButton>
           </div>
         )}
       </div>
 
       {/* Direct Action: Conectar Nota [[WikiLink]] */}
-      <button
+      <SelectionButton
         type="button"
         onMouseEnter={() => setActiveSubmenu(null)}
         onMouseDown={(e) => e.preventDefault()}
@@ -1096,12 +1097,12 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
           <span>Conectar Nota [[WikiLink]]</span>
         </span>
         <span className="text-[10px] opacity-75">[[</span>
-      </button>
+      </SelectionButton>
 
       <div className="h-px bg-surface-border my-1" />
 
       {/* Clipboard Actions */}
-      <button
+      <SelectionButton
         type="button"
         onMouseEnter={() => setActiveSubmenu(null)}
         onMouseDown={(e) => e.preventDefault()}
@@ -1113,8 +1114,8 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
           <span>Recortar</span>
         </span>
         <span className="text-[10px] text-content-muted">Ctrl+X</span>
-      </button>
-      <button
+      </SelectionButton>
+      <SelectionButton
         type="button"
         onMouseEnter={() => setActiveSubmenu(null)}
         onMouseDown={(e) => e.preventDefault()}
@@ -1126,8 +1127,8 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
           <span>Copiar</span>
         </span>
         <span className="text-[10px] text-content-muted">Ctrl+C</span>
-      </button>
-      <button
+      </SelectionButton>
+      <SelectionButton
         type="button"
         onMouseEnter={() => setActiveSubmenu(null)}
         onMouseDown={(e) => e.preventDefault()}
@@ -1139,7 +1140,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
           <span>Colar</span>
         </span>
         <span className="text-[10px] text-content-muted">Ctrl+V</span>
-      </button>
+      </SelectionButton>
     </div>
   )
 }

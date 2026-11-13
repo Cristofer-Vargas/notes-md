@@ -15,6 +15,7 @@ import type { VaultNoteData } from '../../../../preload/index.d'
 import type { IndexedNoteMeta, NoteHeading } from '../../types/app'
 import { resolveWikiLinkTarget } from '../../services/noteIndexer'
 import { IconButton } from '../ui/IconButton'
+import { SelectionButton } from '../ui/SelectionButton'
 
 export interface HeadingTreeNode extends NoteHeading {
   index: number
@@ -85,7 +86,7 @@ const HeadingTreeItem: React.FC<HeadingTreeItemProps> = ({
           }
         }}
         title={`Ir para "${node.text}" (H${node.level})`}
-        className={`flex items-center gap-1.5 py-1 px-1.5 rounded-lg text-xs group cursor-pointer transition-colors select-none ${
+        className={`flex items-center gap-1.5 py-1 px-1.5 rounded-sm text-xs group cursor-pointer transition-colors select-none ${
           node.level === 1
             ? 'text-content-primary font-semibold hover:bg-surface-tertiary'
             : node.level === 2
@@ -95,7 +96,7 @@ const HeadingTreeItem: React.FC<HeadingTreeItemProps> = ({
       >
         {/* Toggle chevron or bullet */}
         {hasChildren ? (
-          <button
+          <SelectionButton
             type="button"
             onClick={(e) => {
               e.stopPropagation()
@@ -109,10 +110,10 @@ const HeadingTreeItem: React.FC<HeadingTreeItemProps> = ({
             ) : (
               <ChevronDown className="w-3.5 h-3.5" />
             )}
-          </button>
+          </SelectionButton>
         ) : (
           <span className="w-4 h-4 flex items-center justify-center shrink-0">
-            <span className="w-1.5 h-1.5 rounded-full bg-content-muted/30 group-hover:bg-accent/60 transition-colors" />
+            <span className="w-1.5 h-1.5 rounded-sm bg-content-muted/30 group-hover:bg-accent/60 transition-colors" />
           </span>
         )}
 
@@ -130,7 +131,7 @@ const HeadingTreeItem: React.FC<HeadingTreeItemProps> = ({
 
         {/* Subitems count when collapsed */}
         {hasChildren && isCollapsed && (
-          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-surface-tertiary text-content-muted font-normal shrink-0">
+          <span className="text-[10px] px-1.5 py-0.2 rounded-sm bg-surface-tertiary text-content-muted font-normal shrink-0">
             {node.children.length}
           </span>
         )}
@@ -272,11 +273,11 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
     >
       {/* Header Tabs (Links & Sumário) + Close Button */}
       <div className="p-2 border-b border-surface-border flex items-center gap-1.5 bg-surface-bg/50">
-        <button
+        <SelectionButton
           type="button"
           onClick={() => handleSelectTab('connections')}
           title={`Links e Conexões (${linksCount})`}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition-colors min-w-0 ${
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-sm text-xs font-semibold transition-colors min-w-0 ${
             activeTab === 'connections'
               ? 'bg-accent-soft text-accent'
               : 'text-content-secondary hover:bg-surface-tertiary'
@@ -287,18 +288,18 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
             !isCompact ? (
               <span className="truncate">Links ({linksCount})</span>
             ) : (
-              <span className="text-[10px] px-1 py-0.2 rounded-full bg-accent/20 text-accent font-bold">
+              <span className="text-[10px] px-1 py-0.2 rounded-sm bg-accent/20 text-accent font-bold">
                 {linksCount}
               </span>
             )
           )}
-        </button>
+        </SelectionButton>
 
-        <button
+        <SelectionButton
           type="button"
           onClick={() => handleSelectTab('outline')}
           title={`Sumário da Nota (${headingsCount})`}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition-colors min-w-0 ${
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-sm text-xs font-semibold transition-colors min-w-0 ${
             activeTab === 'outline'
               ? 'bg-accent-soft text-accent'
               : 'text-content-secondary hover:bg-surface-tertiary'
@@ -309,12 +310,12 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
             !isCompact ? (
               <span className="truncate">Sumário ({headingsCount})</span>
             ) : (
-              <span className="text-[10px] px-1 py-0.2 rounded-full bg-accent/20 text-accent font-bold">
+              <span className="text-[10px] px-1 py-0.2 rounded-sm bg-accent/20 text-accent font-bold">
                 {headingsCount}
               </span>
             )
           )}
-        </button>
+        </SelectionButton>
 
         {onCloseSidebar && (
           <IconButton
@@ -339,7 +340,7 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
               <span className="text-[11px] font-bold uppercase tracking-wider text-content-muted">
                 {!isCompact ? 'Backlinks (Citam esta nota)' : 'Backlinks'}
               </span>
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-accent-soft text-accent">
+              <span className="px-1.5 py-0.5 rounded-sm text-[10px] font-bold bg-accent-soft text-accent">
                 {noteMeta.backlinks.length}
               </span>
             </div>
@@ -385,7 +386,7 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
                       onLeaveTarget?.()
                     }}
                     title={`${item.sourceName}\nClique esquerdo: abrir nesta guia • Botão do meio: abrir em nova guia • Ctrl + Hover: preview`}
-                    className="w-full text-left p-2.5 rounded-xl bg-surface-bg border border-surface-border hover:border-accent/60 transition-all group space-y-1.5 shadow-2xs cursor-pointer select-none"
+                    className="w-full text-left p-2.5 rounded-sm bg-surface-bg border border-surface-border hover:border-accent/60 transition-all group space-y-1.5 shadow-2xs cursor-pointer select-none"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="flex items-center gap-1.5 text-xs font-semibold text-content-primary group-hover:text-accent truncate">
@@ -401,7 +402,7 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
                 ))}
               </div>
             ) : (
-              <div className="p-3 rounded-xl bg-surface-bg/60 border border-dashed border-surface-border text-center text-xs text-content-muted">
+              <div className="px-2 py-3 border-l border-surface-border text-xs text-content-muted leading-relaxed">
                 Nenhuma outra nota aponta para <strong>{activeNote.name}</strong> ainda.
                 <div className="mt-1 text-[11px]">
                   Use <code>[[{activeNote.name}]]</code> em outra nota para conectá-las!
@@ -416,7 +417,7 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
               <span className="text-[11px] font-bold uppercase tracking-wider text-content-muted">
                 {!isCompact ? 'Links de Saída (Citadas aqui)' : 'Links de Saída'}
               </span>
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-surface-tertiary text-content-secondary">
+              <span className="px-1.5 py-0.5 rounded-sm text-[10px] font-bold bg-surface-tertiary text-content-secondary">
                 {noteMeta.outgoingLinks.length}
               </span>
             </div>
@@ -467,7 +468,7 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
                         onLeaveTarget?.()
                       }}
                       title={`${out.alias || out.target}\nClique esquerdo: abrir nesta guia • Botão do meio: abrir em nova guia • Ctrl + Hover: preview`}
-                      className="w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg bg-surface-bg border border-surface-border hover:border-accent/60 text-left transition-colors cursor-pointer select-none"
+                      className="w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-sm bg-surface-bg border border-surface-border hover:border-accent/60 text-left transition-colors cursor-pointer select-none"
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         {targetExists ? (
@@ -490,7 +491,7 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
                 })}
               </div>
             ) : (
-              <div className="p-3 rounded-xl bg-surface-bg/60 border border-dashed border-surface-border text-center text-xs text-content-muted">
+              <div className="px-2 py-3 border-l border-surface-border text-xs text-content-muted leading-relaxed">
                 Nenhum link <code>[[Nota]]</code> inserido nesta nota.
               </div>
             )}
@@ -505,29 +506,29 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
               <span className="text-[11px] font-bold uppercase tracking-wider text-content-muted">
                 {!isCompact ? 'Estrutura de Tópicos' : 'Tópicos'}
               </span>
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-accent-soft text-accent">
+              <span className="px-1.5 py-0.5 rounded-sm text-[10px] font-bold bg-accent-soft text-accent">
                 {noteMeta.headings.length}
               </span>
             </div>
 
             {hasHeadingsWithChildren && (
               <div className="flex items-center gap-1">
-                <button
+                <SelectionButton
                   type="button"
                   onClick={handleExpandAll}
                   title="Expandir todos os tópicos"
                   className="p-1 rounded text-content-muted hover:text-content-primary hover:bg-surface-tertiary transition-colors"
                 >
                   <UnfoldVertical className="w-3.5 h-3.5" />
-                </button>
-                <button
+                </SelectionButton>
+                <SelectionButton
                   type="button"
                   onClick={handleCollapseAll}
                   title="Recolher todos os tópicos"
                   className="p-1 rounded text-content-muted hover:text-content-primary hover:bg-surface-tertiary transition-colors"
                 >
                   <FoldVertical className="w-3.5 h-3.5" />
-                </button>
+                </SelectionButton>
               </div>
             )}
           </div>

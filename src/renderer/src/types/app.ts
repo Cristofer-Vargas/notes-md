@@ -2,7 +2,7 @@ import type { DiscordPresenceSettings } from '../../../shared/discordPresence'
 
 export type ThemeMode = 'light' | 'dark' | 'sepia'
 
-export type AccentPreset = 'blue' | 'purple' | 'emerald' | 'amber' | 'rose'
+export type AccentPreset = 'lime' | 'blue' | 'purple' | 'emerald' | 'amber' | 'rose'
 
 export type FontFamilyPreset = 'sans' | 'serif' | 'mono'
 

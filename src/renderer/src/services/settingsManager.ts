@@ -8,13 +8,13 @@ export const SETTINGS_STORAGE_KEY = 'notes-md:settings:v1'
 
 export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'dark',
-  accent: 'emerald',
+  accent: 'lime',
   fontFamily: 'sans',
   editorFontWeight: '300',
   baseFontSize: 16,
   lineHeight: 1.7,
   pageWidth: 'wide',
-  canvasStyle: 'paper',
+  canvasStyle: 'flat',
   showLeftSidebar: true,
   showRightSidebar: true,
   spellcheck: true,

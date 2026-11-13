@@ -16,6 +16,7 @@ import {
 } from './services/noteIndexer'
 import { getShortcutKey, matchesShortcut } from './services/shortcutService'
 import { FileExplorerSidebar } from './components/sidebar/FileExplorerSidebar'
+import { addRecentVault, MAX_RECENT_VAULTS, removeRecentVault } from './services/recentVaults'
 import { BacklinksSidebar } from './components/sidebar/BacklinksSidebar'
 import { EditorWorkspace } from './components/editor/EditorWorkspace'
 import { SettingsModal, type SettingsTab } from './components/modals/SettingsModal'
@@ -79,7 +80,7 @@ export function App(): React.ReactElement {
   const [recentVaults, setRecentVaults] = useState<RecentVault[]>(() => {
     try {
       const raw = localStorage.getItem(RECENT_VAULTS_KEY)
-      return raw ? JSON.parse(raw) : []
+      return raw ? (JSON.parse(raw) as RecentVault[]).slice(0, MAX_RECENT_VAULTS) : []
     } catch {
       return []
     }
@@ -92,17 +93,18 @@ export function App(): React.ReactElement {
         const raw = localStorage.getItem(RECENT_VAULTS_KEY)
         if (!raw) return
         const list: RecentVault[] = JSON.parse(raw)
-        const valid: RecentVault[] = []
+        const invalid: RecentVault[] = []
         for (const v of list) {
           if (window.electronAPI?.checkPathExists) {
             const exists = await window.electronAPI.checkPathExists(v.path)
-            if (exists) valid.push(v)
-          } else {
-            valid.push(v)
+            if (!exists) invalid.push(v)
           }
         }
-        setRecentVaults(valid)
-        localStorage.setItem(RECENT_VAULTS_KEY, JSON.stringify(valid))
+        setRecentVaults((current) => {
+          const next = current.filter((item) => !invalid.some((v) => v.path === item.path && v.lastOpened === item.lastOpened)).slice(0, MAX_RECENT_VAULTS)
+          try { localStorage.setItem(RECENT_VAULTS_KEY, JSON.stringify(next)) } catch {}
+          return next
+        })
       } catch {
         // ignore
       }
@@ -113,11 +115,18 @@ export function App(): React.ReactElement {
   const recordRecentVault = useCallback((vPath: string, vName: string) => {
     if (!vPath) return
     setRecentVaults((prev) => {
-      const filtered = prev.filter((v) => v.path.toLowerCase() !== vPath.toLowerCase())
-      const next = [{ path: vPath, name: vName, lastOpened: Date.now() }, ...filtered].slice(0, 10)
+      const next = addRecentVault(prev, { path: vPath, name: vName, lastOpened: Date.now() })
       try {
         localStorage.setItem(RECENT_VAULTS_KEY, JSON.stringify(next))
       } catch {}
+      return next
+    })
+  }, [])
+
+  const handleRemoveRecentVault = useCallback((path: string) => {
+    setRecentVaults((current) => {
+      const next = removeRecentVault(current, path)
+      try { localStorage.setItem(RECENT_VAULTS_KEY, JSON.stringify(next)) } catch {}
       return next
     })
   }, [])
@@ -415,7 +424,7 @@ export function App(): React.ReactElement {
     setTree(snapshot.tree)
     setNotes(snapshot.notes)
     setLastSyncTime(Date.now())
-    recordRecentVault(snapshot.vaultPath, snapshot.vaultName)
+    if (isSwitchingOrInitialVault) recordRecentVault(snapshot.vaultPath, snapshot.vaultName)
 
     try {
       localStorage.setItem(LAST_VAULT_STORAGE_KEY, snapshot.vaultPath)
@@ -1234,6 +1243,7 @@ export function App(): React.ReactElement {
               onCloseSidebar={() => updateSettings({ showLeftSidebar: false })}
               recentVaults={recentVaults}
               onSelectRecentVault={handleSelectRecentVault}
+              onRemoveRecentVault={handleRemoveRecentVault}
             />
             {/* Left Resizer Drag Handle */}
             <div

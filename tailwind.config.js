@@ -25,9 +25,10 @@ module.exports = {
         }
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+        sans: ['Geist', 'Segoe UI', 'system-ui', 'sans-serif'],
         serif: ['Georgia', 'Cambria', 'Times New Roman', 'Times', 'serif'],
-        mono: ['JetBrains Mono', 'Fira Code', 'Consolas', 'monospace']
+        mono: ['IBM Plex Mono', 'Consolas', 'monospace'],
+        display: ['Barlow Condensed', 'Arial Narrow', 'sans-serif']
       }
     }
   },

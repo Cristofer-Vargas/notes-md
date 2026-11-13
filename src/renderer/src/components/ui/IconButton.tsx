@@ -27,7 +27,7 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
     ref
   ) => {
     const baseStyles =
-      'inline-flex items-center justify-center rounded-lg transition-all duration-150 select-none cursor-pointer shrink-0 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none active:scale-95'
+      'inline-flex items-center justify-center rounded-sm transition-colors duration-150 select-none cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none'
 
     const sizeStyles: Record<IconButtonSize, string> = {
       xs: 'w-6 h-6 p-0.5 text-xs',
@@ -40,9 +40,9 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
         ? 'bg-accent-soft text-accent font-bold'
         : 'text-content-secondary hover:text-content-primary hover:bg-surface-tertiary',
       secondary: isActive
-        ? 'bg-accent text-white shadow-2xs border border-accent'
+        ? 'bg-accent text-[var(--accent-foreground)] shadow-2xs border border-accent'
         : 'bg-surface-secondary border border-surface-border text-content-secondary hover:text-content-primary hover:bg-surface-tertiary',
-      accent: 'bg-accent text-white hover:bg-accent-hover shadow-2xs',
+      accent: 'bg-accent text-[var(--accent-foreground)] hover:bg-accent-hover shadow-2xs',
       'accent-soft': 'bg-accent-soft text-accent hover:bg-accent-soft/80',
       danger: 'text-content-muted hover:text-rose-500 hover:bg-rose-500/10'
     }

@@ -1,3 +1,4 @@
+import { SelectionButton } from '../ui/SelectionButton'
 import React, { useEffect, useRef } from 'react'
 import {
   FilePlus2,
@@ -122,12 +123,12 @@ export const FileContextMenu: React.FC<FileContextMenuProps> = ({
   return (
     <div
       ref={menuRef}
-      style={{ top: safeTop, left: safeLeft, width: menuWidth }}
+      style={{ top: safeTop, left: safeLeft, width: menuWidth, maxHeight: `calc(100vh - ${safeTop + 8}px)` }}
       onContextMenu={(e) => e.preventDefault()}
-      className="fixed z-50 rounded-xl border border-surface-border bg-surface-bg/98 backdrop-blur-md shadow-2xl p-1.5 select-none animate-in fade-in zoom-in-95 duration-100"
+      className="app-context-menu fixed z-50 overflow-y-auto border border-surface-border bg-surface-bg shadow-xl p-1.5 select-none"
     >
       {/* Context Header */}
-      <div className="px-2.5 py-1.5 mb-1 rounded-lg bg-surface-secondary border border-surface-border/60 flex items-center gap-2">
+      <div className="px-2.5 py-2 mb-1 border-b border-surface-border flex items-center gap-2">
         {target.type === 'folder' ? (
           <Folder className="w-3.5 h-3.5 text-accent shrink-0" />
         ) : target.type === 'note' ? (
@@ -160,31 +161,31 @@ export const FileContextMenu: React.FC<FileContextMenuProps> = ({
       {/* Note-specific actions */}
       {target.type === 'note' && entry && (
         <>
-          <button
+          <SelectionButton
             type="button"
             onClick={() => run(() => onSelectNote(entry.relativePath, false))}
             className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-content-primary hover:bg-surface-secondary transition-colors"
           >
             <FileText className="w-3.5 h-3.5 text-accent shrink-0" />
             <span>Abrir nesta Guia</span>
-          </button>
-          <button
+          </SelectionButton>
+          <SelectionButton
             type="button"
             onClick={() => run(() => onSelectNote(entry.relativePath, true))}
             className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-content-primary hover:bg-surface-secondary transition-colors"
           >
             <ExternalLink className="w-3.5 h-3.5 text-accent shrink-0" />
             <span>Abrir em Nova Guia</span>
-          </button>
+          </SelectionButton>
           {onDuplicateNote && (
-            <button
+            <SelectionButton
               type="button"
               onClick={() => run(() => onDuplicateNote(entry.relativePath))}
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary transition-colors"
             >
               <Copy className="w-3.5 h-3.5 text-content-secondary shrink-0" />
               <span>Duplicar Nota</span>
-            </button>
+            </SelectionButton>
           )}
           <div className="h-px bg-surface-border my-1" />
         </>
@@ -193,22 +194,22 @@ export const FileContextMenu: React.FC<FileContextMenuProps> = ({
       {/* Image-specific actions */}
       {target.type === 'image' && entry && (
         <>
-          <button
+          <SelectionButton
             type="button"
             onClick={() => run(() => onOpenImage?.(entry.relativePath, entry.name))}
             className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-content-primary hover:bg-accent-soft hover:text-accent transition-colors"
           >
             <Eye className="w-3.5 h-3.5 text-accent shrink-0" />
             <span>Visualizar Imagem (Modal)</span>
-          </button>
-          <button
+          </SelectionButton>
+          <SelectionButton
             type="button"
             onClick={() => run(() => onOpenOtherFile?.(entry.relativePath, entry.name))}
             className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-content-primary hover:bg-surface-secondary transition-colors"
           >
             <ExternalLink className="w-3.5 h-3.5 text-content-muted shrink-0" />
             <span>Abrir no Visualizador do Sistema</span>
-          </button>
+          </SelectionButton>
           <div className="h-px bg-surface-border my-1" />
         </>
       )}
@@ -216,63 +217,63 @@ export const FileContextMenu: React.FC<FileContextMenuProps> = ({
       {/* Generic file-specific actions */}
       {target.type === 'file' && entry && (
         <>
-          <button
+          <SelectionButton
             type="button"
             onClick={() => run(() => onOpenOtherFile?.(entry.relativePath, entry.name))}
             className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-content-primary hover:bg-surface-secondary transition-colors"
           >
             <ExternalLink className="w-3.5 h-3.5 text-accent shrink-0" />
             <span>Abrir com Aplicativo Padrão</span>
-          </button>
+          </SelectionButton>
           <div className="h-px bg-surface-border my-1" />
         </>
       )}
 
       {/* Creation Actions in the target directory */}
-      <button
+      <SelectionButton
         type="button"
         onClick={() => run(() => onCreateNoteInFolder(targetFolderRel))}
         className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-content-primary hover:bg-surface-secondary transition-colors text-left"
       >
         <FilePlus2 className="w-3.5 h-3.5 text-accent shrink-0" />
         <span className="truncate">Nova Nota {locationLabel}</span>
-      </button>
+      </SelectionButton>
 
-      <button
+      <SelectionButton
         type="button"
         onClick={() => run(() => onCreateFolderInParent(targetFolderRel))}
         className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary transition-colors text-left"
       >
         <FolderPlus className="w-3.5 h-3.5 text-accent shrink-0" />
         <span className="truncate">Nova Pasta {locationLabel}</span>
-      </button>
+      </SelectionButton>
 
       {/* Rename, Explore & Delete for items */}
       {entry && (
         <>
           <div className="h-px bg-surface-border my-1" />
 
-          <button
+          <SelectionButton
             type="button"
             onClick={() => run(() => onRenameEntry(entry.relativePath, entry.name))}
             className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary transition-colors"
           >
             <Pencil className="w-3.5 h-3.5 text-content-secondary shrink-0" />
             <span>Renomear {getEntryTypeLabel()}</span>
-          </button>
+          </SelectionButton>
 
-          <button
+          <SelectionButton
             type="button"
             onClick={() => run(() => onOpenInExplorer(targetFolderRel))}
             className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary transition-colors"
           >
             <ExternalLink className="w-3.5 h-3.5 text-content-secondary shrink-0" />
             <span>Mostrar no Explorer</span>
-          </button>
+          </SelectionButton>
 
           <div className="h-px bg-surface-border my-1" />
 
-          <button
+          <SelectionButton
             type="button"
             onClick={() => run(() => onDeleteEntry(entry.relativePath, entry.name))}
             title="Mover para a Lixeira do Sistema Operacional"
@@ -280,7 +281,7 @@ export const FileContextMenu: React.FC<FileContextMenuProps> = ({
           >
             <Trash2 className="w-3.5 h-3.5 shrink-0" />
             <span>Mover para a Lixeira</span>
-          </button>
+          </SelectionButton>
         </>
       )}
 
@@ -288,22 +289,22 @@ export const FileContextMenu: React.FC<FileContextMenuProps> = ({
       {target.type === 'root' && (
         <>
           <div className="h-px bg-surface-border my-1" />
-          <button
+          <SelectionButton
             type="button"
             onClick={() => run(onRefreshVault)}
             className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary transition-colors"
           >
             <RefreshCw className="w-3.5 h-3.5 text-content-secondary shrink-0" />
             <span>Sincronizar Diretório</span>
-          </button>
-          <button
+          </SelectionButton>
+          <SelectionButton
             type="button"
             onClick={() => run(() => onOpenInExplorer(''))}
             className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary transition-colors"
           >
             <ExternalLink className="w-3.5 h-3.5 text-content-secondary shrink-0" />
             <span>Abrir no Windows Explorer</span>
-          </button>
+          </SelectionButton>
         </>
       )}
     </div>

@@ -80,7 +80,7 @@ describe('settingsManager — Gerenciamento e Sincronização de Configurações
     expect(settings).toEqual(DEFAULT_SETTINGS)
     expect(settings.theme).toBe('dark')
     expect(settings.pageWidth).toBe('wide')
-    expect(settings.accent).toBe('emerald')
+    expect(settings.accent).toBe('lime')
     expect(settings.editorFontWeight).toBe('300')
     expect(settings.discordPresence.enabled).toBe(true)
     expect(settings.discordPresence.showNoteTitle).toBe(true)

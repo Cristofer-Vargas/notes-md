@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/react'
+import { Input } from '../ui'
+import { SelectionButton } from '../ui/SelectionButton'
+import { BlockStyleSelect } from '../ui/BlockStyleSelect'
 import {
   Undo2,
   Redo2,
@@ -85,7 +88,7 @@ const ToolBtn: React.FC<ToolBtnProps> = ({
   children,
   className = ''
 }) => (
-  <button
+  <SelectionButton
     type="button"
     disabled={disabled}
     onMouseDown={(e) => {
@@ -94,14 +97,14 @@ const ToolBtn: React.FC<ToolBtnProps> = ({
     }}
     onClick={onClick}
     title={title}
-    className={`p-1.5 rounded-md text-xs font-medium transition-colors flex items-center justify-center ${
+    className={`p-1.5 rounded-sm text-xs font-medium transition-colors flex items-center justify-center ${
       active
         ? 'bg-accent-soft text-accent border border-accent-border'
         : 'text-content-secondary hover:bg-surface-tertiary hover:text-content-primary border border-transparent'
     } ${disabled ? 'opacity-40 cursor-not-allowed' : ''} ${className}`}
   >
     {children}
-  </button>
+  </SelectionButton>
 )
 
 export const EditorToolbar: React.FC<EditorToolbarProps> = ({
@@ -140,19 +143,6 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   }
 
   const closeMenus = (): void => setOpenDropdown(null)
-
-  const getCurrentBlockLabel = (): string => {
-    if (editor.isActive('heading', { level: 1 })) return 'Título 1 (H1)'
-    if (editor.isActive('heading', { level: 2 })) return 'Título 2 (H2)'
-    if (editor.isActive('heading', { level: 3 })) return 'Título 3 (H3)'
-    if (editor.isActive('heading', { level: 4 })) return 'Título 4 (H4)'
-    if (editor.isActive('heading', { level: 5 })) return 'Título 5 (H5)'
-    if (editor.isActive('heading', { level: 6 })) return 'Título 6 (H6)'
-    if (editor.isActive('blockquote')) return 'Citação'
-    if (editor.isActive('codeBlock', { language: 'mermaid' })) return 'Diagrama Mermaid'
-    if (editor.isActive('codeBlock')) return 'Bloco de Código'
-    return 'Parágrafo'
-  }
 
   const handleBlockChange = (value: string): void => {
     if (value === 'paragraph') {
@@ -235,10 +225,9 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
 
       <div className="h-5 w-px bg-surface-border mx-1" />
 
-      {/* Block Style Selector */}
-      <div className="relative">
-        <select
-          disabled={isSourceMode}
+      {/* Block style */}
+      <BlockStyleSelect
+        disabled={isSourceMode}
           value={
             editor.isActive('heading', { level: 1 })
               ? 'h1'
@@ -260,27 +249,12 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
                               ? 'codeBlock'
                               : 'paragraph'
           }
-          onChange={(e) => handleBlockChange(e.target.value)}
-          aria-label="Estilo de Bloco"
-          title={`Estilo atual: ${getCurrentBlockLabel()}`}
-          className="h-7 pl-2.5 pr-6 rounded-md text-xs font-medium bg-surface-secondary border border-surface-border text-content-primary focus:outline-none focus:border-accent cursor-pointer"
-        >
-          <option value="paragraph">Parágrafo</option>
-          <option value="h1">Título 1 (H1)</option>
-          <option value="h2">Título 2 (H2)</option>
-          <option value="h3">Título 3 (H3)</option>
-          <option value="h4">Título 4 (H4)</option>
-          <option value="h5">Título 5 (H5)</option>
-          <option value="h6">Título 6 (H6)</option>
-          <option value="blockquote">Citação</option>
-          <option value="codeBlock">Bloco de Código</option>
-          <option value="mermaid">📊 Diagrama Mermaid</option>
-        </select>
-      </div>
+        onChange={handleBlockChange}
+      />
 
       {/* Font Size Stepper (like reference image "- 16px +") */}
-      <div className="flex items-center bg-surface-secondary border border-surface-border rounded-md h-7 px-1 ml-0.5">
-        <button
+      <div className="flex items-center bg-surface-secondary border border-surface-border rounded-sm h-7 px-1 ml-0.5">
+        <SelectionButton
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => onChangeBaseFontSize(Math.max(12, baseFontSize - 1))}
@@ -288,11 +262,11 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           className="px-1.5 text-xs font-semibold text-content-secondary hover:text-content-primary"
         >
           −
-        </button>
+        </SelectionButton>
         <span className="px-1.5 text-[11px] font-medium text-content-primary min-w-[38px] text-center">
           {baseFontSize}px
         </span>
-        <button
+        <SelectionButton
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => onChangeBaseFontSize(Math.min(24, baseFontSize + 1))}
@@ -300,7 +274,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           className="px-1.5 text-xs font-semibold text-content-secondary hover:text-content-primary"
         >
           +
-        </button>
+        </SelectionButton>
       </div>
 
       <div className="h-5 w-px bg-surface-border mx-1" />
@@ -351,13 +325,13 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           <ChevronDown className="w-3 h-3 ml-0.5 opacity-70" />
         </ToolBtn>
         {openDropdown === 'color' && (
-          <div className="absolute left-0 top-full mt-1.5 w-44 p-2 rounded-xl border border-surface-border bg-surface-bg shadow-xl z-50">
+          <div className="absolute left-0 top-full mt-1.5 w-44 p-2 rounded-sm border border-surface-border bg-surface-bg shadow-xl z-50">
             <div className="text-[11px] font-semibold text-content-muted px-1 mb-1.5">
               Cor do Texto
             </div>
             <div className="space-y-1">
               {TEXT_COLORS.map((item) => (
-                <button
+                <SelectionButton
                   key={item.name}
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
@@ -369,14 +343,14 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
                     }
                     closeMenus()
                   }}
-                  className="w-full flex items-center gap-2 px-2 py-1 rounded-md text-xs text-content-primary hover:bg-surface-secondary"
+                  className="w-full flex items-center gap-2 px-2 py-1 rounded-sm text-xs text-content-primary hover:bg-surface-secondary"
                 >
                   <span
                     className="w-3.5 h-3.5 rounded-full border border-surface-border"
                     style={{ backgroundColor: item.color || 'var(--text-primary)' }}
                   />
                   <span>{item.name}</span>
-                </button>
+                </SelectionButton>
               ))}
             </div>
           </div>
@@ -395,13 +369,13 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           <ChevronDown className="w-3 h-3 ml-0.5 opacity-70" />
         </ToolBtn>
         {openDropdown === 'highlight' && (
-          <div className="absolute left-0 top-full mt-1.5 w-48 p-2 rounded-xl border border-surface-border bg-surface-bg shadow-xl z-50">
+          <div className="absolute left-0 top-full mt-1.5 w-48 p-2 rounded-sm border border-surface-border bg-surface-bg shadow-xl z-50">
             <div className="text-[11px] font-semibold text-content-muted px-1 mb-1.5">
               Cor de Destaque (Highlight)
             </div>
             <div className="grid grid-cols-3 gap-1.5 mb-2">
               {HIGHLIGHT_COLORS.map((h) => (
-                <button
+                <SelectionButton
                   key={h.color}
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
@@ -410,24 +384,24 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
                     closeMenus()
                   }}
                   title={h.name}
-                  className="h-7 rounded-md border border-black/10 flex items-center justify-center text-[11px] font-bold text-slate-900 hover:scale-105 transition-transform"
+                  className="h-7 rounded-sm border border-black/10 flex items-center justify-center text-[11px] font-bold text-slate-900 hover:scale-105 transition-transform"
                   style={{ backgroundColor: h.color }}
                 >
                   Aa
-                </button>
+                </SelectionButton>
               ))}
             </div>
-            <button
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 editor.chain().focus().unsetHighlight().run()
                 closeMenus()
               }}
-              className="w-full py-1 text-xs text-content-secondary hover:text-content-primary hover:bg-surface-secondary rounded-md"
+              className="w-full py-1 text-xs text-content-secondary hover:text-content-primary hover:bg-surface-secondary rounded-sm"
             >
               Remover destaque
-            </button>
+            </SelectionButton>
           </div>
         )}
       </div>
@@ -448,18 +422,18 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           <ChevronDown className="w-3 h-3 ml-0.5 opacity-70" />
         </ToolBtn>
         {openDropdown === 'typography' && (
-          <div className="absolute left-0 top-full mt-1.5 w-52 p-1.5 rounded-xl border border-surface-border bg-surface-bg shadow-2xl z-50 space-y-0.5 text-xs">
+          <div className="absolute left-0 top-full mt-1.5 w-52 p-1.5 rounded-sm border border-surface-border bg-surface-bg shadow-xl z-50 space-y-0.5 text-xs">
             <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-content-muted">
               Posição do Texto
             </div>
-            <button
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 editor.chain().focus().toggleSuperscript().run()
                 closeMenus()
               }}
-              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-colors ${
+              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-sm transition-colors ${
                 editor.isActive('superscript')
                   ? 'bg-accent-soft text-accent font-medium'
                   : 'text-content-primary hover:bg-surface-secondary'
@@ -472,15 +446,15 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
               {editor.isActive('superscript') && (
                 <span className="text-[10px] font-bold">Ativo</span>
               )}
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 editor.chain().focus().toggleSubscript().run()
                 closeMenus()
               }}
-              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-colors ${
+              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-sm transition-colors ${
                 editor.isActive('subscript')
                   ? 'bg-accent-soft text-accent font-medium'
                   : 'text-content-primary hover:bg-surface-secondary'
@@ -491,51 +465,51 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
                 <span>Subscrito (x₂)</span>
               </span>
               {editor.isActive('subscript') && <span className="text-[10px] font-bold">Ativo</span>}
-            </button>
+            </SelectionButton>
 
             <div className="h-px bg-surface-border my-1" />
 
             <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-content-muted">
               Transformar Caixa
             </div>
-            <button
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => transformSelectedCase('upper')}
-              className="w-full text-left px-2.5 py-1.5 rounded-md hover:bg-surface-secondary text-content-primary"
+              className="w-full text-left px-2.5 py-1.5 rounded-sm hover:bg-surface-secondary text-content-primary"
             >
               MAIÚSCULAS
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => transformSelectedCase('lower')}
-              className="w-full text-left px-2.5 py-1.5 rounded-md hover:bg-surface-secondary text-content-primary"
+              className="w-full text-left px-2.5 py-1.5 rounded-sm hover:bg-surface-secondary text-content-primary"
             >
               minúsculas
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => transformSelectedCase('capitalize')}
-              className="w-full text-left px-2.5 py-1.5 rounded-md hover:bg-surface-secondary text-content-primary"
+              className="w-full text-left px-2.5 py-1.5 rounded-sm hover:bg-surface-secondary text-content-primary"
             >
               Capitalizar Palavras
-            </button>
+            </SelectionButton>
 
             <div className="h-px bg-surface-border my-1" />
 
             <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-content-muted">
               Outros Efeitos
             </div>
-            <button
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 editor.chain().focus().toggleCode().run()
                 closeMenus()
               }}
-              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-colors ${
+              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-sm transition-colors ${
                 editor.isActive('code')
                   ? 'bg-accent-soft text-accent font-medium'
                   : 'text-content-primary hover:bg-surface-secondary'
@@ -546,19 +520,19 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
                 <span>Código Inline</span>
               </span>
               {editor.isActive('code') && <span className="text-[10px] font-bold">Ativo</span>}
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 editor.chain().focus().unsetAllMarks().clearNodes().run()
                 closeMenus()
               }}
-              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-surface-secondary text-content-secondary"
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-sm hover:bg-surface-secondary text-content-secondary"
             >
               <RemoveFormatting className="w-3.5 h-3.5" />
               <span>Limpar Formatação</span>
-            </button>
+            </SelectionButton>
           </div>
         )}
       </div>
@@ -566,17 +540,17 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
       <div className="h-5 w-px bg-surface-border mx-1" />
 
       {/* Obsidian WikiLink [[Nota]] Button */}
-      <button
+      <SelectionButton
         type="button"
         disabled={isSourceMode}
         onMouseDown={(e) => e.preventDefault()}
         onClick={onOpenWikiLinkPicker}
         title="Conectar a outra nota [[WikiLink]]"
-        className="h-7 px-2 rounded-md text-xs font-semibold flex items-center gap-1 bg-accent-soft text-accent border border-accent-border hover:bg-accent hover:text-white transition-colors disabled:opacity-40"
+        className="h-7 px-2 rounded-sm text-xs font-semibold flex items-center gap-1 bg-accent-soft text-accent border border-accent-border hover:bg-accent hover:text-white transition-colors disabled:opacity-40"
       >
         <FileSymlink className="w-3.5 h-3.5" />
         <span>[[Nota]]</span>
-      </button>
+      </SelectionButton>
 
       {/* External Link */}
       <div className="relative">
@@ -595,35 +569,35 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
         {openDropdown === 'link' && (
           <form
             onSubmit={handleInsertLink}
-            className="absolute left-0 top-full mt-1.5 w-72 p-2.5 rounded-xl border border-surface-border bg-surface-bg shadow-xl z-50 space-y-2"
+            className="absolute left-0 top-full mt-1.5 w-72 p-2.5 rounded-sm border border-surface-border bg-surface-bg shadow-xl z-50 space-y-2"
           >
             <div className="text-xs font-semibold text-content-primary">Inserir Link Web</div>
-            <input
+            <Input
               type="text"
               value={linkUrl}
               onChange={(e) => setLinkUrl(e.target.value)}
               placeholder="https://exemplo.com"
               autoFocus
-              className="w-full px-2.5 py-1.5 text-xs rounded-md bg-surface-secondary border border-surface-border text-content-primary focus:outline-none focus:border-accent"
+              className="w-full px-2.5 py-1.5 text-xs rounded-sm bg-surface-secondary border border-surface-border text-content-primary focus:outline-none focus:border-accent"
             />
             <div className="flex justify-end gap-1.5">
-              <button
+              <SelectionButton
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
                   editor.chain().focus().unsetLink().run()
                   closeMenus()
                 }}
-                className="px-2 py-1 text-xs rounded-md text-content-secondary hover:bg-surface-secondary"
+                className="px-2 py-1 text-xs rounded-sm text-content-secondary hover:bg-surface-secondary"
               >
                 Remover
-              </button>
-              <button
+              </SelectionButton>
+              <SelectionButton
                 type="submit"
-                className="px-2.5 py-1 text-xs font-medium rounded-md bg-accent text-white hover:bg-accent-hover"
+                className="px-2.5 py-1 text-xs font-medium rounded-sm bg-accent text-white hover:bg-accent-hover"
               >
                 Aplicar
-              </button>
+              </SelectionButton>
             </div>
           </form>
         )}
@@ -642,32 +616,32 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
         {openDropdown === 'image' && (
           <form
             onSubmit={handleInsertImage}
-            className="absolute left-0 top-full mt-1.5 w-72 p-2.5 rounded-xl border border-surface-border bg-surface-bg shadow-xl z-50 space-y-2"
+            className="absolute left-0 top-full mt-1.5 w-72 p-2.5 rounded-sm border border-surface-border bg-surface-bg shadow-xl z-50 space-y-2"
           >
             <div className="text-xs font-semibold text-content-primary">Inserir Imagem (URL)</div>
-            <input
+            <Input
               type="text"
               value={imageUrl}
               onChange={(e) => setImageUrl(e.target.value)}
               placeholder="https://... ou caminho da imagem"
               autoFocus
-              className="w-full px-2.5 py-1.5 text-xs rounded-md bg-surface-secondary border border-surface-border text-content-primary focus:outline-none focus:border-accent"
+              className="w-full px-2.5 py-1.5 text-xs rounded-sm bg-surface-secondary border border-surface-border text-content-primary focus:outline-none focus:border-accent"
             />
             <div className="flex justify-end gap-1.5">
-              <button
+              <SelectionButton
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={closeMenus}
-                className="px-2 py-1 text-xs rounded-md text-content-secondary hover:bg-surface-secondary"
+                className="px-2 py-1 text-xs rounded-sm text-content-secondary hover:bg-surface-secondary"
               >
                 Cancelar
-              </button>
-              <button
+              </SelectionButton>
+              <SelectionButton
                 type="submit"
-                className="px-2.5 py-1 text-xs font-medium rounded-md bg-accent text-white hover:bg-accent-hover"
+                className="px-2.5 py-1 text-xs font-medium rounded-sm bg-accent text-white hover:bg-accent-hover"
               >
                 Inserir
-              </button>
+              </SelectionButton>
             </div>
           </form>
         )}
@@ -685,8 +659,8 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           <ChevronDown className="w-3 h-3 ml-0.5 opacity-70" />
         </ToolBtn>
         {openDropdown === 'table' && (
-          <div className="absolute left-0 top-full mt-1.5 w-52 p-1.5 rounded-xl border border-surface-border bg-surface-bg shadow-xl z-50 space-y-0.5 text-xs">
-            <button
+          <div className="absolute left-0 top-full mt-1.5 w-52 p-1.5 rounded-sm border border-surface-border bg-surface-bg shadow-xl z-50 space-y-0.5 text-xs">
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
@@ -697,13 +671,13 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
                   .run()
                 closeMenus()
               }}
-              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-surface-secondary text-content-primary font-medium"
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-sm hover:bg-surface-secondary text-content-primary font-medium"
             >
               <Plus className="w-3.5 h-3.5 text-accent" />
               Inserir Tabela (3×3)
-            </button>
+            </SelectionButton>
             <div className="h-px bg-surface-border my-1" />
-            <button
+            <SelectionButton
               type="button"
               disabled={!editor.can().addRowAfter()}
               onMouseDown={(e) => e.preventDefault()}
@@ -711,11 +685,11 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
                 editor.chain().focus().addRowAfter().run()
                 closeMenus()
               }}
-              className="w-full text-left px-2.5 py-1.5 rounded-md hover:bg-surface-secondary text-content-secondary disabled:opacity-40"
+              className="w-full text-left px-2.5 py-1.5 rounded-sm hover:bg-surface-secondary text-content-secondary disabled:opacity-40"
             >
               + Adicionar Linha Abaixo
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               disabled={!editor.can().addColumnAfter()}
               onMouseDown={(e) => e.preventDefault()}
@@ -723,11 +697,11 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
                 editor.chain().focus().addColumnAfter().run()
                 closeMenus()
               }}
-              className="w-full text-left px-2.5 py-1.5 rounded-md hover:bg-surface-secondary text-content-secondary disabled:opacity-40"
+              className="w-full text-left px-2.5 py-1.5 rounded-sm hover:bg-surface-secondary text-content-secondary disabled:opacity-40"
             >
               + Adicionar Coluna à Direita
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               disabled={!editor.can().deleteRow()}
               onMouseDown={(e) => e.preventDefault()}
@@ -735,11 +709,11 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
                 editor.chain().focus().deleteRow().run()
                 closeMenus()
               }}
-              className="w-full text-left px-2.5 py-1.5 rounded-md hover:bg-surface-secondary text-content-secondary disabled:opacity-40"
+              className="w-full text-left px-2.5 py-1.5 rounded-sm hover:bg-surface-secondary text-content-secondary disabled:opacity-40"
             >
               − Remover Linha
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               disabled={!editor.can().deleteColumn()}
               onMouseDown={(e) => e.preventDefault()}
@@ -747,11 +721,11 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
                 editor.chain().focus().deleteColumn().run()
                 closeMenus()
               }}
-              className="w-full text-left px-2.5 py-1.5 rounded-md hover:bg-surface-secondary text-content-secondary disabled:opacity-40"
+              className="w-full text-left px-2.5 py-1.5 rounded-sm hover:bg-surface-secondary text-content-secondary disabled:opacity-40"
             >
               − Remover Coluna
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               disabled={!editor.can().deleteTable()}
               onMouseDown={(e) => e.preventDefault()}
@@ -759,11 +733,11 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
                 editor.chain().focus().deleteTable().run()
                 closeMenus()
               }}
-              className="w-full flex items-center gap-1.5 px-2.5 py-1.5 rounded-md hover:bg-rose-500/10 text-rose-500 disabled:opacity-40"
+              className="w-full flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm hover:bg-rose-500/10 text-rose-500 disabled:opacity-40"
             >
               <Trash2 className="w-3.5 h-3.5" />
               Excluir Tabela
-            </button>
+            </SelectionButton>
           </div>
         )}
       </div>
@@ -807,15 +781,15 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           <ChevronDown className="w-3 h-3 ml-0.5 opacity-70" />
         </ToolBtn>
         {openDropdown === 'align' && (
-          <div className="absolute left-0 top-full mt-1.5 w-48 p-1.5 rounded-xl border border-surface-border bg-surface-bg shadow-2xl z-50 space-y-0.5 text-xs">
-            <button
+          <div className="absolute left-0 top-full mt-1.5 w-48 p-1.5 rounded-sm border border-surface-border bg-surface-bg shadow-xl z-50 space-y-0.5 text-xs">
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 editor.chain().focus().setTextAlign('left').run()
                 closeMenus()
               }}
-              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-colors ${
+              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-sm transition-colors ${
                 editor.isActive({ textAlign: 'left' }) ||
                 (!editor.isActive({ textAlign: 'center' }) &&
                   !editor.isActive({ textAlign: 'right' }) &&
@@ -828,15 +802,15 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
                 <AlignLeft className="w-3.5 h-3.5" />
                 <span>Alinhar à Esquerda</span>
               </span>
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 editor.chain().focus().setTextAlign('center').run()
                 closeMenus()
               }}
-              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-colors ${
+              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-sm transition-colors ${
                 editor.isActive({ textAlign: 'center' })
                   ? 'bg-accent-soft text-accent font-medium'
                   : 'text-content-primary hover:bg-surface-secondary'
@@ -846,15 +820,15 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
                 <AlignCenter className="w-3.5 h-3.5" />
                 <span>Centralizar</span>
               </span>
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 editor.chain().focus().setTextAlign('right').run()
                 closeMenus()
               }}
-              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-colors ${
+              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-sm transition-colors ${
                 editor.isActive({ textAlign: 'right' })
                   ? 'bg-accent-soft text-accent font-medium'
                   : 'text-content-primary hover:bg-surface-secondary'
@@ -864,15 +838,15 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
                 <AlignRight className="w-3.5 h-3.5" />
                 <span>Alinhar à Direita</span>
               </span>
-            </button>
-            <button
+            </SelectionButton>
+            <SelectionButton
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 editor.chain().focus().setTextAlign('justify').run()
                 closeMenus()
               }}
-              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md transition-colors ${
+              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-sm transition-colors ${
                 editor.isActive({ textAlign: 'justify' })
                   ? 'bg-accent-soft text-accent font-medium'
                   : 'text-content-primary hover:bg-surface-secondary'
@@ -882,7 +856,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
                 <AlignJustify className="w-3.5 h-3.5" />
                 <span>Justificar</span>
               </span>
-            </button>
+            </SelectionButton>
           </div>
         )}
       </div>
@@ -945,17 +919,17 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
         }}
         title="Inserir Diagrama Mermaid (Estilo Obsidian)"
       >
-        <Workflow className="w-4 h-4 text-emerald-500" />
+        <Workflow className="w-4 h-4 text-accent" />
       </ToolBtn>
 
       {/* Right-aligned Mode Toggles: Raw Markdown Source, Zen Mode, Help */}
       <div className="ml-auto flex items-center gap-1">
-        <button
+        <SelectionButton
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={onToggleSourceMode}
           title="Alternar entre Editor Visual (WYSIWYG) e Código Fonte Markdown (.md)"
-          className={`h-7 px-2.5 rounded-md text-xs font-medium flex items-center gap-1.5 transition-colors border ${
+          className={`h-7 px-2.5 rounded-sm text-xs font-medium flex items-center gap-1.5 transition-colors border ${
             isSourceMode
               ? 'bg-accent text-white border-accent'
               : 'bg-surface-secondary text-content-secondary border-surface-border hover:text-content-primary'
@@ -963,31 +937,31 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
         >
           <FileCode className="w-3.5 h-3.5" />
           <span>{isSourceMode ? 'Modo Markdown (.md)' : 'WYSIWYG'}</span>
-        </button>
+        </SelectionButton>
 
-        <button
+        <SelectionButton
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={onToggleZenMode}
           title={isZenMode ? 'Sair do Modo Foco' : 'Modo Foco / Tela Limpa'}
-          className={`p-1.5 rounded-md text-xs transition-colors ${
+          className={`p-1.5 rounded-sm text-xs transition-colors ${
             isZenMode
               ? 'bg-accent-soft text-accent'
               : 'text-content-secondary hover:bg-surface-tertiary hover:text-content-primary'
           }`}
         >
           {isZenMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-        </button>
+        </SelectionButton>
 
-        <button
+        <SelectionButton
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={onOpenHelpModal}
           title="Atalhos e Guia Markdown"
-          className="p-1.5 rounded-md text-xs text-content-secondary hover:bg-surface-tertiary hover:text-content-primary transition-colors"
+          className="p-1.5 rounded-sm text-xs text-content-secondary hover:bg-surface-tertiary hover:text-content-primary transition-colors"
         >
           <HelpCircle className="w-4 h-4" />
-        </button>
+        </SelectionButton>
       </div>
     </div>
   )
