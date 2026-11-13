@@ -1,7 +1,7 @@
 {
   "name": "notes-md",
   "productName": "Notes-MD",
-  "version": "0.2.0-alpha.1",
+  "version": "0.2.0-alpha.2",
   "description": "Editor moderno de notas Markdown com WYSIWYG completo e conexões estilo Obsidian",
   "main": "./out/main/index.js",
   "author": "Cristofer",
