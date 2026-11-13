@@ -5,6 +5,9 @@
   "description": "Editor moderno de notas Markdown com WYSIWYG completo e conexões estilo Obsidian",
   "main": "./out/main/index.js",
   "author": "Cristofer",
+  "engines": {
+    "node": "^22.14.0 || >= 24.10.0"
+  },
   "scripts": {
     "dev": "electron-vite dev",
     "start": "electron-vite preview",
