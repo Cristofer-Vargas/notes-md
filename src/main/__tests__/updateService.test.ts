@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { AppUpdateService, type AutoUpdaterLike } from '../updateService'
+import { AppUpdateService, extractAutoUpdater, type AutoUpdaterLike } from '../updateService'
 import type { AppUpdateState } from '../../shared/appUpdate'
 
 function createMockUpdater() {
@@ -151,5 +151,61 @@ describe('AppUpdateService', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('extrai corretamente o autoUpdater nos diferentes formatos de módulo CJS e ESM', () => {
+    const mock = createMockUpdater()
+
+    // Formato ESM padrão gerado pelo import() com interop do Node (onde .autoUpdater é undefined no namespace direto mas existe em .default)
+    const esmInteropModule = {
+      autoUpdater: undefined,
+      default: {
+        autoUpdater: mock.updater
+      }
+    }
+    expect(extractAutoUpdater(esmInteropModule)).toBe(mock.updater)
+
+    // Formato CommonJS direto (require('electron-updater'))
+    const cjsModule = {
+      autoUpdater: mock.updater
+    }
+    expect(extractAutoUpdater(cjsModule)).toBe(mock.updater)
+
+    // Instância fornecida diretamente
+    expect(extractAutoUpdater(mock.updater)).toBe(mock.updater)
+
+    // Lança erro legível se o módulo estiver vazio ou inválido
+    expect(() => extractAutoUpdater({})).toThrowError(/instância válida não encontrada/)
+    expect(() => extractAutoUpdater(null)).toThrowError(/instância válida não encontrada/)
+  })
+
+  it('permite nova tentativa caso o carregador do updater falhe inicialmente', async () => {
+    let attempts = 0
+    const mock = createMockUpdater()
+    mock.updater.checkForUpdates = vi.fn(async () => {
+      mock.emit('update-not-available')
+    })
+
+    const service = new AppUpdateService({
+      isPackaged: true,
+      currentVersion: '0.2.0-alpha.1',
+      onStateChange: vi.fn(),
+      loadAutoUpdater: async () => {
+        attempts++
+        if (attempts === 1) {
+          throw new Error('Falha simulada na inicialização do módulo')
+        }
+        return mock.updater
+      }
+    })
+
+    const firstResult = await service.checkForUpdates({ silentIfUnavailable: false })
+    expect(firstResult.phase).toBe('error')
+    expect(firstResult.message).toContain('Falha simulada')
+
+    // Segunda tentativa não deve usar a promise rejeitada anterior
+    const secondResult = await service.checkForUpdates({ silentIfUnavailable: false })
+    expect(attempts).toBe(2)
+    expect(secondResult.phase).toBe('not-available')
   })
 })

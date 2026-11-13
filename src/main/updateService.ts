@@ -31,9 +31,37 @@ export interface AppUpdateServiceOptions {
   loadAutoUpdater?: () => Promise<AutoUpdaterLike>
 }
 
+export function extractAutoUpdater(mod: unknown): AutoUpdaterLike {
+  const anyMod = mod as any
+  const candidate =
+    anyMod?.autoUpdater ||
+    anyMod?.default?.autoUpdater ||
+    (typeof anyMod?.checkForUpdates === 'function' ? anyMod : undefined) ||
+    (typeof anyMod?.default?.checkForUpdates === 'function' ? anyMod.default : undefined)
+
+  if (!candidate || typeof candidate.checkForUpdates !== 'function') {
+    throw new Error(
+      'Não foi possível inicializar o autoUpdater: instância válida não encontrada nas exportações de electron-updater.'
+    )
+  }
+
+  return candidate as AutoUpdaterLike
+}
+
 async function defaultLoadAutoUpdater(): Promise<AutoUpdaterLike> {
-  const mod = await import('electron-updater')
-  return mod.autoUpdater as unknown as AutoUpdaterLike
+  let mod: unknown
+  try {
+    mod = await import('electron-updater')
+  } catch (importErr) {
+    try {
+      // Fallback para ambientes CommonJS
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      mod = require('electron-updater')
+    } catch {
+      throw importErr
+    }
+  }
+  return extractAutoUpdater(mod)
 }
 
 function isUnavailableOrOfflineError(rawMessage: string): boolean {
@@ -200,12 +228,19 @@ export class AppUpdateService {
   private async ensureUpdater(): Promise<AutoUpdaterLike> {
     if (!this.updaterPromise) {
       const loader = this.options.loadAutoUpdater || defaultLoadAutoUpdater
-      this.updaterPromise = loader().then((updater) => {
+      this.updaterPromise = (async () => {
+        const updater = await loader()
+        if (!updater || typeof updater.checkForUpdates !== 'function') {
+          throw new Error('Instância do autoUpdater retornou indefinida ou inválida.')
+        }
         updater.autoDownload = true
         updater.autoInstallOnAppQuit = true
         updater.allowPrerelease = true
         this.bindEvents(updater)
         return updater
+      })().catch((error) => {
+        this.updaterPromise = null
+        throw error
       })
     }
     return this.updaterPromise
