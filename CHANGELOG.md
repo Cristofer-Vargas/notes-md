@@ -1,3 +1,10 @@
+# [0.2.0-alpha.3](https://github.com/Cristofer-Vargas/notes-md/compare/v0.2.0-alpha.2...v0.2.0-alpha.3) (2026-11-13)
+
+
+### Novos Recursos
+
+* **loading:** tela de carregamento estilo Discord e a configuração de instalação automática ([](https://github.com/Cristofer-Vargas/notes-md/commit/f89f140fcfd8de80cc056810f5de8f46ce2ae374))
+
 # [0.2.0-alpha.2](https://github.com/Cristofer-Vargas/notes-md/compare/v0.2.0-alpha.1...v0.2.0-alpha.2) (2026-11-13)
 
 
