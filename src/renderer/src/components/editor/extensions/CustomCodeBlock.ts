@@ -14,10 +14,22 @@ export const CustomCodeBlock = CodeBlockLowlight.extend({
       spellcheck: {
         default: 'false',
         rendered: true
+      },
+      viewMode: {
+        default: null,
+        rendered: false
       }
     }
   },
   addNodeView() {
-    return ReactNodeViewRenderer(CodeBlockComponent)
+    return ReactNodeViewRenderer(CodeBlockComponent, {
+      update: ({ oldNode, newNode, updateProps }) => {
+        if (oldNode.type !== newNode.type) {
+          return false
+        }
+        updateProps()
+        return true
+      }
+    })
   }
 })

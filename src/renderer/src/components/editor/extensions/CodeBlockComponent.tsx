@@ -50,29 +50,41 @@ export const CodeBlockComponent: React.FC<NodeViewProps> = ({
   const isMermaid = currentLang === 'mermaid'
   const hasCodeContent = node.textContent.trim().length > 0
 
-  // Para Mermaid: se houver código já salvo, inicia no modo diagrama visual (estilo Obsidian)
-  const [viewMode, setViewMode] = useState<'preview' | 'code'>(
-    isMermaid && hasCodeContent ? 'preview' : 'code'
-  )
-  const hasAutoPreviewedRef = useRef(isMermaid && hasCodeContent)
+  // Para Mermaid: utiliza o atributo viewMode persistido no node se o usuário já tiver alternado.
+  // Se ainda for nulo (primeira abertura), inicia em 'preview' se tiver conteúdo salvo, ou 'code' se vazio.
+  const explicitViewMode = node.attrs.viewMode as 'preview' | 'code' | null | undefined
+  const effectiveViewMode: 'preview' | 'code' = isMermaid
+    ? (explicitViewMode ?? (hasCodeContent ? 'preview' : 'code'))
+    : 'code'
+
   const [copied, setCopied] = useState(false)
 
-  useEffect(() => {
-    if (!isMermaid) {
-      hasAutoPreviewedRef.current = false
-      if (viewMode !== 'code') {
-        setViewMode('code')
-      }
-      return
-    }
+  const handleSwitchToCode = (e?: React.MouseEvent): void => {
+    e?.preventDefault()
+    e?.stopPropagation()
+    updateAttributes({ viewMode: 'code' })
 
-    if (hasCodeContent && !hasAutoPreviewedRef.current) {
-      hasAutoPreviewedRef.current = true
-      setViewMode('preview')
+    // Foca suavemente o cursor dentro do bloco de código para edição imediata
+    if (typeof getPos === 'function') {
+      const pos = getPos()
+      window.setTimeout(() => {
+        try {
+          editor.chain().focus(pos + 1).run()
+        } catch {
+          // ignore
+        }
+      }, 25)
     }
-  }, [isMermaid, hasCodeContent, viewMode])
+  }
+
+  const handleSwitchToPreview = (e?: React.MouseEvent): void => {
+    e?.preventDefault()
+    e?.stopPropagation()
+    updateAttributes({ viewMode: 'preview' })
+  }
 
   const handleCopyCode = async (e: React.MouseEvent): Promise<void> => {
+    e.preventDefault()
     e.stopPropagation()
     try {
       await navigator.clipboard.writeText(node.textContent)
@@ -84,10 +96,11 @@ export const CodeBlockComponent: React.FC<NodeViewProps> = ({
   }
 
   const handleLanguageChange = (newLang: string): void => {
-    updateAttributes({ language: newLang })
-    if (newLang === 'mermaid') {
-      setViewMode(node.textContent.trim().length > 0 ? 'preview' : 'code')
-    }
+    const isNowMermaid = newLang.toLowerCase() === 'mermaid'
+    updateAttributes({
+      language: newLang,
+      viewMode: isNowMermaid ? (node.textContent.trim().length > 0 ? 'preview' : 'code') : null
+    })
   }
 
   const handleInsertExample = (exampleCode: string): void => {
@@ -95,7 +108,7 @@ export const CodeBlockComponent: React.FC<NodeViewProps> = ({
       const from = getPos() + 1
       const to = from + node.nodeSize - 2
       editor.chain().focus().insertContentAt({ from, to }, exampleCode).run()
-      setViewMode('preview')
+      updateAttributes({ viewMode: 'preview' })
     }
   }
 
@@ -110,7 +123,7 @@ export const CodeBlockComponent: React.FC<NodeViewProps> = ({
       spellCheck={false}
       data-gramm={false}
       className={`my-5 rounded-xl border border-[var(--code-border,#383a4c)] bg-[var(--code-bg,#21222c)] text-[var(--code-text,#f8f8f2)] ${
-        isMermaid && viewMode === 'preview' ? 'shadow-none' : 'shadow-sm'
+        isMermaid && effectiveViewMode === 'preview' ? 'shadow-none' : 'shadow-sm'
       } overflow-hidden select-text transition-all duration-150`}
     >
       {/* Header Interativo do Bloco de Código */}
@@ -156,14 +169,14 @@ export const CodeBlockComponent: React.FC<NodeViewProps> = ({
           {isMermaid && (
             <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-surface-tertiary border border-surface-border mr-1">
               <Button
-                variant={viewMode === 'preview' ? 'secondary' : 'ghost'}
+                variant={effectiveViewMode === 'preview' ? 'secondary' : 'ghost'}
                 size="xs"
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => setViewMode('preview')}
+                onClick={handleSwitchToPreview}
                 title="Visualizar Diagrama Mermaid renderizado"
                 leftIcon={<Eye className="w-3 h-3" />}
                 className={
-                  viewMode === 'preview'
+                  effectiveViewMode === 'preview'
                     ? 'px-2 py-0.5 text-[11px] rounded-md bg-accent-soft text-accent border-accent/35 font-semibold hover:bg-accent-soft'
                     : 'px-2 py-0.5 text-[11px] rounded-md'
                 }
@@ -172,13 +185,17 @@ export const CodeBlockComponent: React.FC<NodeViewProps> = ({
               </Button>
 
               <Button
-                variant={viewMode === 'code' ? 'secondary' : 'ghost'}
+                variant={effectiveViewMode === 'code' ? 'secondary' : 'ghost'}
                 size="xs"
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => setViewMode('code')}
+                onClick={handleSwitchToCode}
                 title="Editar código fonte do diagrama Mermaid"
                 leftIcon={<Code2 className="w-3 h-3" />}
-                className="px-2 py-0.5 text-[11px] rounded-md"
+                className={
+                  effectiveViewMode === 'code'
+                    ? 'px-2 py-0.5 text-[11px] rounded-md bg-accent-soft text-accent border-accent/35 font-semibold hover:bg-accent-soft'
+                    : 'px-2 py-0.5 text-[11px] rounded-md'
+                }
               >
                 Código
               </Button>
@@ -206,15 +223,15 @@ export const CodeBlockComponent: React.FC<NodeViewProps> = ({
       </div>
 
       {/* Conteúdo do Bloco: Diagrama Mermaid VS Código com Syntax Highlighting */}
-      {isMermaid && viewMode === 'preview' && (
+      {isMermaid && effectiveViewMode === 'preview' && (
         <MermaidViewer
           code={node.textContent}
-          onEditCode={() => setViewMode('code')}
+          onEditCode={handleSwitchToCode}
           onInsertExample={handleInsertExample}
         />
       )}
 
-      <div className={isMermaid && viewMode === 'preview' ? 'hidden' : 'relative'}>
+      <div className={isMermaid && effectiveViewMode === 'preview' ? 'hidden' : 'relative'}>
         <pre
           spellCheck={false}
           className="code-block-pre font-mono text-[13px] leading-relaxed p-4 overflow-x-auto bg-[var(--code-bg,#21222c)] text-[var(--code-text,#f8f8f2)] min-h-[50px] m-0"
@@ -237,7 +254,7 @@ export const CodeBlockComponent: React.FC<NodeViewProps> = ({
               variant="ghost"
               size="xs"
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => setViewMode('preview')}
+              onClick={handleSwitchToPreview}
               leftIcon={<Eye className="w-3 h-3" />}
               className="text-accent hover:underline px-1.5 py-0.5 text-[11px]"
             >
