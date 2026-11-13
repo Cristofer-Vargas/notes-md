@@ -1,3 +1,10 @@
+# [0.2.0-alpha.4](https://github.com/Cristofer-Vargas/notes-md/compare/v0.2.0-alpha.3...v0.2.0-alpha.4) (2026-11-13)
+
+
+### Correções
+
+* **code-block:** solucionando bug de preview e code block do mermaid ([](https://github.com/Cristofer-Vargas/notes-md/commit/c2429d311a6af989851849de5ba0e2f9b31d7b8f))
+
 # [0.2.0-alpha.3](https://github.com/Cristofer-Vargas/notes-md/compare/v0.2.0-alpha.2...v0.2.0-alpha.3) (2026-11-13)
 
 
