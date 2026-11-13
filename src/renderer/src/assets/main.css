@@ -645,3 +645,48 @@ body {
   border-radius: 6px;
   transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
+
+/* Discord-Style Loading Screen Animations */
+@keyframes discordLogoFloat {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-5px) scale(1.04);
+  }
+}
+
+@keyframes discordGlowPulse {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.12);
+  }
+}
+
+@keyframes discordIndeterminateBar {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(20%);
+  }
+  100% {
+    transform: translateX(160%);
+  }
+}
+
+.animate-discord-logo {
+  animation: discordLogoFloat 2.6s ease-in-out infinite;
+}
+
+.animate-discord-glow {
+  animation: discordGlowPulse 2.6s ease-in-out infinite;
+}
+
+.animate-discord-indeterminate {
+  animation: discordIndeterminateBar 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}

@@ -80,8 +80,9 @@ describe('AppUpdateService', () => {
 
     const installed = await service.installUpdate()
     expect(installed).toBe(true)
-    expect(mock.updater.quitAndInstall).toHaveBeenCalledWith(false, true)
+    expect(mock.updater.quitAndInstall).toHaveBeenCalledWith(true, true)
     expect(states.some((s) => s.phase === 'downloading' && s.downloadPercent === 64)).toBe(true)
+    expect(states.some((s) => s.phase === 'installing')).toBe(true)
   })
 
   it('oculta erro de release inexistente em checagem silenciosa mas informa em checagem manual', async () => {

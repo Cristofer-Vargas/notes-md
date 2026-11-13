@@ -220,8 +220,14 @@ export class AppUpdateService {
       return false
     }
 
+    this.setState({
+      ...this.state,
+      phase: 'installing',
+      message: 'Instalando atualização e reiniciando o aplicativo...'
+    })
+
     const updater = await this.ensureUpdater()
-    updater.quitAndInstall(false, true)
+    updater.quitAndInstall(true, true)
     return true
   }
 

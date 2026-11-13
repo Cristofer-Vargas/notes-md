@@ -33,9 +33,9 @@ win:
         - x64
 
 nsis:
-  oneClick: false
-  allowToChangeInstallationDirectory: true
-  perMachine: false
+  oneClick: true
+  perMachine: true
+  allowToChangeInstallationDirectory: false
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: Notes-MD
@@ -44,6 +44,7 @@ nsis:
   uninstallerIcon: resources/icon.ico
   installerHeaderIcon: resources/icon.ico
   deleteAppDataOnUninstall: false
+  runAfterFinish: true
 
 portable:
   artifactName: Notes-MD-${version}-portable.${ext}

@@ -24,6 +24,7 @@ import { QuickSwitcherModal } from './components/modals/QuickSwitcherModal'
 import { HelpShortcutsModal } from './components/modals/HelpShortcutsModal'
 import { InputPromptModal } from './components/modals/InputPromptModal'
 import { WikiLinkHoverPreview } from './components/editor/WikiLinkHoverPreview'
+import { DiscordLoadingScreen } from './components/common/DiscordLoadingScreen'
 import { Badge, Button, IconButton } from './components/ui'
 import {
   DEFAULT_DISCORD_PRESENCE_SETTINGS,
@@ -164,6 +165,9 @@ export function App(): React.ReactElement {
   const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTab>('appearance')
   const [appUpdateState, setAppUpdateState] = useState<AppUpdateState | null>(null)
   const [isUpdateBannerDismissed, setIsUpdateBannerDismissed] = useState(false)
+  const [isStartupLoading, setIsStartupLoading] = useState(true)
+  const [startupMessage, setStartupMessage] = useState('Iniciando o Notes-MD...')
+  const [showUpdateOverlay, setShowUpdateOverlay] = useState(false)
   const [isQuickSwitcherOpen, setIsQuickSwitcherOpen] = useState(false)
   const [isHelpOpen, setIsHelpOpen] = useState(false)
   const [imageModal, setImageModal] = useState<{
@@ -598,13 +602,19 @@ export function App(): React.ReactElement {
   // Load initial Vault on mount
   useEffect(() => {
     async function initVault(): Promise<void> {
+      const startTime = Date.now()
+      setStartupMessage('Carregando notas do Vault...')
       try {
         const lastPath = localStorage.getItem(LAST_VAULT_STORAGE_KEY)
         if (lastPath) {
           try {
             const loaded = await window.electronAPI.loadVault(lastPath)
             if (loaded && loaded.notes.length > 0) {
+              setStartupMessage('Indexando conexões Zettelkasten...')
               applyVaultSnapshot(loaded)
+              const elapsed = Date.now() - startTime
+              const remaining = Math.max(0, 600 - elapsed)
+              setTimeout(() => setIsStartupLoading(false), remaining)
               return
             }
           } catch {
@@ -612,9 +622,14 @@ export function App(): React.ReactElement {
           }
         }
         const defaultSnap = await window.electronAPI.getDefaultVault()
+        setStartupMessage('Indexando conexões Zettelkasten...')
         applyVaultSnapshot(defaultSnap)
       } catch (err) {
         console.error('Erro ao inicializar Vault:', err)
+      } finally {
+        const elapsed = Date.now() - startTime
+        const remaining = Math.max(0, 600 - elapsed)
+        setTimeout(() => setIsStartupLoading(false), remaining)
       }
     }
     initVault()
@@ -1341,17 +1356,33 @@ export function App(): React.ReactElement {
                 <Button
                   variant="primary"
                   size="xs"
-                  onClick={() => window.electronAPI?.downloadAppUpdate?.()}
+                  onClick={() => {
+                    setShowUpdateOverlay(true)
+                    window.electronAPI?.downloadAppUpdate?.()
+                  }}
                   leftIcon={<Download className="w-3.5 h-3.5" />}
                 >
-                  Baixar
+                  Baixar e atualizar
+                </Button>
+              )}
+              {appUpdateState.phase === 'downloading' && (
+                <Button
+                  variant="primary"
+                  size="xs"
+                  onClick={() => setShowUpdateOverlay(true)}
+                  leftIcon={<Download className="w-3.5 h-3.5 animate-bounce" />}
+                >
+                  Ver progresso ({appUpdateState.downloadPercent ?? 0}%)
                 </Button>
               )}
               {appUpdateState.phase === 'downloaded' && (
                 <Button
                   variant="primary"
                   size="xs"
-                  onClick={() => window.electronAPI?.installAppUpdate?.()}
+                  onClick={() => {
+                    setShowUpdateOverlay(true)
+                    window.electronAPI?.installAppUpdate?.()
+                  }}
                   leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
                 >
                   Instalar e reiniciar
@@ -1370,6 +1401,36 @@ export function App(): React.ReactElement {
             </div>
           </div>
         )}
+
+      {/* Discord-Style Loading Screens */}
+      {isStartupLoading && (
+        <DiscordLoadingScreen
+          mode="startup"
+          subtitle={startupMessage}
+        />
+      )}
+
+      {showUpdateOverlay && appUpdateState?.phase === 'downloading' && (
+        <DiscordLoadingScreen
+          mode="update"
+          title="Atualizando o Notes-MD"
+          subtitle={`Baixando atualização ${appUpdateState.availableVersion ? `v${appUpdateState.availableVersion}` : ''} (${appUpdateState.downloadPercent ?? 0}%)...`}
+          progress={appUpdateState.downloadPercent ?? 0}
+          version={appUpdateState.availableVersion}
+          onDismiss={() => setShowUpdateOverlay(false)}
+        />
+      )}
+
+      {(appUpdateState?.phase === 'installing' ||
+        (showUpdateOverlay && appUpdateState?.phase === 'downloaded')) && (
+        <DiscordLoadingScreen
+          mode="update"
+          title="Reiniciando para Atualizar"
+          subtitle="Instalando nova versão e reiniciando o aplicativo..."
+          progress={100}
+          version={appUpdateState?.availableVersion}
+        />
+      )}
 
       <QuickSwitcherModal
         isOpen={isQuickSwitcherOpen}

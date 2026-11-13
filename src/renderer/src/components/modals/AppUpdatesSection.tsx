@@ -217,6 +217,18 @@ export const AppUpdatesSection: React.FC<AppUpdatesSectionProps> = ({
               Instalar e reiniciar
             </Button>
           )}
+
+          {updateState?.phase === 'installing' && (
+            <Button
+              variant="primary"
+              size="sm"
+              disabled
+              isLoading
+              leftIcon={<RotateCcw className="w-3.5 h-3.5 animate-spin" />}
+            >
+              Instalando e reiniciando...
+            </Button>
+          )}
         </div>
       </section>
 
