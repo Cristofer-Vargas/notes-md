@@ -50,8 +50,10 @@ interface EditorPaneViewProps {
   onClosePane: () => void
   onToggleLayout: () => void
   onDropNote: (notePath: string, dropZone: DropZoneDirection) => void
-  onSaveContent: (relativePath: string, content: string) => void
-  onRenameActiveNote: (newTitle: string) => void
+  onSaveContent: (relativePath: string, content: string) => Promise<void>
+  onRenameNote: (path: string, newTitle: string) => Promise<boolean>
+  focusTitlePath: string | null
+  onTitleFocusHandled: () => void
   onNavigateWikiLink: (target: string, openInNewTab?: boolean) => void
   onToggleZenMode: () => void
   onOpenHelpModal: () => void
@@ -81,7 +83,9 @@ export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
   onToggleLayout,
   onDropNote,
   onSaveContent,
-  onRenameActiveNote,
+  onRenameNote,
+  focusTitlePath,
+  onTitleFocusHandled,
   onNavigateWikiLink,
   onToggleZenMode,
   onOpenHelpModal,
@@ -449,7 +453,9 @@ export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
             settings={settings}
             onUpdateSettings={onUpdateSettings}
             onSaveContent={onSaveContent}
-            onRenameActiveNote={onRenameActiveNote}
+            onRenameNote={onRenameNote}
+            shouldFocusTitle={focusTitlePath === activeNote.relativePath}
+            onTitleFocusHandled={onTitleFocusHandled}
             onNavigateWikiLink={onNavigateWikiLink}
             isZenMode={isZenMode}
             onToggleZenMode={onToggleZenMode}

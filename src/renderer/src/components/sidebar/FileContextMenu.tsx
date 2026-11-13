@@ -16,6 +16,7 @@ import {
   FileCode2
 } from 'lucide-react'
 import type { VaultFileEntry } from '../../../../preload/index.d'
+import { useContextMenuPosition } from '../ui/useContextMenuPosition'
 
 export interface FileContextMenuTarget {
   type: 'root' | 'folder' | 'note' | 'image' | 'file'
@@ -62,17 +63,24 @@ export const FileContextMenu: React.FC<FileContextMenuProps> = ({
   onOpenInExplorer
 }) => {
   const menuRef = useRef<HTMLDivElement | null>(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
   useEffect(() => {
     if (!target) return
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const frame = window.requestAnimationFrame(() => menuRef.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus())
     const handleMouseDown = (e: MouseEvent): void => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        onClose()
+        onCloseRef.current()
       }
     }
     const handleKeyDown = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
-        onClose()
+        e.preventDefault()
+        e.stopPropagation()
+        onCloseRef.current()
+        previousFocus?.focus({ preventScroll: true })
       }
     }
     window.addEventListener('mousedown', handleMouseDown)
@@ -80,15 +88,15 @@ export const FileContextMenu: React.FC<FileContextMenuProps> = ({
     return () => {
       window.removeEventListener('mousedown', handleMouseDown)
       window.removeEventListener('keydown', handleKeyDown)
+      window.cancelAnimationFrame(frame)
     }
-  }, [target, onClose])
+  }, [target])
+
+  useContextMenuPosition(menuRef, target)
 
   if (!target) return null
 
   const menuWidth = 240
-  const menuHeight = 300
-  const safeLeft = Math.min(Math.max(8, target.x), window.innerWidth - menuWidth - 12)
-  const safeTop = Math.min(Math.max(8, target.y), window.innerHeight - menuHeight - 12)
 
   const run = (fn: () => void): void => {
     fn()
@@ -123,8 +131,20 @@ export const FileContextMenu: React.FC<FileContextMenuProps> = ({
   return (
     <div
       ref={menuRef}
-      style={{ top: safeTop, left: safeLeft, width: menuWidth, maxHeight: `calc(100vh - ${safeTop + 8}px)` }}
+      role="menu"
+      aria-label="Ações do explorador"
+      style={{ top: 8, left: 8, width: menuWidth }}
       onContextMenu={(e) => e.preventDefault()}
+      onKeyDown={(e) => {
+        if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return
+        const buttons = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'))
+        if (!buttons.length) return
+        const index = buttons.indexOf(document.activeElement as HTMLButtonElement)
+        const next = e.key === 'Home' ? 0 : e.key === 'End' ? buttons.length - 1 : e.key === 'ArrowDown' ? (index + 1) % buttons.length : (index - 1 + buttons.length) % buttons.length
+        e.preventDefault()
+        e.stopPropagation()
+        buttons[next].focus()
+      }}
       className="app-context-menu fixed z-50 overflow-y-auto border border-surface-border bg-surface-bg shadow-xl p-1.5 select-none"
     >
       {/* Context Header */}
@@ -162,6 +182,7 @@ export const FileContextMenu: React.FC<FileContextMenuProps> = ({
       {target.type === 'note' && entry && (
         <>
           <SelectionButton
+            role="menuitem"
             type="button"
             onClick={() => run(() => onSelectNote(entry.relativePath, false))}
             className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-content-primary hover:bg-surface-secondary transition-colors"
@@ -170,6 +191,7 @@ export const FileContextMenu: React.FC<FileContextMenuProps> = ({
             <span>Abrir nesta Guia</span>
           </SelectionButton>
           <SelectionButton
+            role="menuitem"
             type="button"
             onClick={() => run(() => onSelectNote(entry.relativePath, true))}
             className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-content-primary hover:bg-surface-secondary transition-colors"
@@ -179,6 +201,7 @@ export const FileContextMenu: React.FC<FileContextMenuProps> = ({
           </SelectionButton>
           {onDuplicateNote && (
             <SelectionButton
+            role="menuitem"
               type="button"
               onClick={() => run(() => onDuplicateNote(entry.relativePath))}
               className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary transition-colors"
@@ -195,6 +218,7 @@ export const FileContextMenu: React.FC<FileContextMenuProps> = ({
       {target.type === 'image' && entry && (
         <>
           <SelectionButton
+            role="menuitem"
             type="button"
             onClick={() => run(() => onOpenImage?.(entry.relativePath, entry.name))}
             className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-content-primary hover:bg-accent-soft hover:text-accent transition-colors"
@@ -203,6 +227,7 @@ export const FileContextMenu: React.FC<FileContextMenuProps> = ({
             <span>Visualizar Imagem (Modal)</span>
           </SelectionButton>
           <SelectionButton
+            role="menuitem"
             type="button"
             onClick={() => run(() => onOpenOtherFile?.(entry.relativePath, entry.name))}
             className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-content-primary hover:bg-surface-secondary transition-colors"
@@ -218,6 +243,7 @@ export const FileContextMenu: React.FC<FileContextMenuProps> = ({
       {target.type === 'file' && entry && (
         <>
           <SelectionButton
+            role="menuitem"
             type="button"
             onClick={() => run(() => onOpenOtherFile?.(entry.relativePath, entry.name))}
             className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-content-primary hover:bg-surface-secondary transition-colors"
@@ -231,6 +257,7 @@ export const FileContextMenu: React.FC<FileContextMenuProps> = ({
 
       {/* Creation Actions in the target directory */}
       <SelectionButton
+            role="menuitem"
         type="button"
         onClick={() => run(() => onCreateNoteInFolder(targetFolderRel))}
         className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-content-primary hover:bg-surface-secondary transition-colors text-left"
@@ -240,6 +267,7 @@ export const FileContextMenu: React.FC<FileContextMenuProps> = ({
       </SelectionButton>
 
       <SelectionButton
+            role="menuitem"
         type="button"
         onClick={() => run(() => onCreateFolderInParent(targetFolderRel))}
         className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary transition-colors text-left"
@@ -254,15 +282,18 @@ export const FileContextMenu: React.FC<FileContextMenuProps> = ({
           <div className="h-px bg-surface-border my-1" />
 
           <SelectionButton
+            role="menuitem"
             type="button"
             onClick={() => run(() => onRenameEntry(entry.relativePath, entry.name))}
             className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary transition-colors"
           >
             <Pencil className="w-3.5 h-3.5 text-content-secondary shrink-0" />
-            <span>Renomear {getEntryTypeLabel()}</span>
+            <span className="flex-1 text-left">Renomear {getEntryTypeLabel()}</span>
+            <span className="font-mono text-[10px] text-content-muted">F2</span>
           </SelectionButton>
 
           <SelectionButton
+            role="menuitem"
             type="button"
             onClick={() => run(() => onOpenInExplorer(targetFolderRel))}
             className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary transition-colors"
@@ -274,6 +305,7 @@ export const FileContextMenu: React.FC<FileContextMenuProps> = ({
           <div className="h-px bg-surface-border my-1" />
 
           <SelectionButton
+            role="menuitem"
             type="button"
             onClick={() => run(() => onDeleteEntry(entry.relativePath, entry.name))}
             title="Mover para a Lixeira do Sistema Operacional"
@@ -290,6 +322,7 @@ export const FileContextMenu: React.FC<FileContextMenuProps> = ({
         <>
           <div className="h-px bg-surface-border my-1" />
           <SelectionButton
+            role="menuitem"
             type="button"
             onClick={() => run(onRefreshVault)}
             className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary transition-colors"
@@ -298,6 +331,7 @@ export const FileContextMenu: React.FC<FileContextMenuProps> = ({
             <span>Sincronizar Diretório</span>
           </SelectionButton>
           <SelectionButton
+            role="menuitem"
             type="button"
             onClick={() => run(() => onOpenInExplorer(''))}
             className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-content-primary hover:bg-surface-secondary transition-colors"

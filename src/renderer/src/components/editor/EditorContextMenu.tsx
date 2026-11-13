@@ -44,6 +44,7 @@ import {
   mergeSpellSuggestions
 } from '../../services/spellcheckService'
 import { cn } from '../../utils/cn'
+import { useContextMenuPosition } from '../ui/useContextMenuPosition'
 
 export interface EditorContextMenuPosition {
   x: number
@@ -97,6 +98,14 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
   useEffect(() => {
     setActiveSubmenu(null)
     setSelectedSugIndex(0)
+  }, [position])
+
+  useEffect(() => {
+    if (!position || position.trigger === 'selection') return
+    const frame = window.requestAnimationFrame(() => {
+      menuRef.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus({ preventScroll: true })
+    })
+    return () => window.cancelAnimationFrame(frame)
   }, [position])
 
   useEffect(() => {
@@ -245,12 +254,60 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
     if (!position) return
 
     const handleKeyDown = (e: KeyboardEvent): void => {
+      const menu = menuRef.current
+      const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null
+      const inMenu = Boolean(menu && focused && menu.contains(focused))
+      // The floating selection toolbar must not intercept normal typing in the editor.
+      if (position.trigger === 'selection' && !inMenu) return
+
       if (e.key === 'Escape') {
         e.preventDefault()
         e.stopPropagation()
+        if (activeSubmenu && focused?.closest('[data-menu-level="submenu"]')) {
+          const parent = focused.closest<HTMLElement>('[data-submenu-panel]')?.parentElement?.querySelector<HTMLButtonElement>('[data-submenu-trigger]')
+          setActiveSubmenu(null)
+          parent?.focus({ preventScroll: true })
+          return
+        }
         onClose()
         editor?.commands.focus()
         return
+      }
+
+      if (inMenu && focused && menu && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+        const panel = focused.closest<HTMLElement>('[data-menu-level]') ?? menu
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Home' || e.key === 'End') {
+          const items = Array.from(panel.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'))
+            .filter((item) => item.closest('[data-menu-level]') === panel)
+          if (!items.length) return
+          const index = items.indexOf(focused as HTMLButtonElement)
+          const next = e.key === 'Home' ? 0 : e.key === 'End' ? items.length - 1 : e.key === 'ArrowDown' ? (index + 1) % items.length : (index - 1 + items.length) % items.length
+          e.preventDefault()
+          e.stopPropagation()
+          if (panel === menu) setActiveSubmenu(null)
+          items[next].focus({ preventScroll: true })
+          return
+        }
+        const submenuId = focused.dataset.submenuTrigger as SubmenuId | undefined
+        if ((e.key === 'ArrowRight' || e.key === 'Enter' || e.key === ' ') && submenuId && panel === menu) {
+          e.preventDefault()
+          e.stopPropagation()
+          setActiveSubmenu(submenuId)
+          window.requestAnimationFrame(() => {
+            focused.parentElement?.querySelector<HTMLButtonElement>('[data-submenu-panel] button:not(:disabled)')?.focus({ preventScroll: true })
+          })
+          return
+        }
+        if (e.key === 'ArrowLeft' && panel !== menu) {
+          e.preventDefault()
+          e.stopPropagation()
+          const parent = panel.parentElement?.querySelector<HTMLButtonElement>('[data-submenu-trigger]')
+          setActiveSubmenu(null)
+          parent?.focus({ preventScroll: true })
+          return
+        }
+        // Native buttons handle Enter and Space for ordinary actions.
+        if (e.key === 'Enter' || e.key === ' ') return
       }
 
       // Fast numbers 1-5 to apply suggestions directly
@@ -280,56 +337,17 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
         return
       }
 
-      // Arrow navigation
-      if (e.key === 'ArrowDown') {
-        e.preventDefault()
-        e.stopPropagation()
-        if (actionableSuggestions.length > 0) {
-          const max = Math.min(5, actionableSuggestions.length)
-          setSelectedSugIndex((prev) => (prev + 1) % max)
-        }
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault()
-        e.stopPropagation()
-        if (actionableSuggestions.length > 0) {
-          const max = Math.min(5, actionableSuggestions.length)
-          setSelectedSugIndex((prev) => (prev - 1 + max) % max)
-        }
-      } else if (e.key === 'Enter') {
-        e.preventDefault()
-        e.stopPropagation()
-        if (actionableSuggestions.length > 0 && actionableSuggestions[selectedSugIndex]) {
-          handleApplySuggestion(actionableSuggestions[selectedSugIndex])
-        }
-      }
     }
 
     window.addEventListener('keydown', handleKeyDown, true)
     return () => window.removeEventListener('keydown', handleKeyDown, true)
-  }, [position, actionableSuggestions, selectedSugIndex, activeWord, onClose, editor])
+  }, [position, actionableSuggestions, activeWord, activeSubmenu, onClose, editor])
+
+  useContextMenuPosition(menuRef, position, activeSubmenu)
 
   if (!editor || !position) return null
 
   const menuWidth = 248
-  const menuHeight = 360
-  const posX = typeof position.x === 'number' && !isNaN(position.x) ? position.x : 100
-  const posY = typeof position.y === 'number' && !isNaN(position.y) ? position.y : 100
-  const openSubmenuOnLeft = posX + menuWidth + 230 > window.innerWidth
-  const safeLeft = Math.min(Math.max(8, posX), window.innerWidth - menuWidth - 12)
-
-  let computedTop = posY
-  if (position.trigger === 'selection') {
-    const aboveTop = posY - menuHeight - 10
-    if (aboveTop >= 52) {
-      computedTop = aboveTop
-    } else {
-      computedTop = Math.min(
-        (position.selectionBottom ?? posY + 24) + 10,
-        window.innerHeight - menuHeight - 12
-      )
-    }
-  }
-  const safeTop = Math.min(Math.max(8, computedTop), window.innerHeight - menuHeight - 12)
 
   const runAction = (fn: () => void): void => {
     fn()
@@ -384,14 +402,15 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
     onClose()
   }
 
-  const submenuPositionClass = openSubmenuOnLeft
-    ? 'right-full mr-1 top-0'
-    : 'left-full ml-1 top-0'
+  const submenuPositionClass = 'left-full top-0'
 
   return (
     <div
       ref={menuRef}
-      style={{ top: safeTop, left: safeLeft, width: menuWidth }}
+      data-menu-level="root"
+      role="menu"
+      aria-label="Ações da nota"
+      style={{ top: 8, left: 8, width: menuWidth, overflowY: 'auto' }}
       onContextMenu={(e) => e.preventDefault()}
       className="app-context-menu fixed z-50 border border-surface-border bg-surface-bg shadow-xl p-1.5 select-none"
     >
@@ -428,9 +447,11 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
                 const isSelected = idx === selectedSugIndex
                 return (
                   <SelectionButton
+              role="menuitem"
                     key={sug}
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
+                    onFocus={() => setSelectedSugIndex(idx)}
                     onClick={() => handleApplySuggestion(sug)}
                     className={cn(
                       'w-full flex items-center justify-between px-2 py-1.5 rounded-md text-xs font-medium text-left transition-colors group cursor-pointer',
@@ -465,6 +486,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               }`}
             >
               <SelectionButton
+              role="menuitem"
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => handleAddWordToDict(activeWord)}
@@ -479,6 +501,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               </SelectionButton>
 
               <SelectionButton
+              role="menuitem"
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => handleIgnoreWord(activeWord)}
@@ -499,6 +522,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
       {/* Top Quick Mini-Bar (1-Click Basic Formatting) */}
       <div className="flex items-center justify-between gap-0.5 px-1 py-1 mb-1 rounded-lg bg-surface-secondary border border-surface-border/60">
         <SelectionButton
+              role="menuitem"
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => runAction(() => editor.chain().focus().toggleBold().run())}
@@ -512,6 +536,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
           <Bold className="w-3.5 h-3.5" />
         </SelectionButton>
         <SelectionButton
+              role="menuitem"
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => runAction(() => editor.chain().focus().toggleItalic().run())}
@@ -525,6 +550,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
           <Italic className="w-3.5 h-3.5" />
         </SelectionButton>
         <SelectionButton
+              role="menuitem"
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => runAction(() => editor.chain().focus().toggleUnderline().run())}
@@ -538,6 +564,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
           <UnderlineIcon className="w-3.5 h-3.5" />
         </SelectionButton>
         <SelectionButton
+              role="menuitem"
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => runAction(() => editor.chain().focus().toggleStrike().run())}
@@ -551,6 +578,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
           <Strikethrough className="w-3.5 h-3.5" />
         </SelectionButton>
         <SelectionButton
+              role="menuitem"
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() =>
@@ -566,6 +594,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
           <Highlighter className="w-3.5 h-3.5" />
         </SelectionButton>
         <SelectionButton
+              role="menuitem"
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => runAction(() => editor.chain().focus().unsetAllMarks().clearNodes().run())}
@@ -582,8 +611,12 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
         onMouseEnter={() => setActiveSubmenu('format')}
       >
         <SelectionButton
+              role="menuitem"
           type="button"
           onMouseDown={(e) => e.preventDefault()}
+          data-submenu-trigger="format"
+          aria-haspopup="menu"
+          aria-expanded={activeSubmenu === 'format'}
           onClick={() => setActiveSubmenu((prev) => (prev === 'format' ? null : 'format'))}
           className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
             activeSubmenu === 'format'
@@ -600,9 +633,13 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
 
         {activeSubmenu === 'format' && (
           <div
+            data-menu-level="submenu"
+            data-submenu-panel
+            role="menu"
             className={`absolute ${submenuPositionClass} w-52 rounded-sm border border-surface-border bg-surface-bg shadow-xl p-1.5 space-y-0.5 z-50`}
           >
             <SelectionButton
+              role="menuitem"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().toggleBold().run())}
@@ -614,6 +651,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               <span className="text-[10px] text-content-muted">Ctrl+B</span>
             </SelectionButton>
             <SelectionButton
+              role="menuitem"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().toggleItalic().run())}
@@ -625,6 +663,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               <span className="text-[10px] text-content-muted">Ctrl+I</span>
             </SelectionButton>
             <SelectionButton
+              role="menuitem"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().toggleUnderline().run())}
@@ -636,6 +675,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               <span className="text-[10px] text-content-muted">Ctrl+U</span>
             </SelectionButton>
             <SelectionButton
+              role="menuitem"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().toggleStrike().run())}
@@ -644,6 +684,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               <Strikethrough className="w-3.5 h-3.5 text-accent" /> Tachado
             </SelectionButton>
             <SelectionButton
+              role="menuitem"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().toggleCode().run())}
@@ -653,6 +694,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
             </SelectionButton>
             <div className="h-px bg-surface-border my-1" />
             <SelectionButton
+              role="menuitem"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => transformSelectedCase('upper')}
@@ -661,6 +703,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               <CaseSensitive className="w-3.5 h-3.5 text-accent" /> MAIÚSCULAS
             </SelectionButton>
             <SelectionButton
+              role="menuitem"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => transformSelectedCase('lower')}
@@ -669,6 +712,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               <CaseSensitive className="w-3.5 h-3.5 text-accent" /> minúsculas
             </SelectionButton>
             <SelectionButton
+              role="menuitem"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => transformSelectedCase('capitalize')}
@@ -686,8 +730,12 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
         onMouseEnter={() => setActiveSubmenu('headings')}
       >
         <SelectionButton
+              role="menuitem"
           type="button"
           onMouseDown={(e) => e.preventDefault()}
+          data-submenu-trigger="headings"
+          aria-haspopup="menu"
+          aria-expanded={activeSubmenu === 'headings'}
           onClick={() => setActiveSubmenu((prev) => (prev === 'headings' ? null : 'headings'))}
           className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
             activeSubmenu === 'headings'
@@ -704,9 +752,13 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
 
         {activeSubmenu === 'headings' && (
           <div
+            data-menu-level="submenu"
+            data-submenu-panel
+            role="menu"
             className={`absolute ${submenuPositionClass} w-52 rounded-sm border border-surface-border bg-surface-bg shadow-xl p-1.5 space-y-0.5 z-50`}
           >
             <SelectionButton
+              role="menuitem"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().setParagraph().run())}
@@ -715,6 +767,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               <Pilcrow className="w-3.5 h-3.5 text-accent" /> Parágrafo Normal
             </SelectionButton>
             <SelectionButton
+              role="menuitem"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() =>
@@ -725,6 +778,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               <Heading1 className="w-3.5 h-3.5 text-accent" /> Título 1 (H1)
             </SelectionButton>
             <SelectionButton
+              role="menuitem"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() =>
@@ -735,6 +789,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               <Heading2 className="w-3.5 h-3.5 text-accent" /> Título 2 (H2)
             </SelectionButton>
             <SelectionButton
+              role="menuitem"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() =>
@@ -745,6 +800,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               <Heading3 className="w-3.5 h-3.5 text-accent" /> Título 3 (H3)
             </SelectionButton>
             <SelectionButton
+              role="menuitem"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() =>
@@ -756,6 +812,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
             </SelectionButton>
             <div className="h-px bg-surface-border my-1" />
             <SelectionButton
+              role="menuitem"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().toggleBlockquote().run())}
@@ -764,6 +821,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               <MessageSquareQuote className="w-3.5 h-3.5 text-accent" /> Citação (Blockquote)
             </SelectionButton>
             <SelectionButton
+              role="menuitem"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().toggleCodeBlock().run())}
@@ -772,6 +830,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               <Code2 className="w-3.5 h-3.5 text-accent" /> Bloco de Código
             </SelectionButton>
             <SelectionButton
+              role="menuitem"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() =>
@@ -791,8 +850,12 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
         onMouseEnter={() => setActiveSubmenu('colors')}
       >
         <SelectionButton
+              role="menuitem"
           type="button"
           onMouseDown={(e) => e.preventDefault()}
+          data-submenu-trigger="colors"
+          aria-haspopup="menu"
+          aria-expanded={activeSubmenu === 'colors'}
           onClick={() => setActiveSubmenu((prev) => (prev === 'colors' ? null : 'colors'))}
           className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
             activeSubmenu === 'colors'
@@ -809,6 +872,9 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
 
         {activeSubmenu === 'colors' && (
           <div
+            data-menu-level="submenu"
+            data-submenu-panel
+            role="menu"
             className={`absolute ${submenuPositionClass} w-56 rounded-sm border border-surface-border bg-surface-bg shadow-xl p-2 space-y-2 z-50`}
           >
             <div>
@@ -818,6 +884,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               <div className="grid grid-cols-3 gap-1">
                 {HIGHLIGHT_COLORS.map((h) => (
                   <SelectionButton
+              role="menuitem"
                     key={h.color}
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
@@ -835,6 +902,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
                 ))}
               </div>
               <SelectionButton
+              role="menuitem"
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => runAction(() => editor.chain().focus().unsetHighlight().run())}
@@ -853,6 +921,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               <div className="space-y-0.5">
                 {TEXT_COLORS.map((item) => (
                   <SelectionButton
+              role="menuitem"
                     key={item.name}
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
@@ -886,8 +955,12 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
         onMouseEnter={() => setActiveSubmenu('lists')}
       >
         <SelectionButton
+              role="menuitem"
           type="button"
           onMouseDown={(e) => e.preventDefault()}
+          data-submenu-trigger="lists"
+          aria-haspopup="menu"
+          aria-expanded={activeSubmenu === 'lists'}
           onClick={() => setActiveSubmenu((prev) => (prev === 'lists' ? null : 'lists'))}
           className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
             activeSubmenu === 'lists'
@@ -904,9 +977,13 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
 
         {activeSubmenu === 'lists' && (
           <div
+            data-menu-level="submenu"
+            data-submenu-panel
+            role="menu"
             className={`absolute ${submenuPositionClass} w-52 rounded-sm border border-surface-border bg-surface-bg shadow-xl p-1.5 space-y-0.5 z-50`}
           >
             <SelectionButton
+              role="menuitem"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().toggleBulletList().run())}
@@ -915,6 +992,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               <List className="w-3.5 h-3.5 text-accent" /> Lista com Marcadores
             </SelectionButton>
             <SelectionButton
+              role="menuitem"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().toggleOrderedList().run())}
@@ -923,6 +1001,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               <ListOrdered className="w-3.5 h-3.5 text-accent" /> Lista Numerada
             </SelectionButton>
             <SelectionButton
+              role="menuitem"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().toggleTaskList().run())}
@@ -932,6 +1011,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
             </SelectionButton>
             <div className="h-px bg-surface-border my-1" />
             <SelectionButton
+              role="menuitem"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().setTextAlign('left').run())}
@@ -940,6 +1020,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               <AlignLeft className="w-3.5 h-3.5 text-accent" /> Alinhar à Esquerda
             </SelectionButton>
             <SelectionButton
+              role="menuitem"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().setTextAlign('center').run())}
@@ -948,6 +1029,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               <AlignCenter className="w-3.5 h-3.5 text-accent" /> Centralizar
             </SelectionButton>
             <SelectionButton
+              role="menuitem"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().setTextAlign('right').run())}
@@ -956,6 +1038,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               <AlignRight className="w-3.5 h-3.5 text-accent" /> Alinhar à Direita
             </SelectionButton>
             <SelectionButton
+              role="menuitem"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().setTextAlign('justify').run())}
@@ -973,8 +1056,12 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
         onMouseEnter={() => setActiveSubmenu('insert')}
       >
         <SelectionButton
+              role="menuitem"
           type="button"
           onMouseDown={(e) => e.preventDefault()}
+          data-submenu-trigger="insert"
+          aria-haspopup="menu"
+          aria-expanded={activeSubmenu === 'insert'}
           onClick={() => setActiveSubmenu((prev) => (prev === 'insert' ? null : 'insert'))}
           className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
             activeSubmenu === 'insert'
@@ -991,9 +1078,13 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
 
         {activeSubmenu === 'insert' && (
           <div
+            data-menu-level="submenu"
+            data-submenu-panel
+            role="menu"
             className={`absolute ${submenuPositionClass} w-56 rounded-sm border border-surface-border bg-surface-bg shadow-xl p-1.5 space-y-0.5 z-50`}
           >
             <SelectionButton
+              role="menuitem"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() =>
@@ -1012,6 +1103,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
             {editor.isActive('table') && (
               <>
                 <SelectionButton
+              role="menuitem"
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => runAction(() => editor.chain().focus().addRowAfter().run())}
@@ -1020,6 +1112,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
                   + Adicionar Linha Abaixo
                 </SelectionButton>
                 <SelectionButton
+              role="menuitem"
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => runAction(() => editor.chain().focus().addColumnAfter().run())}
@@ -1028,6 +1121,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
                   + Adicionar Coluna à Direita
                 </SelectionButton>
                 <SelectionButton
+              role="menuitem"
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => runAction(() => editor.chain().focus().deleteRow().run())}
@@ -1036,6 +1130,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
                   − Remover Linha Atual
                 </SelectionButton>
                 <SelectionButton
+              role="menuitem"
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => runAction(() => editor.chain().focus().deleteColumn().run())}
@@ -1044,6 +1139,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
                   − Remover Coluna Atual
                 </SelectionButton>
                 <SelectionButton
+              role="menuitem"
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => runAction(() => editor.chain().focus().deleteTable().run())}
@@ -1055,6 +1151,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
             )}
             <div className="h-px bg-surface-border my-1" />
             <SelectionButton
+              role="menuitem"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().setHorizontalRule().run())}
@@ -1063,6 +1160,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               <Minus className="w-3.5 h-3.5 text-accent" /> Linha Divisória (---)
             </SelectionButton>
             <SelectionButton
+              role="menuitem"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(() => editor.chain().focus().toggleCodeBlock().run())}
@@ -1071,6 +1169,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
               <Code2 className="w-3.5 h-3.5 text-accent" /> Bloco de Código
             </SelectionButton>
             <SelectionButton
+              role="menuitem"
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() =>
@@ -1086,6 +1185,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
 
       {/* Direct Action: Conectar Nota [[WikiLink]] */}
       <SelectionButton
+              role="menuitem"
         type="button"
         onMouseEnter={() => setActiveSubmenu(null)}
         onMouseDown={(e) => e.preventDefault()}
@@ -1103,6 +1203,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
 
       {/* Clipboard Actions */}
       <SelectionButton
+              role="menuitem"
         type="button"
         onMouseEnter={() => setActiveSubmenu(null)}
         onMouseDown={(e) => e.preventDefault()}
@@ -1116,6 +1217,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
         <span className="text-[10px] text-content-muted">Ctrl+X</span>
       </SelectionButton>
       <SelectionButton
+              role="menuitem"
         type="button"
         onMouseEnter={() => setActiveSubmenu(null)}
         onMouseDown={(e) => e.preventDefault()}
@@ -1129,6 +1231,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
         <span className="text-[10px] text-content-muted">Ctrl+C</span>
       </SelectionButton>
       <SelectionButton
+              role="menuitem"
         type="button"
         onMouseEnter={() => setActiveSubmenu(null)}
         onMouseDown={(e) => e.preventDefault()}

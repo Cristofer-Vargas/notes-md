@@ -193,16 +193,6 @@ body {
 button svg { stroke-width: 1.7; }
 
 .settings-window { font-family: Geist, 'Segoe UI', sans-serif; }
-.settings-nav-label,
-.settings-eyebrow,
-.settings-nav-number {
-  font-family: 'IBM Plex Mono', Consolas, monospace;
-  font-size: 10px;
-  font-weight: 400;
-  letter-spacing: .07em;
-  text-transform: uppercase;
-}
-.settings-nav-label { color: var(--text-muted); padding: 8px 10px 16px; }
 .settings-nav { display: flex; flex-direction: column; gap: 2px; }
 .settings-nav .settings-nav-item {
   width: 100%;
@@ -222,22 +212,8 @@ button svg { stroke-width: 1.7; }
   font-weight: 650;
 }
 .settings-nav .settings-nav-item[aria-current='page'] > span:first-child { color: var(--accent-color); }
-.settings-nav-item > span:last-child { margin-left: auto; color: var(--text-muted); }
 .settings-content { padding: 30px clamp(24px, 4vw, 52px) 48px; }
 .settings-content > * { max-width: 880px; }
-.settings-page-heading { margin-bottom: 30px; padding-bottom: 22px; border-bottom: 1px solid var(--border-color); }
-.settings-eyebrow { color: var(--text-muted); margin-bottom: 12px; }
-.settings-page-heading h1 {
-  font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
-  color: var(--text-primary);
-  font-size: 36px;
-  font-weight: 800;
-  letter-spacing: -.015em;
-  line-height: 1;
-  text-transform: uppercase;
-}
-.settings-page-heading h1 span { color: var(--accent-color); }
-.settings-page-heading p { color: var(--text-secondary); font-size: 12px; margin-top: 8px; }
 .settings-content section > div:first-child.text-xs,
 .settings-content section > div:first-child > div.text-xs {
   letter-spacing: .06em;
@@ -436,7 +412,10 @@ button svg { stroke-width: 1.7; }
 
 .ProseMirror ul[data-type='taskList'] li > label {
   flex: 0 0 auto;
-  margin-top: 0.25rem;
+  display: flex;
+  align-items: center;
+  height: 1lh;
+  margin-top: 0.55em;
   user-select: none;
 }
 
@@ -444,6 +423,7 @@ button svg { stroke-width: 1.7; }
   cursor: pointer;
   width: 1.05rem;
   height: 1.05rem;
+  margin: 0;
   accent-color: var(--accent-color);
   border-radius: 4px;
 }

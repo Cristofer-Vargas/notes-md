@@ -52,8 +52,10 @@ interface MarkdownEditorProps {
   vaultIndex: Record<string, IndexedNoteMeta>
   settings: AppSettings
   onUpdateSettings: (partial: Partial<AppSettings>) => void
-  onSaveContent: (relativePath: string, newMarkdown: string) => void
-  onRenameActiveNote: (newTitle: string) => void
+  onSaveContent: (relativePath: string, newMarkdown: string) => Promise<void>
+  onRenameNote: (path: string, newTitle: string) => Promise<boolean>
+  shouldFocusTitle: boolean
+  onTitleFocusHandled: () => void
   onNavigateWikiLink: (targetTitle: string, openInNewTab?: boolean) => void
   isZenMode: boolean
   onToggleZenMode: () => void
@@ -67,7 +69,9 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   settings,
   onUpdateSettings,
   onSaveContent,
-  onRenameActiveNote,
+  onRenameNote,
+  shouldFocusTitle,
+  onTitleFocusHandled,
   onNavigateWikiLink,
   isZenMode,
   onToggleZenMode,
@@ -76,6 +80,9 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   const [isSourceMode, setIsSourceMode] = useState(false)
   const [rawMarkdown, setRawMarkdown] = useState('')
   const [noteTitleInput, setNoteTitleInput] = useState('')
+  const [isRenaming, setIsRenaming] = useState(false)
+  const titleInputRef = useRef<HTMLInputElement>(null)
+  const cancelTitleEditRef = useRef(false)
   const [activeNodePath, setActiveNodePath] = useState('documento › p')
   const [saveStatus, setSaveStatus] = useState<'saved' | 'typing' | 'saving'>('saved')
   const saveTimeoutRef = useRef<number | null>(null)
@@ -137,19 +144,19 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   const allNotesRef = useRef<VaultNoteData[]>(allNotes)
   allNotesRef.current = allNotes
 
-  const flushPendingSave = useCallback(() => {
+  const flushPendingSave = useCallback((): Promise<void> => {
     const hadPendingTimeout = Boolean(saveTimeoutRef.current)
     if (saveTimeoutRef.current) {
       window.clearTimeout(saveTimeoutRef.current)
       saveTimeoutRef.current = null
     }
     if (!hadPendingTimeout && !hasPendingSaveRef.current) {
-      return
+      return Promise.resolve()
     }
     hasPendingSaveRef.current = false
 
     const notePath = activeNotePathRef.current
-    if (!notePath) return
+    if (!notePath) return Promise.resolve()
 
     if (isSourceModeRef.current) {
       const nextMd = rawMarkdownRef.current
@@ -157,12 +164,13 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         lastSavedMarkdownRef.current = nextMd
         lastInternalEditTimeRef.current = Date.now()
         setSaveStatus('saving')
-        onSaveContentRef.current(notePath, nextMd)
+        const saved = onSaveContentRef.current(notePath, nextMd)
         window.setTimeout(() => setSaveStatus('saved'), 350)
+        return saved
       } else {
         setSaveStatus('saved')
       }
-      return
+      return Promise.resolve()
     }
 
     const ed = editorRef.current
@@ -175,8 +183,9 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
           lastInternalEditTimeRef.current = Date.now()
           setRawMarkdown(cleanMd)
           setSaveStatus('saving')
-          onSaveContentRef.current(notePath, cleanMd)
+          const saved = onSaveContentRef.current(notePath, cleanMd)
           window.setTimeout(() => setSaveStatus('saved'), 350)
+          return saved
         } else {
           setSaveStatus('saved')
         }
@@ -184,6 +193,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         // ignore
       }
     }
+    return Promise.resolve()
   }, [])
 
   const syncWikiLinkMissingClasses = useCallback((dom: HTMLElement) => {
@@ -315,7 +325,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
           lastInternalEditTimeRef.current = Date.now()
           setRawMarkdown(cleanMd)
           setSaveStatus('saving')
-          onSaveContentRef.current(activeNotePathRef.current, cleanMd)
+          void onSaveContentRef.current(activeNotePathRef.current, cleanMd).catch(() => {})
           window.setTimeout(() => setSaveStatus('saved'), 350)
 
           // Selection updated
@@ -405,7 +415,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         }
         if (matchesShortcut(event, getShortcutKey(settings, 'saveNote'))) {
           event.preventDefault()
-          flushPendingSave()
+          void flushPendingSave().catch(() => {})
           return true
         }
         return false
@@ -530,7 +540,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
 
   useEffect(() => {
     const handleFlush = () => {
-      flushPendingSave()
+      void flushPendingSave().catch(() => {})
     }
     window.addEventListener('beforeunload', handleFlush)
     window.addEventListener('blur', handleFlush)
@@ -543,7 +553,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   // Synchronize editor when switching active note OR when external file changes occur
   useEffect(() => {
     if (!activeNote) {
-      flushPendingSave()
+      void flushPendingSave().catch(() => {})
       activeNotePathRef.current = null
       hydratedEditorRef.current = null
       hasPendingSaveRef.current = false
@@ -561,7 +571,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         hydratedEditorRef.current?.path !== activeNote.relativePath)
 
     if (isNewPath) {
-      flushPendingSave()
+      void flushPendingSave().catch(() => {})
       activeNotePathRef.current = activeNote.relativePath
       hasPendingSaveRef.current = false
       lastSavedMarkdownRef.current = activeNote.content
@@ -585,7 +595,9 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     }
 
     // Same note path: check if name or external content changed on disk
-    setNoteTitleInput((prev) => (prev !== activeNote.name ? activeNote.name : prev))
+    if (document.activeElement !== titleInputRef.current && !isRenaming) {
+      setNoteTitleInput((prev) => (prev !== activeNote.name ? activeNote.name : prev))
+    }
 
     const isExternalModification =
       activeNote.content !== lastSavedMarkdownRef.current &&
@@ -603,7 +615,21 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         hydratedEditorRef.current = { editor, path: activeNote.relativePath }
       }
     }
-  }, [activeNote, editor, flushPendingSave])
+  }, [activeNote, editor, flushPendingSave, isRenaming])
+
+  useEffect(() => {
+    if (!shouldFocusTitle || !activeNote) return
+    const frame = window.requestAnimationFrame(() => {
+      titleInputRef.current?.focus()
+      titleInputRef.current?.select()
+      onTitleFocusHandled()
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [shouldFocusTitle, activeNote?.relativePath, onTitleFocusHandled])
+
+  useEffect(() => {
+    editor?.setEditable(!isRenaming, false)
+  }, [editor, isRenaming])
 
   // Update visual styling of existing vs non-existing [[WikiLinks]] in DOM
   useEffect(() => {
@@ -804,7 +830,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         lastSavedMarkdownRef.current = nextMd
         lastInternalEditTimeRef.current = Date.now()
         setSaveStatus('saving')
-        onSaveContentRef.current(activeNotePathRef.current, nextMd)
+        void onSaveContentRef.current(activeNotePathRef.current, nextMd).catch(() => {})
         window.setTimeout(() => setSaveStatus('saved'), 350)
       }
     }, 2000)
@@ -978,40 +1004,66 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
               : 'bg-surface-bg px-8 py-8 md:px-14 md:py-10 min-h-full'
           }`}
         >
-          {/* Document Header: Breadcrumb & Editable Note Title */}
-          <div className="flex items-center justify-between gap-4 pb-3 mb-6 border-b border-surface-border/60">
+          {/* The file name is the note title; it is not part of the Markdown body. */}
+          <div className="flex items-center gap-4 pb-3 mb-6 border-b border-surface-border/60">
             <div className="flex items-center gap-2 text-xs text-content-muted min-w-0 flex-1">
               <FolderOpen className="w-3.5 h-3.5 text-accent shrink-0" />
               <span className="truncate">{activeNote.relativePath}</span>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0 max-w-[45%]">
-              <Input
-                type="text"
-                value={noteTitleInput}
-                onChange={(e) => setNoteTitleInput(e.target.value)}
-                onBlur={() => {
-                  if (noteTitleInput.trim() && noteTitleInput.trim() !== activeNote.name) {
-                    onRenameActiveNote(noteTitleInput.trim())
-                  } else {
-                    setNoteTitleInput(activeNote.name)
-                  }
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    ;(e.target as HTMLInputElement).blur()
-                  }
-                }}
-                title="Renomear arquivo da nota (atualiza todos os [[WikiLinks]] automaticamente)"
-                className="text-right text-xs font-medium px-2 py-1 rounded-md bg-transparent hover:bg-surface-secondary focus:bg-surface-secondary border border-transparent focus:border-accent text-content-secondary focus:text-content-primary focus:outline-none transition-colors"
-              />
-            </div>
           </div>
+
+          <h1 className="mb-5">
+            <Input
+              ref={titleInputRef}
+              type="text"
+              aria-label="Título da nota"
+              title="Renomear nota"
+              value={noteTitleInput}
+              disabled={isRenaming}
+              onChange={(e) => setNoteTitleInput(e.target.value)}
+              onBlur={async () => {
+                if (cancelTitleEditRef.current) {
+                  cancelTitleEditRef.current = false
+                  setNoteTitleInput(activeNote.name)
+                  return
+                }
+                const title = noteTitleInput.trim()
+                if (!title || title === activeNote.name) {
+                  setNoteTitleInput(activeNote.name)
+                  return
+                }
+                setIsRenaming(true)
+                try {
+                  await flushPendingSave()
+                  const renamed = await onRenameNote(activeNote.relativePath, title)
+                  if (!renamed) setNoteTitleInput(activeNote.name)
+                } catch {
+                  setNoteTitleInput(activeNote.name)
+                  window.alert('Não foi possível salvar a nota antes de renomeá-la.')
+                } finally {
+                  setIsRenaming(false)
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  e.currentTarget.blur()
+                } else if (e.key === 'Escape') {
+                  e.stopPropagation()
+                  cancelTitleEditRef.current = true
+                  e.currentTarget.blur()
+                }
+              }}
+              className="w-full border border-transparent bg-transparent px-0 py-1 text-[2rem] font-bold leading-tight tracking-tight text-content-primary hover:border-surface-border focus:border-accent focus:bg-surface-secondary focus:ring-0"
+            />
+          </h1>
 
           {/* Editor Surface: WYSIWYG vs Raw Markdown Source */}
           {isSourceMode ? (
             <textarea
               value={rawMarkdown}
+              disabled={isRenaming}
               onChange={handleRawMarkdownChange}
               onKeyDown={(e) => {
                 const nativeEvent = e.nativeEvent
@@ -1036,7 +1088,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
                 }
                 if (matchesShortcut(nativeEvent, getShortcutKey(settings, 'saveNote'))) {
                   e.preventDefault()
-                  flushPendingSave()
+                  void flushPendingSave().catch(() => {})
                   return
                 }
               }}

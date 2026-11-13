@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import path from 'path'
 import fs from 'fs/promises'
+import os from 'os'
 import {
   ensureDefaultVault,
   loadVaultSnapshot,
@@ -16,6 +17,49 @@ import type { VaultSnapshot } from '../../preload/index.d'
 
 describe('vaultService — Operações de Sistema de Arquivos e Watcher em Tempo Real', () => {
   const defaultVaultDir = path.join(process.cwd(), 'Vault-Notas')
+
+  it('cria notas vazias com nomes únicos, inclusive em criações simultâneas', async () => {
+    const vaultDir = await fs.mkdtemp(path.join(os.tmpdir(), 'notes-md-create-'))
+    try {
+      const created = await Promise.all([
+        createNoteFile(vaultDir, '', 'Nova nota'),
+        createNoteFile(vaultDir, '', 'Nova nota'),
+        createNoteFile(vaultDir, '', 'Nova nota')
+      ])
+      expect(new Set(created.map((note) => note.relativePath)).size).toBe(3)
+      for (const note of created) {
+        expect(note.content).toBe('')
+        expect(await fs.readFile(note.fullPath, 'utf-8')).toBe('')
+      }
+    } finally {
+      await fs.rm(vaultDir, { recursive: true, force: true })
+    }
+  })
+
+  it('não substitui uma nota existente ao renomear', async () => {
+    const vaultDir = await fs.mkdtemp(path.join(os.tmpdir(), 'notes-md-rename-'))
+    try {
+      const first = await createNoteFile(vaultDir, '', 'Nova nota', 'Primeira')
+      const second = await createNoteFile(vaultDir, '', 'Outra nota', 'Segunda')
+      await expect(renameVaultEntry(vaultDir, first.relativePath, 'Outra nota')).rejects.toThrow()
+      expect(await fs.readFile(first.fullPath, 'utf-8')).toBe('Primeira')
+      expect(await fs.readFile(second.fullPath, 'utf-8')).toBe('Segunda')
+    } finally {
+      await fs.rm(vaultDir, { recursive: true, force: true })
+    }
+  })
+
+  it('preserva a extensão ao renomear um arquivo que não é Markdown', async () => {
+    const vaultDir = await fs.mkdtemp(path.join(process.cwd(), '.notes-md-rename-file-'))
+    try {
+      await fs.writeFile(path.join(vaultDir, 'imagem.png'), 'imagem')
+      const renamed = await renameVaultEntry(vaultDir, 'imagem.png', 'nova-imagem')
+      expect(renamed.newRelativePath).toBe('nova-imagem.png')
+      expect(await fs.readFile(path.join(vaultDir, renamed.newRelativePath), 'utf-8')).toBe('imagem')
+    } finally {
+      await fs.rm(vaultDir, { recursive: true, force: true })
+    }
+  })
 
   it('inicializa o Vault padrão com notas Markdown interconectadas', async () => {
     const snapshot = await ensureDefaultVault(defaultVaultDir)

@@ -82,15 +82,14 @@ export type SettingsTab =
 const SETTINGS_SECTIONS: Array<{
   id: SettingsTab
   label: string
-  description: string
   icon: React.ReactNode
 }> = [
-  { id: 'appearance', label: 'Aparência', description: 'Cores e organização do espaço de escrita.', icon: <PanelTop className="w-4 h-4" /> },
-  { id: 'typography', label: 'Editor', description: 'Tipografia e conforto de leitura.', icon: <TextCursorInput className="w-4 h-4" /> },
-  { id: 'spellcheck', label: 'Ortografia', description: 'Idiomas e dicionário pessoal.', icon: <Languages className="w-4 h-4" /> },
-  { id: 'discord', label: 'Discord', description: 'Controle o que aparece no seu perfil.', icon: <Radio className="w-4 h-4" /> },
-  { id: 'shortcuts', label: 'Atalhos', description: 'Personalize os comandos do teclado.', icon: <Keyboard className="w-4 h-4" /> },
-  { id: 'updates', label: 'Sobre', description: 'Versão e atualizações do Notes-MD.', icon: <CircleHelp className="w-4 h-4" /> }
+  { id: 'appearance', label: 'Aparência', icon: <PanelTop className="w-4 h-4" /> },
+  { id: 'typography', label: 'Editor', icon: <TextCursorInput className="w-4 h-4" /> },
+  { id: 'spellcheck', label: 'Ortografia', icon: <Languages className="w-4 h-4" /> },
+  { id: 'discord', label: 'Discord', icon: <Radio className="w-4 h-4" /> },
+  { id: 'shortcuts', label: 'Atalhos', icon: <Keyboard className="w-4 h-4" /> },
+  { id: 'updates', label: 'Sobre', icon: <CircleHelp className="w-4 h-4" /> }
 ]
 
 function getDiscordStatusPresentation(status: DiscordPresenceStatus): {
@@ -452,9 +451,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <img src={appLogo} alt="Notes-MD" className="w-7 h-7 object-contain shrink-0" />
           <div className="min-w-0 flex-1 pr-2">
               <h2 className="text-sm font-semibold text-content-primary truncate">Configurações</h2>
-              <p className="text-[11px] text-content-muted truncate">
-                Um espaço de trabalho do seu jeito.
-              </p>
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0" data-no-drag>
@@ -482,8 +478,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Left Sidebar Navigation */}
           <aside className="settings-sidebar w-56 bg-surface-secondary border-r border-surface-border p-3 shrink-0 select-none flex flex-col justify-between">
             <nav aria-label="Seções das configurações" className="settings-nav">
-              <div className="settings-nav-label">Preferências / 06</div>
-              {SETTINGS_SECTIONS.map((section, index) => (
+              {SETTINGS_SECTIONS.map((section) => (
                 <Button
                   key={section.id}
                   variant="ghost"
@@ -491,7 +486,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   onClick={() => setActiveTab(section.id)}
                   className="settings-nav-item"
                   leftIcon={section.icon}
-                  rightIcon={<span className="settings-nav-number">{String(index + 1).padStart(2, '0')}</span>}
                 >
                   {section.label}
                 </Button>
@@ -519,11 +513,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* Right Panel: Active Sector Content */}
           <main className="settings-content flex-1 min-w-0 overflow-y-auto px-6 py-6">
-            <div className="settings-page-heading">
-              <div className="settings-eyebrow">NOTES-MD / CONFIGURAÇÕES</div>
-              <h1>{SETTINGS_SECTIONS.find((section) => section.id === activeTab)?.label}<span>.</span></h1>
-              <p>{SETTINGS_SECTIONS.find((section) => section.id === activeTab)?.description}</p>
-            </div>
             {/* 1. APARÊNCIA & TEMA */}
             {activeTab === 'appearance' && (
               <div className="space-y-6 animate-in fade-in duration-150">

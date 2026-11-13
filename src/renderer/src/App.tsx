@@ -144,6 +144,7 @@ export function App(): React.ReactElement {
     activeNotePath: null
   })
   const [activePaneId, setActivePaneId] = useState<'pane-1' | 'pane-2'>('pane-1')
+  const [pendingTitleFocus, setPendingTitleFocus] = useState<{ path: string; paneId: 'pane-1' | 'pane-2' } | null>(null)
 
   const activePane = activePaneId === 'pane-1' ? pane1 : pane2
   const activeNotePath = activePane.activeNotePath || pane1.activeNotePath || null
@@ -164,6 +165,7 @@ export function App(): React.ReactElement {
 
   const currentVaultPathRef = useRef<string>('')
   const lastInternalSaveTimeRef = useRef<number>(0)
+  const pendingRenameOperationsRef = useRef(0)
   const notesRef = useRef<VaultNoteData[]>([])
   useEffect(() => {
     notesRef.current = notes
@@ -590,6 +592,7 @@ export function App(): React.ReactElement {
   useEffect(() => {
     if (!window.electronAPI?.onVaultChanged) return
     const unsubscribe = window.electronAPI.onVaultChanged((snapshot) => {
+      if (pendingRenameOperationsRef.current > 0) return
       // If notification is an echo from a very recent local note save, skip re-render to preserve typing smoothness
       const isRecentInternalSave = Date.now() - lastInternalSaveTimeRef.current < 2500
       const currentNotes = notesRef.current
@@ -703,6 +706,8 @@ export function App(): React.ReactElement {
     [notes, activePaneId]
   )
 
+  const pendingNoteWritesRef = useRef<Map<string, Promise<void>>>(new Map())
+
   // Save content to disk and update in-memory state immediately
   const handleSaveContent = useCallback(
     async (relativePath: string, newMarkdown: string) => {
@@ -714,11 +719,20 @@ export function App(): React.ReactElement {
             : n
         )
       )
-      if (vaultPath) {
-        try {
-          await window.electronAPI.writeNote(vaultPath, relativePath, newMarkdown)
-        } catch (err) {
-          console.error('Falha ao salvar nota:', err)
+      if (!vaultPath) return
+      const previous = pendingNoteWritesRef.current.get(relativePath) ?? Promise.resolve()
+      const write = previous.catch(() => {}).then(async () => {
+        await window.electronAPI.writeNote(vaultPath, relativePath, newMarkdown)
+      })
+      pendingNoteWritesRef.current.set(relativePath, write)
+      try {
+        await write
+      } catch (err) {
+        console.error('Falha ao salvar nota:', err)
+        throw err
+      } finally {
+        if (pendingNoteWritesRef.current.get(relativePath) === write) {
+          pendingNoteWritesRef.current.delete(relativePath)
         }
       }
     },
@@ -755,31 +769,32 @@ export function App(): React.ReactElement {
     [vaultPath, notes, navigateToNote]
   )
 
-  const handleCreateNotePrompt = useCallback(
-    (folderRelativePath = '') => {
-      setPromptModal({
-        open: true,
-        title: folderRelativePath
-          ? `Nova Nota em "${folderRelativePath}"`
-          : 'Criar Nova Nota Markdown',
-        placeholder: 'Ex: Ideias de Arquitetura',
-        initialValue: '',
-        onConfirm: async (noteTitle) => {
-          if (!vaultPath) return
-          if (folderRelativePath) {
-            setExpandedFolders((prev) => ({ ...prev, [folderRelativePath]: true }))
-          }
-          const created = await window.electronAPI.createNote(
-            vaultPath,
-            folderRelativePath,
-            noteTitle
-          )
-          const refreshed = await window.electronAPI.loadVault(vaultPath)
-          applyVaultSnapshot(refreshed, created.relativePath)
+  const handleCreateNote = useCallback(
+    async (folderRelativePath = '', paneId: 'pane-1' | 'pane-2' = activePaneId) => {
+      if (!vaultPath) return
+      try {
+        const created = await window.electronAPI.createNote(vaultPath, folderRelativePath, 'Nova nota')
+        const refreshed = await window.electronAPI.loadVault(vaultPath)
+        if (folderRelativePath) {
+          setExpandedFolders((prev) => ({ ...prev, [folderRelativePath]: true }))
         }
-      })
+        applyVaultSnapshot(refreshed)
+        const setTargetPane = paneId === 'pane-1' ? setPane1 : setPane2
+        setTargetPane((prev) => ({
+          ...prev,
+          tabs: prev.tabs.some((tab) => tab.relativePath === created.relativePath)
+            ? prev.tabs
+            : [...prev.tabs, { relativePath: created.relativePath, title: created.name }],
+          activeNotePath: created.relativePath
+        }))
+        setActivePaneId(paneId)
+        setPendingTitleFocus({ path: created.relativePath, paneId })
+      } catch (error) {
+        console.error('Falha ao criar nota:', error)
+        window.alert('Não foi possível criar a nota. Verifique o acesso à pasta e tente novamente.')
+      }
     },
-    [vaultPath, applyVaultSnapshot]
+    [vaultPath, activePaneId, applyVaultSnapshot]
   )
 
   const handleCreateFolderPrompt = useCallback(
@@ -812,84 +827,98 @@ export function App(): React.ReactElement {
   )
 
   const performRename = useCallback(
-    async (oldRelativePath: string, newTitle: string) => {
-      if (!vaultPath) return
-      const targetNote = notes.find((n) => n.relativePath === oldRelativePath)
-      const oldName = targetNote ? targetNote.name : oldRelativePath.replace(/\.md$/i, '')
+    async (oldRelativePath: string, newTitle: string): Promise<boolean> => {
+      if (!vaultPath) return false
+      pendingRenameOperationsRef.current += 1
+      try {
+        await pendingNoteWritesRef.current.get(oldRelativePath)
+        const targetNote = notes.find((n) => n.relativePath === oldRelativePath)
+        const oldName = targetNote ? targetNote.name : oldRelativePath.replace(/\.md$/i, '')
 
-      const { newRelativePath, newName } = await window.electronAPI.renameEntry(
-        vaultPath,
-        oldRelativePath,
-        newTitle
-      )
+        const { newRelativePath, newName } = await window.electronAPI.renameEntry(
+          vaultPath,
+          oldRelativePath,
+          newTitle
+        )
 
-      // Preserve expanded folder state if a folder was renamed
-      if (!targetNote) {
-        setExpandedFolders((prev) => {
-          const next: Record<string, boolean> = {}
-          for (const [k, v] of Object.entries(prev)) {
-            if (k === oldRelativePath) {
-              next[newRelativePath] = v
-            } else if (k.startsWith(`${oldRelativePath}/`)) {
-              next[`${newRelativePath}${k.slice(oldRelativePath.length)}`] = v
-            } else {
-              next[k] = v
+        // Preserve expanded folder state if a folder was renamed
+        if (!targetNote) {
+          setExpandedFolders((prev) => {
+            const next: Record<string, boolean> = {}
+            for (const [k, v] of Object.entries(prev)) {
+              if (k === oldRelativePath) {
+                next[newRelativePath] = v
+              } else if (k.startsWith(`${oldRelativePath}/`)) {
+                next[`${newRelativePath}${k.slice(oldRelativePath.length)}`] = v
+              } else {
+                next[k] = v
+              }
             }
-          }
-          return next
-        })
-      }
+            return next
+          })
+        }
 
-      // Automatically update [[WikiLinks]] across all notes in the Vault if renaming a note
-      if (targetNote) {
-        for (const note of notes) {
-          if (note.relativePath === oldRelativePath) continue
-          const { updatedContent, changed } = updateWikiLinksAfterRename(
-            note.content,
-            oldName,
-            oldRelativePath,
-            newName,
-            newRelativePath
-          )
-          if (changed) {
-            await window.electronAPI.writeNote(vaultPath, note.relativePath, updatedContent)
+        // Automatically update [[WikiLinks]] across all notes in the Vault if renaming a note
+        if (targetNote) {
+          for (const note of notes) {
+            if (note.relativePath === oldRelativePath) continue
+            const { updatedContent, changed } = updateWikiLinksAfterRename(
+              note.content,
+              oldName,
+              oldRelativePath,
+              newName,
+              newRelativePath
+            )
+            if (changed) {
+              await window.electronAPI.writeNote(vaultPath, note.relativePath, updatedContent)
+            }
           }
         }
-      }
 
-      // Update tabs in pane1 and pane2
-      const updatePaneTabsOnRename = (prev: EditorPaneState): EditorPaneState => {
-        const nextTabs = prev.tabs.map((t) => {
-          if (t.relativePath === oldRelativePath) {
-            return { ...t, relativePath: newRelativePath, title: newName }
-          }
-          if (t.relativePath.startsWith(`${oldRelativePath}/`)) {
-            return {
-              ...t,
-              relativePath: `${newRelativePath}${t.relativePath.slice(oldRelativePath.length)}`
+        // Update tabs in pane1 and pane2
+        const updatePaneTabsOnRename = (prev: EditorPaneState): EditorPaneState => {
+          const nextTabs = prev.tabs.map((t) => {
+            if (t.relativePath === oldRelativePath) {
+              return { ...t, relativePath: newRelativePath, title: newName }
             }
-          }
-          return t
-        })
-        const nextActive =
-          prev.activeNotePath === oldRelativePath
-            ? newRelativePath
-            : prev.activeNotePath?.startsWith(`${oldRelativePath}/`)
-              ? `${newRelativePath}${prev.activeNotePath.slice(oldRelativePath.length)}`
-              : prev.activeNotePath
-        return { ...prev, tabs: nextTabs, activeNotePath: nextActive }
+            if (t.relativePath.startsWith(`${oldRelativePath}/`)) {
+              return {
+                ...t,
+                relativePath: `${newRelativePath}${t.relativePath.slice(oldRelativePath.length)}`
+              }
+            }
+            return t
+          })
+          const nextActive =
+            prev.activeNotePath === oldRelativePath
+              ? newRelativePath
+              : prev.activeNotePath?.startsWith(`${oldRelativePath}/`)
+                ? `${newRelativePath}${prev.activeNotePath.slice(oldRelativePath.length)}`
+                : prev.activeNotePath
+          return { ...prev, tabs: nextTabs, activeNotePath: nextActive }
+        }
+
+        setPane1(updatePaneTabsOnRename)
+        setPane2(updatePaneTabsOnRename)
+
+        const refreshed = await window.electronAPI.loadVault(vaultPath)
+        applyVaultSnapshot(refreshed)
+        return true
+      } catch (error) {
+        console.error('Falha ao renomear:', error)
+        try {
+          const refreshed = await window.electronAPI.loadVault(vaultPath)
+          applyVaultSnapshot(refreshed)
+        } catch {
+          // Preserve the current view if the vault cannot be reloaded.
+        }
+        window.alert('Não foi possível renomear. Verifique o nome ou se já existe um arquivo com esse nome.')
+        return false
+      } finally {
+        pendingRenameOperationsRef.current -= 1
       }
-
-      setPane1(updatePaneTabsOnRename)
-      setPane2(updatePaneTabsOnRename)
-
-      const refreshed = await window.electronAPI.loadVault(vaultPath)
-      applyVaultSnapshot(
-        refreshed,
-        activeNotePath === oldRelativePath ? newRelativePath : activeNotePath || undefined
-      )
     },
-    [vaultPath, notes, activeNotePath, applyVaultSnapshot]
+    [vaultPath, notes, applyVaultSnapshot]
   )
 
   const handleMoveEntry = useCallback(
@@ -1155,7 +1184,7 @@ export function App(): React.ReactElement {
         setIsQuickSwitcherOpen((prev) => !prev)
       } else if (matchesShortcut(e, getShortcutKey(curSettings, 'newNote'))) {
         e.preventDefault()
-        handleCreateNotePrompt('')
+        handleCreateNote('')
       } else if (matchesShortcut(e, getShortcutKey(curSettings, 'openSettings'))) {
         e.preventDefault()
         handleOpenSettings()
@@ -1164,7 +1193,7 @@ export function App(): React.ReactElement {
 
     window.addEventListener('keydown', handleGlobalKeyDown)
     return () => window.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [handleCreateNotePrompt, updateSettings, handleOpenSettings])
+  }, [handleCreateNote, updateSettings, handleOpenSettings])
 
   return (
     <div className="h-screen w-screen flex flex-col bg-surface-bg text-content-primary overflow-hidden relative">
@@ -1219,7 +1248,7 @@ export function App(): React.ReactElement {
               onOpenOtherFile={handleOpenOtherFile}
               onHoverTarget={handleHoverSidebarTarget}
               onLeaveTarget={handleLeaveSidebarTarget}
-              onCreateNote={handleCreateNotePrompt}
+              onCreateNote={handleCreateNote}
               onCreateFolder={handleCreateFolderPrompt}
               onDuplicateNote={handleDuplicateNote}
               onRenameEntry={handleRenameEntryPrompt}
@@ -1273,17 +1302,15 @@ export function App(): React.ReactElement {
           settings={settings}
           isZenMode={isZenMode}
           onSaveContent={handleSaveContent}
-          onRenameActiveNote={(newTitle) => {
-            if (activeNote) {
-              performRename(activeNote.relativePath, newTitle)
-            }
-          }}
+          onRenameNote={performRename}
           onNavigateWikiLink={handleNavigateWikiLink}
           onToggleZenMode={() => setIsZenMode((prev) => !prev)}
           onOpenHelpModal={() => setIsHelpOpen(true)}
           onUpdateSettings={updateSettings}
           onOpenQuickSwitcher={() => setIsQuickSwitcherOpen(true)}
-          onCreateNotePrompt={handleCreateNotePrompt}
+          onCreateNote={handleCreateNote}
+          pendingTitleFocus={pendingTitleFocus}
+          onTitleFocusHandled={() => setPendingTitleFocus(null)}
           hasLeftFloatingToggle={!settings.showLeftSidebar && !isZenMode}
           hasRightFloatingToggle={!settings.showRightSidebar && !isZenMode}
         />

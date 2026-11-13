@@ -407,8 +407,12 @@ export async function createNoteFile(
 ): Promise<VaultNoteData> {
   const sanitizedTitle = noteTitle
     .trim()
-    .replace(/[<>:"|?*]/g, '')
+    .replace(/[<>:"/\\|?*]/g, '')
     .replace(/\.md$/i, '')
+
+  if (!sanitizedTitle || /^\.+$/.test(sanitizedTitle)) {
+    throw new Error('Informe um nome válido para a nota.')
+  }
 
   const baseRel = folderRelativePath
     ? `${folderRelativePath.replace(/\/+$/, '')}/${sanitizedTitle}`
@@ -416,21 +420,20 @@ export async function createNoteFile(
 
   let candidateRel = `${baseRel}.md`
   let counter = 1
-  while (fsSync.existsSync(path.join(vaultPath, candidateRel))) {
-    candidateRel = `${baseRel} (${counter}).md`
-    counter++
+  await fs.mkdir(path.dirname(path.join(vaultPath, candidateRel)), { recursive: true })
+  const defaultBody = initialContent ?? ''
+  while (true) {
+    try {
+      await fs.writeFile(path.join(vaultPath, candidateRel), defaultBody, { encoding: 'utf-8', flag: 'wx' })
+      break
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
+      candidateRel = `${baseRel} (${counter++}).md`
+    }
   }
 
   const fullPath = path.join(vaultPath, candidateRel)
-  await fs.mkdir(path.dirname(fullPath), { recursive: true })
-
   const cleanName = path.basename(candidateRel, '.md')
-  const defaultBody =
-    initialContent !== undefined
-      ? initialContent
-      : `# ${cleanName}\n\nComece a escrever sua nota aqui...\n`
-
-  await fs.writeFile(fullPath, defaultBody, 'utf-8')
   const stat = await fs.stat(fullPath)
 
   return {
@@ -466,18 +469,28 @@ export async function renameVaultEntry(
   const stat = await fs.stat(oldFullPath)
   const parentDir = path.dirname(oldRelativePath)
   const sanitizedName = newName.trim().replace(/[<>:"/\\|?*]/g, '')
+  if (!sanitizedName || /^\.+$/.test(sanitizedName) || /^\.md$/i.test(sanitizedName)) {
+    throw new Error('Informe um nome válido.')
+  }
 
+  const oldExtension = path.extname(oldRelativePath)
   const finalFileName = stat.isDirectory()
     ? sanitizedName
-    : sanitizedName.toLowerCase().endsWith('.md')
-      ? sanitizedName
-      : `${sanitizedName}.md`
+    : oldExtension.toLowerCase() === '.md'
+      ? sanitizedName.toLowerCase().endsWith('.md') ? sanitizedName : `${sanitizedName}.md`
+      : path.extname(sanitizedName) ? sanitizedName : `${sanitizedName}${oldExtension}`
 
   const newRelativePath = normalizeRelPath(
     parentDir === '.' ? finalFileName : path.join(parentDir, finalFileName)
   )
   const newFullPath = path.join(vaultPath, newRelativePath)
 
+  if (oldFullPath !== newFullPath && fsSync.existsSync(newFullPath)) {
+    const targetStat = await fs.stat(newFullPath)
+    if (oldFullPath.toLowerCase() !== newFullPath.toLowerCase() || targetStat.dev !== stat.dev || targetStat.ino !== stat.ino) {
+      throw new Error('Já existe um arquivo ou pasta com esse nome.')
+    }
+  }
   if (oldFullPath !== newFullPath) {
     await fs.rename(oldFullPath, newFullPath)
   }

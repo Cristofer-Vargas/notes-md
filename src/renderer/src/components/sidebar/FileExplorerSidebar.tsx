@@ -29,6 +29,7 @@ import { FileContextMenu, type FileContextMenuTarget } from './FileContextMenu'
 import { IconButton } from '../ui/IconButton'
 import { SelectionButton } from '../ui/SelectionButton'
 import { cn } from '../../utils/cn'
+import { nextTreeEntry, visibleTreeEntries } from '../../services/treeKeyboardNavigation'
 import appLogo from '../../assets/logo.png'
 import type { RecentVault } from '../../types/app'
 
@@ -163,6 +164,7 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
   const [draggedEntryPath, setDraggedEntryPath] = useState<string | null>(null)
   const [dragOverFolderPath, setDragOverFolderPath] = useState<string | null>(null)
   const [isRecentVaultsOpen, setIsRecentVaultsOpen] = useState(false)
+  const treeItemRefs = useRef(new Map<string, HTMLDivElement>())
   const recentVaultsRef = useRef<HTMLDivElement | null>(null)
   const recentVaultsToggleRef = useRef<HTMLButtonElement | null>(null)
 
@@ -194,6 +196,31 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
     })
   }
 
+  const handleTreeNavigation = (e: React.KeyboardEvent<HTMLDivElement>, entry: VaultFileEntry): boolean => {
+    const visible = visibleTreeEntries(tree, expandedFolders)
+    const current = visible.find((item) => item.entry.relativePath === entry.relativePath)
+    let target: string | null = null
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Home' || e.key === 'End') {
+      target = nextTreeEntry(visible, entry.relativePath, e.key)
+    } else if (e.key === 'ArrowRight' && entry.isDirectory) {
+      if (!(expandedFolders[entry.relativePath] ?? true)) {
+        onSetExpandedFolders((prev) => ({ ...prev, [entry.relativePath]: true }))
+      } else {
+        target = entry.children?.[0]?.relativePath ?? null
+      }
+    } else if (e.key === 'ArrowLeft') {
+      if (entry.isDirectory && (expandedFolders[entry.relativePath] ?? true)) {
+        onSetExpandedFolders((prev) => ({ ...prev, [entry.relativePath]: false }))
+      } else {
+        target = current?.parentPath ?? null
+      }
+    } else return false
+    e.preventDefault()
+    e.stopPropagation()
+    if (target) treeItemRefs.current.get(target)?.focus()
+    return true
+  }
+
   const allFolderPaths = collectAllFolderPaths(tree)
   const anyExpanded = allFolderPaths.some((p) => expandedFolders[p] ?? true)
 
@@ -215,6 +242,7 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
         return (
           <div key={entry.relativePath}>
             <div
+              ref={(element) => { if (element) treeItemRefs.current.set(entry.relativePath, element); else treeItemRefs.current.delete(entry.relativePath) }}
               draggable={true}
               onDragStart={(e) => {
                 e.stopPropagation()
@@ -254,10 +282,30 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
                 }
               }}
               style={{ paddingLeft: `${depth * 10 + 6}px` }}
+              role="button"
+              tabIndex={0}
+              aria-expanded={isExpanded}
+              onMouseDown={(e) => {
+                if (e.button === 0 && !(e.target as Element).closest('button')) e.currentTarget.focus({ preventScroll: true })
+              }}
               onClick={() => toggleFolder(entry.relativePath)}
+              onKeyDown={(e) => {
+                if (e.target !== e.currentTarget || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
+                if (handleTreeNavigation(e, entry)) return
+                if (e.key === 'F2') {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setContextTarget(null)
+                  onRenameEntry(entry.relativePath, entry.name)
+                } else if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  toggleFolder(entry.relativePath)
+                }
+              }}
               onContextMenu={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
+                e.currentTarget.focus({ preventScroll: true })
                 setContextTarget({
                   type: 'folder',
                   entry,
@@ -265,8 +313,8 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
                   y: e.clientY
                 })
               }}
-              title={`Pasta: ${entry.name} (Arraste para mover para outra pasta)`}
-              className={`relative group flex items-center justify-between pr-1.5 h-7 rounded-md text-xs font-medium cursor-pointer transition-colors duration-150 ${
+              title={`Pasta: ${entry.name} (F2 para renomear • Arraste para mover)`}
+              className={`relative group flex items-center justify-between pr-1.5 h-7 rounded-md text-xs font-medium cursor-pointer transition-colors duration-150 focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent ${
                 isDragging ? 'opacity-40' : ''
               } ${
                 isDragOver
@@ -315,7 +363,7 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
                 <IconButton
                   size="xs"
                   onClick={() => onRenameEntry(entry.relativePath, entry.name)}
-                  tooltip="Renomear pasta"
+                  tooltip="Renomear pasta (F2)"
                   icon={<Pencil className="w-3 h-3" />}
                   className="!w-5 !h-5 text-content-muted"
                 />
@@ -366,6 +414,7 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
 
       return (
         <div
+          ref={(element) => { if (element) treeItemRefs.current.set(entry.relativePath, element); else treeItemRefs.current.delete(entry.relativePath) }}
           key={entry.relativePath}
           draggable={true}
           onDragStart={(e) => {
@@ -408,9 +457,25 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
             }
           }}
           style={{ paddingLeft: `${depth * 10 + 16}px` }}
+          role="button"
+          tabIndex={0}
           onClick={() => handleFileClick(false)}
           onMouseDown={(e) => {
             if (e.button === 1) e.preventDefault()
+            if (e.button === 0 && !(e.target as Element).closest('button')) e.currentTarget.focus({ preventScroll: true })
+          }}
+          onKeyDown={(e) => {
+            if (e.target !== e.currentTarget || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
+            if (handleTreeNavigation(e, entry)) return
+            if (e.key === 'F2') {
+              e.preventDefault()
+              e.stopPropagation()
+              setContextTarget(null)
+              onRenameEntry(entry.relativePath, entry.name)
+            } else if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              handleFileClick(false)
+            }
           }}
           onAuxClick={(e) => {
             if (e.button === 1 && isMd) {
@@ -436,6 +501,7 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
           onContextMenu={(e) => {
             e.preventDefault()
             e.stopPropagation()
+            e.currentTarget.focus({ preventScroll: true })
             setContextTarget({
               type: isMd ? 'note' : isImage ? 'image' : 'file',
               entry,
@@ -443,8 +509,8 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
               y: e.clientY
             })
           }}
-          title={fileTooltip}
-          className={`relative group flex items-center justify-between pr-1.5 h-7 rounded-md text-xs cursor-pointer transition-colors duration-150 ${
+          title={`${fileTooltip}\nF2: renomear`}
+          className={`relative group flex items-center justify-between pr-1.5 h-7 rounded-md text-xs cursor-pointer transition-colors duration-150 focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent ${
             isDragging ? 'opacity-40' : ''
           } ${
             isActive
@@ -486,7 +552,7 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
             <IconButton
               size="xs"
               onClick={() => onRenameEntry(entry.relativePath, entry.name)}
-              tooltip="Renomear"
+              tooltip="Renomear (F2)"
               icon={<Pencil className="w-3 h-3" />}
               className="!w-5 !h-5 text-content-muted"
             />

@@ -28,14 +28,16 @@ interface EditorWorkspaceProps {
   vaultIndex: Record<string, IndexedNoteMeta>
   settings: AppSettings
   isZenMode: boolean
-  onSaveContent: (relativePath: string, content: string) => void
-  onRenameActiveNote: (newTitle: string) => void
+  onSaveContent: (relativePath: string, content: string) => Promise<void>
+  onRenameNote: (path: string, newTitle: string) => Promise<boolean>
   onNavigateWikiLink: (target: string, openInNewTab?: boolean) => void
   onToggleZenMode: () => void
   onOpenHelpModal: () => void
   onUpdateSettings: (partial: Partial<AppSettings>) => void
   onOpenQuickSwitcher: () => void
-  onCreateNotePrompt: (folderRelativePath?: string) => void
+  onCreateNote: (folderRelativePath?: string, paneId?: 'pane-1' | 'pane-2') => void
+  pendingTitleFocus: { path: string; paneId: 'pane-1' | 'pane-2' } | null
+  onTitleFocusHandled: () => void
   hasLeftFloatingToggle?: boolean
   hasRightFloatingToggle?: boolean
 }
@@ -56,13 +58,15 @@ export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
   settings,
   isZenMode,
   onSaveContent,
-  onRenameActiveNote,
+  onRenameNote,
   onNavigateWikiLink,
   onToggleZenMode,
   onOpenHelpModal,
   onUpdateSettings,
   onOpenQuickSwitcher,
-  onCreateNotePrompt,
+  onCreateNote,
+  pendingTitleFocus,
+  onTitleFocusHandled,
   hasLeftFloatingToggle,
   hasRightFloatingToggle
 }) => {
@@ -554,13 +558,15 @@ export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
           onSelectTab={(path) => handleSelectTab('pane-1', path)}
           onCloseTab={(path, e) => handleCloseTab('pane-1', path, e)}
           onReorderTabs={(from, to) => handleReorderTabs('pane-1', from, to)}
-          onNewNote={() => onCreateNotePrompt('')}
+          onNewNote={() => onCreateNote('', 'pane-1')}
           onSplit={(direction) => handleSplit('pane-1', direction)}
           onClosePane={() => handleClosePane('pane-1')}
           onToggleLayout={handleToggleLayout}
           onDropNote={(path, zone) => handleDropNote('pane-1', path, zone)}
           onSaveContent={onSaveContent}
-          onRenameActiveNote={onRenameActiveNote}
+          onRenameNote={onRenameNote}
+          focusTitlePath={pendingTitleFocus?.paneId === 'pane-1' ? pendingTitleFocus.path : null}
+          onTitleFocusHandled={onTitleFocusHandled}
           onNavigateWikiLink={onNavigateWikiLink}
           onToggleZenMode={onToggleZenMode}
           onOpenHelpModal={onOpenHelpModal}
@@ -617,13 +623,15 @@ export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
             onSelectTab={(path) => handleSelectTab('pane-2', path)}
             onCloseTab={(path, e) => handleCloseTab('pane-2', path, e)}
             onReorderTabs={(from, to) => handleReorderTabs('pane-2', from, to)}
-            onNewNote={() => onCreateNotePrompt('')}
+            onNewNote={() => onCreateNote('', 'pane-2')}
             onSplit={(direction) => handleSplit('pane-2', direction)}
             onClosePane={() => handleClosePane('pane-2')}
             onToggleLayout={handleToggleLayout}
             onDropNote={(path, zone) => handleDropNote('pane-2', path, zone)}
             onSaveContent={onSaveContent}
-            onRenameActiveNote={onRenameActiveNote}
+            onRenameNote={onRenameNote}
+            focusTitlePath={pendingTitleFocus?.paneId === 'pane-2' ? pendingTitleFocus.path : null}
+            onTitleFocusHandled={onTitleFocusHandled}
             onNavigateWikiLink={onNavigateWikiLink}
             onToggleZenMode={onToggleZenMode}
             onOpenHelpModal={onOpenHelpModal}
