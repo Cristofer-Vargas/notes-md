@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { BarChart3, ExternalLink, Pause, Pin, Play, RotateCcw, Settings2, SkipForward, Square, Timer, X } from 'lucide-react'
 import type { PomodoroContext, PomodoroSession, PomodoroSettings, PomodoroState } from '../../../../shared/pomodoro'
 import { Button, IconButton, Input, Switch } from '../ui'
@@ -29,16 +29,6 @@ export function PomodoroPanel({ floating = false, onClose }: { floating?: boolea
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [history, setHistory] = useState<PomodoroSession[]>([])
-  const [rewardMessage, setRewardMessage] = useState('')
-  const seenReward = useRef<string | null | undefined>(undefined)
-  useEffect(() => {
-    if (!state) return
-    const reward = state.progress.lastReward
-    if (seenReward.current === undefined && !reward) { seenReward.current = null; return }
-    if (!reward || seenReward.current === reward.sessionId) return
-    seenReward.current = reward.sessionId
-    setRewardMessage([`+${reward.xp} XP`, reward.levelUp ? `Nível ${state.progress.level} alcançado` : '', reward.starsRevealed ? `${reward.starsRevealed} ${reward.starsRevealed === 1 ? 'estrela revelada' : 'estrelas reveladas'}` : '', reward.constellationsCompleted ? `${reward.constellationsCompleted} ${reward.constellationsCompleted === 1 ? 'constelação concluída' : 'constelações concluídas'}` : '', ...reward.achievements.map((name) => `Conquista: ${name}`)].filter(Boolean).join(' · '))
-  }, [state?.progress.lastReward?.sessionId])
   useEffect(() => { let mounted = true; const off = window.electronAPI.onPomodoroContext(setContext); void window.electronAPI.getPomodoroContext().then((value) => { if (mounted && value) setContext(value) }); return () => { mounted = false; off() } }, [])
   useEffect(() => { setSelectedNote(context.activePath || '') }, [context.activePath, context.vaultPath])
   useEffect(() => { let mounted = true; if (state) void window.electronAPI.getPomodoroHistory().then((items) => { if (mounted) setHistory(items) }); return () => { mounted = false } }, [state?.historyVersion])
@@ -70,7 +60,6 @@ export function PomodoroPanel({ floating = false, onClose }: { floating?: boolea
         {state.storageError && <p role="alert" className="mb-3 border border-surface-border bg-surface-secondary p-2 text-xs text-content-primary">{state.storageError}</p>}
         {tab === 'timer' && <fieldset disabled={Boolean(state.storageError)} className="space-y-4">
           <ProgressSummary progress={state.progress} />
-          {rewardMessage && <p role="status" className="text-center text-xs text-accent">{rewardMessage}</p>}
           <div className="text-center"><div className="text-xs font-semibold uppercase tracking-wide text-accent">{phaseLabels[state.phase]}</div><div role="timer" aria-label={`Tempo restante ${formatPomodoroTime(state.remainingMs)}`} className="my-3 font-mono text-5xl font-semibold tabular-nums">{formatPomodoroTime(state.remainingMs)}</div><div className="text-xs text-content-muted">{state.status === 'running' ? 'Em andamento' : state.status === 'paused' ? 'Pausado' : 'Pronto para começar'} · Ciclo {state.completedInCycle}/{state.settings.longBreakEvery}</div></div>
           <div className="flex justify-center gap-2">
             {state.status === 'idle' ? <Button variant="primary" leftIcon={<Play className="h-3.5 w-3.5" />} onClick={() => act('start')}>Iniciar</Button> : state.status === 'running' ? <Button variant="primary" leftIcon={<Pause className="h-3.5 w-3.5" />} onClick={() => act('pause')}>Pausar</Button> : <Button variant="primary" leftIcon={<Play className="h-3.5 w-3.5" />} onClick={() => act('resume')}>Continuar</Button>}

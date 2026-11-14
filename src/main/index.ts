@@ -323,8 +323,15 @@ app.whenReady().then(() => {
     onStateChange: broadcastAppUpdateState
   })
 
+  let lastRewardId: string | null = null
   pomodoroService = new PomodoroService(join(app.getPath('userData'), 'pomodoro.json'), (state) => {
-    for (const win of BrowserWindow.getAllWindows()) if (!win.isDestroyed()) win.webContents.send('pomodoro:state', state)
+    const reward = state.progress.lastReward
+    const isNewReward = Boolean(reward && reward.sessionId !== lastRewardId)
+    if (isNewReward && reward) lastRewardId = reward.sessionId
+    for (const win of BrowserWindow.getAllWindows()) if (!win.isDestroyed()) {
+      win.webContents.send('pomodoro:state', state)
+      if (isNewReward && reward) win.webContents.send('pomodoro:reward', reward, state.progress.level)
+    }
   }, (phase, sound) => {
     if (Notification.isSupported()) new Notification({ title: 'Pomodoro — Notes MD', body: phase === 'focus' ? 'Foco concluído. Hora de uma pausa.' : 'Pausa concluída. Pronto para voltar ao foco.', silent: !sound }).show()
   })

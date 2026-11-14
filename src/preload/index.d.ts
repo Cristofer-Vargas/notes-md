@@ -4,7 +4,7 @@ import type {
   DiscordPresenceStatus
 } from '../shared/discordPresence'
 import type { AppRuntimeInfo, AppUpdateState } from '../shared/appUpdate'
-import type { PomodoroAction, PomodoroContext, PomodoroNote, PomodoroSession, PomodoroSettings, PomodoroState } from '../shared/pomodoro'
+import type { PomodoroAction, PomodoroContext, PomodoroNote, PomodoroReward, PomodoroSession, PomodoroSettings, PomodoroState } from '../shared/pomodoro'
 
 export interface VaultFileEntry {
   name: string
@@ -46,6 +46,7 @@ export interface ElectronAPI {
   openPomodoroWindow: () => Promise<void>
   setPomodoroAlwaysOnTop: (enabled: boolean) => Promise<void>
   onPomodoroState: (callback: (state: PomodoroState) => void) => () => void
+  onPomodoroReward: (callback: (reward: PomodoroReward, level: number) => void) => () => void
   getDefaultVault: () => Promise<VaultSnapshot>
   selectVaultFolder: () => Promise<VaultSnapshot | null>
   loadVault: (vaultPath: string) => Promise<VaultSnapshot>

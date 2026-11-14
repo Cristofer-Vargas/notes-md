@@ -27,6 +27,11 @@ const api: ElectronAPI = {
     ipcRenderer.on('pomodoro:state', listener)
     return () => { ipcRenderer.removeListener('pomodoro:state', listener) }
   },
+  onPomodoroReward: (callback) => {
+    const listener = (_event: Electron.IpcRendererEvent, reward: Parameters<typeof callback>[0], level: number): void => callback(reward, level)
+    ipcRenderer.on('pomodoro:reward', listener)
+    return () => { ipcRenderer.removeListener('pomodoro:reward', listener) }
+  },
   getDefaultVault: () => ipcRenderer.invoke('vault:get-default'),
   selectVaultFolder: () => ipcRenderer.invoke('vault:select-folder'),
   loadVault: (vaultPath: string) => ipcRenderer.invoke('vault:load', vaultPath),

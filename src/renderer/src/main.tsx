@@ -5,6 +5,7 @@ import { ImageViewerWindow } from './windows/ImageViewerWindow'
 import { SettingsWindow } from './windows/SettingsWindow'
 import { PomodoroWindow } from './windows/PomodoroWindow'
 import { ErrorBoundary } from './components/common/ErrorBoundary'
+import { NotificationProvider } from './components/notifications/NotificationProvider'
 import './assets/main.css'
 
 function RootRouter(): React.ReactElement {
@@ -32,7 +33,7 @@ function RootRouter(): React.ReactElement {
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <RootRouter />
+      <NotificationProvider><RootRouter /></NotificationProvider>
     </ErrorBoundary>
   </React.StrictMode>
 )
