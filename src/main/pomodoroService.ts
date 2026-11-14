@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto'
 import { copyFileSync, existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'fs'
 import type { PomodoroAction, PomodoroEventReason, PomodoroEventType, PomodoroNote, PomodoroPhase, PomodoroSession, PomodoroSettings, PomodoroState } from '../shared/pomodoro'
 import { DEFAULT_POMODORO_SETTINGS } from '../shared/pomodoro'
+import { calculateProgress, progressEntry, type ProgressArchive } from '../shared/pomodoroProgress'
 
 interface Snapshot { version: 2; state: PomodoroState; active: PomodoroSession | null }
 interface Archive { version: 2; sessions: PomodoroSession[] }
@@ -14,10 +15,12 @@ export class PomodoroService {
   private readonly snapshotFile: string
   private readonly archiveFile: string
   private readonly backupFile: string
+  private readonly progressFile: string
+  private progressArchive: ProgressArchive = { version: 1, entries: {} }
   constructor(private file: string, private changed: (state: PomodoroState) => void, private notify: (phase: PomodoroPhase, sound: boolean) => void, private now: () => number = Date.now) {
-    this.snapshotFile = `${file}.state-v2.json`; this.archiveFile = `${file}.history-v2.json`; this.backupFile = `${file}.v1.backup`
+    this.snapshotFile = `${file}.state-v2.json`; this.archiveFile = `${file}.history-v2.json`; this.backupFile = `${file}.v1.backup`; this.progressFile = `${file}.progress-v1.json`
     const settings = { ...DEFAULT_POMODORO_SETTINGS }
-    this.state = { phase: 'focus', status: 'idle', remainingMs: settings.focus * 60000, durationMs: settings.focus * 60000, startedAt: null, elapsedMs: 0, segmentStartedAt: null, completedInCycle: 0, vaultPath: '', vaultName: '', note: null, settings, historyVersion: 0 }
+    this.state = { phase: 'focus', status: 'idle', remainingMs: settings.focus * 60000, durationMs: settings.focus * 60000, startedAt: null, elapsedMs: 0, segmentStartedAt: null, completedInCycle: 0, vaultPath: '', vaultName: '', note: null, settings, historyVersion: 0, progress: calculateProgress({}) }
     try { this.load() } catch (error) { this.fail(error) }
   }
   private write(file: string, value: unknown): void {
@@ -65,7 +68,34 @@ export class PomodoroService {
       this.state.status = 'paused'; this.state.segmentStartedAt = null
       this.event('pause', 'recovery', checkpoint)
     }
+    this.loadProgress()
     this.saveSnapshot()
+  }
+  private loadProgress(): void {
+    if (existsSync(this.progressFile)) {
+      const archive = JSON.parse(readFileSync(this.progressFile, 'utf8')) as ProgressArchive
+      if (archive.version !== 1 || !archive.entries || typeof archive.entries !== 'object' || Array.isArray(archive.entries) || (archive.constellationBaselineXp !== undefined && (!Number.isFinite(archive.constellationBaselineXp) || archive.constellationBaselineXp < 0)) || Object.values(archive.entries).some((entry) => !entry || !Number.isFinite(entry.xp) || entry.xp < 0 || !Number.isFinite(entry.focusMs) || entry.focusMs < 0)) throw new Error('Progresso do Pomodoro inválido ou incompatível')
+      this.progressArchive = archive
+    }
+    let changed = !existsSync(this.progressFile)
+    for (const session of this.history) {
+      const entry = progressEntry(session)
+      if (entry && !Object.hasOwn(this.progressArchive.entries, session.id)) { this.progressArchive.entries[session.id] = entry; changed = true }
+    }
+    if (this.progressArchive.constellationBaselineXp === undefined) { this.progressArchive.constellationBaselineXp = Object.values(this.progressArchive.entries).reduce((sum, entry) => sum + entry.xp, 0); changed = true }
+    if (changed) this.write(this.progressFile, this.progressArchive)
+    this.state.progress = calculateProgress(this.progressArchive.entries, this.progressArchive.constellationBaselineXp)
+  }
+  private award(session: PomodoroSession): void {
+    const entry = progressEntry(session)
+    if (!entry || Object.hasOwn(this.progressArchive.entries, session.id)) return
+    const previous = this.state.progress
+    this.progressArchive.entries[session.id] = entry
+    this.write(this.progressFile, this.progressArchive)
+    const next = calculateProgress(this.progressArchive.entries, this.progressArchive.constellationBaselineXp)
+    const unlocked = new Set(previous.achievements.filter((item) => item.unlocked).map((item) => item.id))
+    next.lastReward = { sessionId: session.id, xp: entry.xp, levelUp: next.level > previous.level, achievements: next.achievements.filter((item) => item.unlocked && !unlocked.has(item.id)).map((item) => item.label), starsRevealed: next.constellation.totalStars - previous.constellation.totalStars, constellationsCompleted: next.constellation.completed - previous.constellation.completed }
+    this.state.progress = next
   }
   getState(): PomodoroState { return structuredClone(this.state) }
   getHistory(): PomodoroSession[] { return structuredClone(this.history) }
@@ -100,7 +130,7 @@ export class PomodoroService {
   private finish(outcome: PomodoroSession['outcome'], type: PomodoroEventType, reason: PomodoroEventReason): void {
     if (!this.active) return
     this.event(type, reason); this.active.endedAt = this.now(); this.active.elapsedMs = this.state.elapsedMs; this.active.outcome = outcome
-    if (!this.history.some((item) => item.id === this.active!.id)) { this.history.push(this.active); this.writeArchive(); this.state.historyVersion++ }
+    if (!this.history.some((item) => item.id === this.active!.id)) { this.history.push(this.active); this.writeArchive(); this.award(this.active); this.state.historyVersion++ }
     this.active = null
   }
   private prepare(phase: PomodoroPhase): void { this.state.phase = phase; this.state.status = 'idle'; this.state.durationMs = this.duration(phase); this.state.remainingMs = this.state.durationMs; this.state.elapsedMs = 0; this.state.startedAt = null; this.state.segmentStartedAt = null }
