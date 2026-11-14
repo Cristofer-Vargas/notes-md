@@ -28,6 +28,7 @@ import { WikiLinkHoverPreview } from './WikiLinkHoverPreview'
 import { CustomCodeBlock, lowlight } from './extensions/CustomCodeBlock'
 import { CustomHighlight } from './extensions/CustomHighlight'
 import { applyInlineFormatting, inlineFormattingKey, wrapMarkdownSelection } from './inlineFormatting'
+import { escapeInlineFormatting } from './escapeInlineFormatting'
 import {
   generateFallbackSuggestions,
   getWordRangeAtPos,
@@ -392,6 +393,10 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     },
     editorProps: {
       handleKeyDown: (view, event) => {
+        if (escapeInlineFormatting(view, event)) {
+          event.preventDefault()
+          return true
+        }
         if (
           matchesShortcut(event, getShortcutKey(settings, 'quickTools')) ||
           (event.shiftKey && event.key === 'F10') ||
