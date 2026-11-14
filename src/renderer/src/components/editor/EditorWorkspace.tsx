@@ -40,6 +40,7 @@ interface EditorWorkspaceProps {
   onTitleFocusHandled: () => void
   hasLeftFloatingToggle?: boolean
   hasRightFloatingToggle?: boolean
+  pomodoroControl: React.ReactNode
 }
 
 export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
@@ -68,7 +69,8 @@ export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
   pendingTitleFocus,
   onTitleFocusHandled,
   hasLeftFloatingToggle,
-  hasRightFloatingToggle
+  hasRightFloatingToggle,
+  pomodoroControl
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const isResizingRef = useRef(false)
@@ -574,6 +576,7 @@ export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
           onOpenQuickSwitcher={onOpenQuickSwitcher}
           hasLeftFloatingToggle={hasLeftFloatingToggle}
           hasRightFloatingToggle={isSplitActive && splitLayout === 'horizontal' ? false : hasRightFloatingToggle}
+          pomodoroControl={!isSplitActive ? pomodoroControl : null}
         />
       </div>
 
@@ -639,6 +642,7 @@ export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
             onOpenQuickSwitcher={onOpenQuickSwitcher}
             hasLeftFloatingToggle={false}
             hasRightFloatingToggle={splitLayout === 'horizontal' ? hasRightFloatingToggle : false}
+            pomodoroControl={pomodoroControl}
           />
         </div>
       )}

@@ -61,6 +61,7 @@ interface MarkdownEditorProps {
   isZenMode: boolean
   onToggleZenMode: () => void
   onOpenHelpModal: () => void
+  pomodoroControl?: React.ReactNode
 }
 
 export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
@@ -76,7 +77,8 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   onNavigateWikiLink,
   isZenMode,
   onToggleZenMode,
-  onOpenHelpModal
+  onOpenHelpModal,
+  pomodoroControl
 }) => {
   const [isSourceMode, setIsSourceMode] = useState(false)
   const [rawMarkdown, setRawMarkdown] = useState('')
@@ -1327,8 +1329,8 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       )}
 
       {/* Bottom Status Bar (inspired by TinyMCE / Obsidian status bar in reference image) */}
-      <div className="h-7 px-4 bg-surface-bg border-t border-surface-border flex items-center justify-between text-[11px] text-content-muted select-none shrink-0">
-        <div className="flex items-center gap-3">
+      <div className="editor-status-bar h-7 px-4 bg-surface-bg border-t border-surface-border flex items-center justify-between text-[11px] text-content-muted select-none shrink-0">
+        <div className="flex min-w-0 items-center gap-3 overflow-hidden whitespace-nowrap">
           <span className="font-mono text-content-secondary">{activeNodePath}</span>
           <span className="hidden sm:inline text-surface-border">|</span>
           <span className="hidden sm:inline">
@@ -1336,8 +1338,8 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
           </span>
         </div>
 
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1.5 text-content-secondary">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-4">
+          <span className="editor-status-secondary flex items-center gap-1.5 text-content-secondary">
             {saveStatus === 'typing' ? (
               <>
                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
@@ -1355,10 +1357,11 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
               </>
             )}
           </span>
-          <span className="flex items-center gap-1">
+          <span className="editor-status-secondary flex items-center gap-1">
             <Clock className="w-3 h-3" />~{readingTimeMin} min de leitura
           </span>
           <span className="font-medium text-content-primary">{wordCount} palavras</span>
+          {pomodoroControl}
         </div>
       </div>
     </div>

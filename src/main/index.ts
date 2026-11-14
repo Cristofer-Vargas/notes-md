@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, dialog, session, powerMonitor } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog, session, powerMonitor, Notification } from 'electron'
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -27,6 +27,8 @@ import {
   resolveRuntimeConfig
 } from './runtimeEnv'
 import { AppUpdateService } from './updateService'
+import { PomodoroService } from './pomodoroService'
+import type { PomodoroAction, PomodoroContext, PomodoroNote, PomodoroSettings } from '../shared/pomodoro'
 import type {
   DiscordPresenceContext,
   DiscordPresenceSettings,
@@ -56,6 +58,9 @@ let primaryWindow: BrowserWindow | null = null
 let vaultWatcher: VaultWatcher | null = null
 let discordPresenceService: DiscordPresenceService | null = null
 let appUpdateService: AppUpdateService | null = null
+let pomodoroService: PomodoroService | null = null
+let pomodoroWindow: BrowserWindow | null = null
+let pomodoroContext: PomodoroContext = { vaultPath: '', vaultName: '', activePath: null, notes: [] }
 
 const hasStableLock = !app.isPackaged || app.requestSingleInstanceLock()
 if (!hasStableLock) {
@@ -196,6 +201,7 @@ function createWindow(): void {
   })
 
   mainWindow.on('closed', () => {
+    pomodoroService?.shutdown()
     if (primaryWindow === mainWindow) {
       primaryWindow = null
     }
@@ -218,6 +224,16 @@ function loadWindowRoute(win: BrowserWindow, routeWithHash: string): void {
       hash: hash ? hash.replace(/^#/, '') : undefined
     })
   }
+}
+
+function openPomodoroWindow(): void {
+  if (pomodoroWindow && !pomodoroWindow.isDestroyed()) { pomodoroWindow.show(); pomodoroWindow.focus(); return }
+  const win = new BrowserWindow({ icon: getAppIcon(), width: 420, height: 650, minWidth: 340, minHeight: 420, show: false, autoHideMenuBar: true, title: 'Pomodoro — Notes MD', webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: false } })
+  pomodoroWindow = win
+  applyWindowEnvironmentTitle(win)
+  win.on('ready-to-show', () => win.show())
+  win.on('closed', () => { if (pomodoroWindow === win) pomodoroWindow = null })
+  loadWindowRoute(win, '#/pomodoro')
 }
 
 let settingsWindow: BrowserWindow | null = null
@@ -306,6 +322,23 @@ app.whenReady().then(() => {
     currentVersion: app.getVersion(),
     onStateChange: broadcastAppUpdateState
   })
+
+  pomodoroService = new PomodoroService(join(app.getPath('userData'), 'pomodoro.json'), (state) => {
+    for (const win of BrowserWindow.getAllWindows()) if (!win.isDestroyed()) win.webContents.send('pomodoro:state', state)
+  }, (phase, sound) => {
+    if (Notification.isSupported()) new Notification({ title: 'Pomodoro — Notes MD', body: phase === 'focus' ? 'Foco concluído. Hora de uma pausa.' : 'Pausa concluída. Pronto para voltar ao foco.', silent: !sound }).show()
+  })
+  powerMonitor.on('suspend', () => { if (pomodoroService?.getState().status === 'running') pomodoroService.action('pause', undefined, undefined, 'suspend') })
+  ipcMain.handle('pomodoro:get', () => pomodoroService?.getState())
+  ipcMain.handle('pomodoro:history', () => pomodoroService?.getHistory() ?? [])
+  ipcMain.handle('pomodoro:delete-history', (_event, from: number, to: number) => pomodoroService?.deleteHistory(from, to) ?? 0)
+  ipcMain.handle('pomodoro:show-reports', () => { if (primaryWindow && !primaryWindow.isDestroyed()) { if (primaryWindow.isMinimized()) primaryWindow.restore(); primaryWindow.show(); primaryWindow.focus(); primaryWindow.webContents.send('pomodoro:show-reports') } })
+  ipcMain.handle('pomodoro:get-context', () => pomodoroContext)
+  ipcMain.handle('pomodoro:set-context', (_event, context: PomodoroContext) => { pomodoroContext = context; if (pomodoroWindow && !pomodoroWindow.isDestroyed()) pomodoroWindow.webContents.send('pomodoro:context', context) })
+  ipcMain.handle('pomodoro:action', (_event, action: PomodoroAction, note?: PomodoroNote | null) => pomodoroService?.action(action, note, pomodoroContext))
+  ipcMain.handle('pomodoro:configure', (_event, settings: Partial<PomodoroSettings>) => pomodoroService?.configure(settings))
+  ipcMain.handle('pomodoro:open-window', () => openPomodoroWindow())
+  ipcMain.handle('pomodoro:always-on-top', (event, enabled: boolean) => { BrowserWindow.fromWebContents(event.sender)?.setAlwaysOnTop(Boolean(enabled)) })
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
@@ -396,6 +429,7 @@ app.whenReady().then(() => {
     'vault:rename-entry',
     async (_event, vaultPath: string, oldRelativePath: string, newName: string) => {
       const renamed = await renameVaultEntry(vaultPath, oldRelativePath, newName)
+      pomodoroService?.rename(vaultPath, oldRelativePath, renamed.newRelativePath)
       vaultWatcher?.scheduleCheck(60)
       return renamed
     }
@@ -410,6 +444,7 @@ app.whenReady().then(() => {
       newParentFolderRelativePath: string
     ) => {
       const moved = await moveVaultEntry(vaultPath, oldRelativePath, newParentFolderRelativePath)
+      pomodoroService?.rename(vaultPath, oldRelativePath, moved.newRelativePath)
       vaultWatcher?.scheduleCheck(40)
       return moved
     }
@@ -627,6 +662,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', () => {
+  pomodoroService?.shutdown()
   appUpdateService?.stopAutoCheck()
   void discordPresenceService?.shutdown()
 })

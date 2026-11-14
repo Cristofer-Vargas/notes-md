@@ -61,6 +61,7 @@ interface EditorPaneViewProps {
   onOpenQuickSwitcher: () => void
   hasLeftFloatingToggle?: boolean
   hasRightFloatingToggle?: boolean
+  pomodoroControl?: React.ReactNode
 }
 
 export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
@@ -92,7 +93,8 @@ export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
   onUpdateSettings,
   onOpenQuickSwitcher,
   hasLeftFloatingToggle,
-  hasRightFloatingToggle
+  hasRightFloatingToggle,
+  pomodoroControl
 }) => {
   const editorContentRef = useRef<HTMLDivElement | null>(null)
   const [dropZone, setDropZone] = useState<DropZoneDirection | null>(null)
@@ -460,6 +462,7 @@ export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
             isZenMode={isZenMode}
             onToggleZenMode={onToggleZenMode}
             onOpenHelpModal={onOpenHelpModal}
+            pomodoroControl={pomodoroControl}
           />
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center select-none bg-surface-canvas/30 space-y-4">
@@ -512,6 +515,8 @@ export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
             </div>
           </div>
         )}
+
+        {!activeNote && pomodoroControl && <div className="flex h-7 shrink-0 items-center justify-end border-t border-surface-border bg-surface-bg px-4">{pomodoroControl}</div>}
 
         {/* Dynamic Drag-and-Drop Drop Zone Overlays */}
         {dropZone === 'right' && (

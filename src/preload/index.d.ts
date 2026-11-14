@@ -4,6 +4,7 @@ import type {
   DiscordPresenceStatus
 } from '../shared/discordPresence'
 import type { AppRuntimeInfo, AppUpdateState } from '../shared/appUpdate'
+import type { PomodoroAction, PomodoroContext, PomodoroNote, PomodoroSession, PomodoroSettings, PomodoroState } from '../shared/pomodoro'
 
 export interface VaultFileEntry {
   name: string
@@ -32,6 +33,19 @@ export interface VaultSnapshot {
 }
 
 export interface ElectronAPI {
+  getPomodoro: () => Promise<PomodoroState>
+  getPomodoroHistory: () => Promise<PomodoroSession[]>
+  deletePomodoroHistory: (from: number, to: number) => Promise<number>
+  openPomodoroReports: () => Promise<void>
+  onOpenPomodoroReports: (callback: () => void) => () => void
+  getPomodoroContext: () => Promise<PomodoroContext>
+  setPomodoroContext: (context: PomodoroContext) => Promise<void>
+  onPomodoroContext: (callback: (context: PomodoroContext) => void) => () => void
+  pomodoroAction: (action: PomodoroAction, note?: PomodoroNote | null) => Promise<PomodoroState>
+  configurePomodoro: (settings: Partial<PomodoroSettings>) => Promise<PomodoroState>
+  openPomodoroWindow: () => Promise<void>
+  setPomodoroAlwaysOnTop: (enabled: boolean) => Promise<void>
+  onPomodoroState: (callback: (state: PomodoroState) => void) => () => void
   getDefaultVault: () => Promise<VaultSnapshot>
   selectVaultFolder: () => Promise<VaultSnapshot | null>
   loadVault: (vaultPath: string) => Promise<VaultSnapshot>

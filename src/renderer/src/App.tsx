@@ -23,6 +23,8 @@ import { SettingsModal, type SettingsTab } from './components/modals/SettingsMod
 import { ImagePreviewModal } from './components/modals/ImagePreviewModal'
 import { QuickSwitcherModal } from './components/modals/QuickSwitcherModal'
 import { HelpShortcutsModal } from './components/modals/HelpShortcutsModal'
+import { PomodoroBar } from './components/pomodoro/PomodoroBar'
+import { PomodoroReports } from './components/pomodoro/PomodoroReports'
 import { InputPromptModal } from './components/modals/InputPromptModal'
 import { WikiLinkHoverPreview } from './components/editor/WikiLinkHoverPreview'
 import { DiscordLoadingScreen } from './components/common/DiscordLoadingScreen'
@@ -148,6 +150,7 @@ export function App(): React.ReactElement {
 
   const activePane = activePaneId === 'pane-1' ? pane1 : pane2
   const activeNotePath = activePane.activeNotePath || pane1.activeNotePath || null
+  const pomodoroContext = useMemo(() => ({ vaultPath, vaultName, activePath: activeNotePath, notes: notes.map(({ relativePath, name }) => ({ relativePath, name })) }), [vaultPath, vaultName, activeNotePath, notes])
   const openTabs = useMemo(() => {
     const list = [...pane1.tabs]
     for (const t of pane2.tabs) {
@@ -173,6 +176,8 @@ export function App(): React.ReactElement {
 
   const [isZenMode, setIsZenMode] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isPomodoroReportsOpen, setIsPomodoroReportsOpen] = useState(false)
+  useEffect(() => window.electronAPI.onOpenPomodoroReports(() => setIsPomodoroReportsOpen(true)), [])
   const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTab>('appearance')
   const [appUpdateState, setAppUpdateState] = useState<AppUpdateState | null>(null)
   const [isUpdateBannerDismissed, setIsUpdateBannerDismissed] = useState(false)
@@ -1313,6 +1318,7 @@ export function App(): React.ReactElement {
           onTitleFocusHandled={() => setPendingTitleFocus(null)}
           hasLeftFloatingToggle={!settings.showLeftSidebar && !isZenMode}
           hasRightFloatingToggle={!settings.showRightSidebar && !isZenMode}
+          pomodoroControl={<PomodoroBar context={pomodoroContext} />}
         />
 
         {settings.showRightSidebar && !isZenMode && (
@@ -1342,6 +1348,7 @@ export function App(): React.ReactElement {
       </div>
 
       {/* Modals */}
+      {isPomodoroReportsOpen && <PomodoroReports onClose={() => setIsPomodoroReportsOpen(false)} />}
       <SettingsModal
         isOpen={isSettingsOpen}
         settings={settings}

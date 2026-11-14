@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import { ImageViewerWindow } from './windows/ImageViewerWindow'
 import { SettingsWindow } from './windows/SettingsWindow'
+import { PomodoroWindow } from './windows/PomodoroWindow'
 import { ErrorBoundary } from './components/common/ErrorBoundary'
 import './assets/main.css'
 
@@ -22,6 +23,8 @@ function RootRouter(): React.ReactElement {
   if (route.startsWith('#/settings') || route.startsWith('#settings')) {
     return <SettingsWindow />
   }
+
+  if (route.startsWith('#/pomodoro') || route.startsWith('#pomodoro')) return <PomodoroWindow />
 
   return <App />
 }

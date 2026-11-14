@@ -2,6 +2,31 @@ import { contextBridge, ipcRenderer, webFrame } from 'electron'
 import type { ElectronAPI, VaultSnapshot } from './index.d'
 
 const api: ElectronAPI = {
+  getPomodoro: () => ipcRenderer.invoke('pomodoro:get'),
+  getPomodoroHistory: () => ipcRenderer.invoke('pomodoro:history'),
+  deletePomodoroHistory: (from, to) => ipcRenderer.invoke('pomodoro:delete-history', from, to),
+  openPomodoroReports: () => ipcRenderer.invoke('pomodoro:show-reports'),
+  onOpenPomodoroReports: (callback) => {
+    const listener = (): void => callback()
+    ipcRenderer.on('pomodoro:show-reports', listener)
+    return () => { ipcRenderer.removeListener('pomodoro:show-reports', listener) }
+  },
+  getPomodoroContext: () => ipcRenderer.invoke('pomodoro:get-context'),
+  setPomodoroContext: (context) => ipcRenderer.invoke('pomodoro:set-context', context),
+  onPomodoroContext: (callback) => {
+    const listener = (_event: Electron.IpcRendererEvent, context: Parameters<typeof callback>[0]): void => callback(context)
+    ipcRenderer.on('pomodoro:context', listener)
+    return () => { ipcRenderer.removeListener('pomodoro:context', listener) }
+  },
+  pomodoroAction: (action, note) => ipcRenderer.invoke('pomodoro:action', action, note),
+  configurePomodoro: (settings) => ipcRenderer.invoke('pomodoro:configure', settings),
+  openPomodoroWindow: () => ipcRenderer.invoke('pomodoro:open-window'),
+  setPomodoroAlwaysOnTop: (enabled) => ipcRenderer.invoke('pomodoro:always-on-top', enabled),
+  onPomodoroState: (callback) => {
+    const listener = (_event: Electron.IpcRendererEvent, state: Parameters<typeof callback>[0]): void => callback(state)
+    ipcRenderer.on('pomodoro:state', listener)
+    return () => { ipcRenderer.removeListener('pomodoro:state', listener) }
+  },
   getDefaultVault: () => ipcRenderer.invoke('vault:get-default'),
   selectVaultFolder: () => ipcRenderer.invoke('vault:select-folder'),
   loadVault: (vaultPath: string) => ipcRenderer.invoke('vault:load', vaultPath),

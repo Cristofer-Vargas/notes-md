@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+.pomodoro-charts {
+  --pomodoro-chart-completed: var(--accent-color);
+  --pomodoro-chart-interrupted: color-mix(in srgb, var(--accent-color) 45%, var(--text-primary));
+  --pomodoro-chart-short: var(--text-secondary);
+  --pomodoro-chart-long: var(--text-muted);
+}
+
+.editor-status-bar { container-type: inline-size; }
+@container (max-width: 520px) {
+  .editor-status-secondary { display: none; }
+}
+
 @font-face {
   font-family: Geist;
   src: url('./fonts/geist.woff2') format('woff2');
