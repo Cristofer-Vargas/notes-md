@@ -28,7 +28,7 @@ import {
 } from './runtimeEnv'
 import { AppUpdateService } from './updateService'
 import { PomodoroService } from './pomodoroService'
-import type { PomodoroAction, PomodoroContext, PomodoroNote, PomodoroSettings } from '../shared/pomodoro'
+import type { PomodoroAction, PomodoroContext, PomodoroDebugAction, PomodoroNote, PomodoroSettings } from '../shared/pomodoro'
 import type {
   DiscordPresenceContext,
   DiscordPresenceSettings,
@@ -344,6 +344,10 @@ app.whenReady().then(() => {
   ipcMain.handle('pomodoro:set-context', (_event, context: PomodoroContext) => { pomodoroContext = context; if (pomodoroWindow && !pomodoroWindow.isDestroyed()) pomodoroWindow.webContents.send('pomodoro:context', context) })
   ipcMain.handle('pomodoro:action', (_event, action: PomodoroAction, note?: PomodoroNote | null) => pomodoroService?.action(action, note, pomodoroContext))
   ipcMain.handle('pomodoro:configure', (_event, settings: Partial<PomodoroSettings>) => pomodoroService?.configure(settings))
+  if (!app.isPackaged && runtimeConfig.environment === 'dev') ipcMain.handle('pomodoro:debug', (_event, action: PomodoroDebugAction) => {
+    if (app.isPackaged || runtimeConfig.environment !== 'dev' || !pomodoroService) throw new Error('Controles de teste indisponíveis.')
+    return pomodoroService.debug(action, pomodoroContext)
+  })
   ipcMain.handle('pomodoro:open-window', () => openPomodoroWindow())
   ipcMain.handle('pomodoro:always-on-top', (event, enabled: boolean) => { BrowserWindow.fromWebContents(event.sender)?.setAlwaysOnTop(Boolean(enabled)) })
 

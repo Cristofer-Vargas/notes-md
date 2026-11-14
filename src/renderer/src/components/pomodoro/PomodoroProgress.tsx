@@ -1,6 +1,8 @@
-import React from 'react'
-import { Award, Lock } from 'lucide-react'
+import React, { useEffect, useRef, useState } from 'react'
+import { Award, ChevronLeft, ChevronRight, Lock } from 'lucide-react'
 import type { PomodoroProgress as Progress } from '../../../../shared/pomodoro'
+import { IconButton } from '../ui'
+import { constellationPattern } from './constellationPattern'
 
 export function ProgressSummary({ progress }: { progress: Progress }): React.ReactElement {
   return <section aria-label="Progresso do Pomodoro" className="space-y-2 border border-surface-border bg-surface-secondary p-3">
@@ -12,15 +14,25 @@ export function ProgressSummary({ progress }: { progress: Progress }): React.Rea
 
 function Constellation({ progress }: { progress: Progress }): React.ReactElement {
   const constellation = progress.constellation
-  const points = [[30, 65], [66, 32], [108, 54], [152, 22], [192, 49]]
+  const currentNumber = constellation.completed + 1
+  const [selected, setSelected] = useState(currentNumber)
+  const previousCurrent = useRef(currentNumber)
+  useEffect(() => {
+    const previous = previousCurrent.current
+    previousCurrent.current = currentNumber
+    setSelected((value) => value === previous ? currentNumber : Math.min(value, currentNumber))
+  }, [currentNumber])
+  const number = Math.min(selected, currentNumber)
+  const isCurrent = number === currentNumber
+  const revealed = isCurrent ? constellation.stars : 5
+  const points = constellationPattern(number)
   return <section aria-labelledby="constellation-title" className="space-y-3 border border-surface-border bg-surface-secondary p-3">
-    <div className="flex items-center justify-between gap-2"><h3 id="constellation-title" className="text-sm font-semibold">Constelação {constellation.completed + 1}</h3><span className="text-xs text-content-muted">{constellation.stars}/5 estrelas</span></div>
-    <svg viewBox="0 0 222 88" className="h-24 w-full" role="img" aria-label={`${constellation.stars} de 5 estrelas reveladas na constelação ${constellation.completed + 1}`}>
-      {points.slice(1).map(([x, y], index) => <line key={`line-${index}`} x1={points[index][0]} y1={points[index][1]} x2={x} y2={y} className={index + 1 < constellation.stars ? 'stroke-accent' : 'stroke-content-muted'} strokeWidth="1" opacity={index + 1 < constellation.stars ? 0.7 : 0.2} />)}
-      {points.map(([x, y], index) => <g key={`star-${index}`} transform={`translate(${x} ${y})`} className={index < constellation.stars ? 'text-accent' : 'text-content-muted'} opacity={index < constellation.stars ? 1 : 0.35}><path d="M0 -8 L2.2 -2.2 L8 0 L2.2 2.2 L0 8 L-2.2 2.2 L-8 0 L-2.2 -2.2 Z" fill={index < constellation.stars ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.2" /></g>)}
+    <div className="flex items-center justify-between gap-2"><h3 id="constellation-title" className="text-sm font-semibold">Constelação {number}</h3><div className="flex items-center gap-1"><span className="text-xs text-content-muted">{revealed}/5 estrelas</span><IconButton size="xs" tooltip="Constelação anterior" disabled={number <= 1} icon={<ChevronLeft className="h-4 w-4" />} onClick={() => setSelected(number - 1)} /><IconButton size="xs" tooltip="Próxima constelação" disabled={isCurrent} icon={<ChevronRight className="h-4 w-4" />} onClick={() => setSelected(number + 1)} /></div></div>
+    <svg viewBox="0 0 222 88" className="h-24 w-full" role="img" aria-label={`${revealed} de 5 estrelas reveladas na constelação ${number}`}>
+      {points.slice(1).map(([x, y], index) => <line key={`line-${index}`} x1={points[index][0]} y1={points[index][1]} x2={x} y2={y} className={index + 1 < revealed ? 'stroke-accent' : 'stroke-content-muted'} strokeWidth="1" opacity={index + 1 < revealed ? 0.7 : 0.2} />)}
+      {points.map(([x, y], index) => <g key={`star-${index}`} transform={`translate(${x} ${y})`} className={index < revealed ? 'text-accent' : 'text-content-muted'} opacity={index < revealed ? 1 : 0.35}><path d="M0 -8 L2.2 -2.2 L8 0 L2.2 2.2 L0 8 L-2.2 2.2 L-8 0 L-2.2 -2.2 Z" fill={index < revealed ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.2" /></g>)}
     </svg>
-    <div role="progressbar" aria-label="Progresso até a próxima estrela" aria-valuemin={0} aria-valuemax={constellation.starCost} aria-valuenow={constellation.starXp} className="h-1.5 bg-surface-tertiary"><div className="h-full bg-accent" style={{ width: `${constellation.starXp / constellation.starCost * 100}%` }} /></div>
-    <p className="text-xs text-content-secondary">{constellation.xpToNextStar} XP para a próxima estrela · {constellation.completed} {constellation.completed === 1 ? 'constelação concluída' : 'constelações concluídas'}</p>
+    {isCurrent ? <><div role="progressbar" aria-label="Progresso até a próxima estrela" aria-valuemin={0} aria-valuemax={constellation.starCost} aria-valuenow={constellation.starXp} className="h-1.5 bg-surface-tertiary"><div className="h-full bg-accent" style={{ width: `${constellation.starXp / constellation.starCost * 100}%` }} /></div><p className="text-xs text-content-secondary">{constellation.xpToNextStar} XP para a próxima estrela · {constellation.completed} {constellation.completed === 1 ? 'constelação concluída' : 'constelações concluídas'}</p></> : <p className="text-xs text-content-secondary">Constelação concluída · {constellation.completed} no total</p>}
   </section>
 }
 

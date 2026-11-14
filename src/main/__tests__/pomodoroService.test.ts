@@ -11,6 +11,31 @@ describe('PomodoroService', () => {
   beforeEach(() => { vi.useFakeTimers(); dir = mkdtempSync(join(process.cwd(), '.pomodoro-test-')); now = 1_000_000; notify = vi.fn(); service = new PomodoroService(join(dir, 'data.json'), vi.fn(), notify, () => now); service.configure({ focus: 1, shortBreak: 1, longBreak: 1, longBreakEvery: 2 }) })
   afterEach(() => { service.shutdown(); vi.useRealTimers(); rmSync(dir, { recursive: true, force: true }) })
   const advance = (ms: number): void => { now += ms; service.tick() }
+  it('gera sessões e XP de teste e remove somente dados simulados', () => {
+    const context = { vaultPath: 'v', vaultName: 'Cofre', activePath: 'n.md', notes: [{ relativePath: 'n.md', name: 'Nota' }] }
+    service.action('start'); advance(60_000); service.action('skip')
+    service.debug({ type: 'sessions', count: 2, minutes: 25 }, context)
+    expect(service.getHistory().filter((item) => item.source === 'debug')).toHaveLength(2)
+    expect(service.getHistory().find((item) => item.source === 'debug')).toMatchObject({ note: { name: 'Nota' }, elapsedMs: 1500000, outcome: 'completed' })
+    expect(service.getState().progress).toMatchObject({ xp: 51, completedSessions: 3 })
+    service.debug({ type: 'xp', xp: 50 }, context)
+    expect(service.getState().progress).toMatchObject({ xp: 101, completedSessions: 3, lastReward: { xp: 50, levelUp: true } })
+    service.debug({ type: 'clear' }, context)
+    expect(service.getHistory().filter((item) => item.phase === 'focus')).toHaveLength(1)
+    expect(service.getState().progress).toMatchObject({ xp: 1, completedSessions: 1 })
+    service.shutdown(); service = new PomodoroService(join(dir, 'data.json'), vi.fn(), notify, () => now)
+    expect(service.getState().progress).toMatchObject({ xp: 1, completedSessions: 1 })
+  })
+  it('conclui a etapa ativa e rejeita valores de teste inválidos sem danificar o estado', () => {
+    const context = { vaultPath: '', vaultName: '', activePath: null, notes: [] }
+    expect(() => service.debug({ type: 'complete' }, context)).toThrow()
+    expect(() => service.debug({ type: 'xp', xp: -1 }, context)).toThrow()
+    expect(() => service.debug({ type: 'sessions', count: 101, minutes: 25 }, context)).toThrow()
+    expect(service.getState().storageError).toBeUndefined()
+    service.action('start'); advance(10000); service.debug({ type: 'complete' }, context)
+    expect(service.getHistory()[0]).toMatchObject({ source: 'debug', outcome: 'completed', elapsedMs: 60000 })
+    expect(service.getState()).toMatchObject({ phase: 'shortBreak', status: 'idle' })
+  })
   it('concede XP apenas por foco concluído e preserva o progresso ao excluir e reiniciar', () => {
     service.action('start'); advance(60_000)
     expect(service.getState().progress).toMatchObject({ xp: 1, level: 1, completedSessions: 1, focusMs: 60_000, lastReward: { xp: 1 } })

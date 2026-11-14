@@ -20,6 +20,7 @@ const api: ElectronAPI = {
   },
   pomodoroAction: (action, note) => ipcRenderer.invoke('pomodoro:action', action, note),
   configurePomodoro: (settings) => ipcRenderer.invoke('pomodoro:configure', settings),
+  debugPomodoro: (action) => ipcRenderer.invoke('pomodoro:debug', action),
   openPomodoroWindow: () => ipcRenderer.invoke('pomodoro:open-window'),
   setPomodoroAlwaysOnTop: (enabled) => ipcRenderer.invoke('pomodoro:always-on-top', enabled),
   onPomodoroState: (callback) => {

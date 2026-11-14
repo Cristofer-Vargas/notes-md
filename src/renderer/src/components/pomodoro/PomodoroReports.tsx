@@ -8,6 +8,7 @@ import { analyzePomodoro, type AnalyticsFilters } from './analytics'
 import { HourlyChart, OutcomeChart, StackedTimeline } from './PomodoroCharts'
 import { useChartTooltip } from './ChartTooltip'
 import { ProgressAchievements } from './PomodoroProgress'
+import { PomodoroDebug } from './PomodoroDebug'
 
 const initialFilters: AnalyticsFilters = { from: '', to: '', vault: 'all', note: 'all', phase: 'all', outcome: 'all', period: 'day' }
 const phaseLabel = { focus: 'Foco', shortBreak: 'Pausa curta', longBreak: 'Pausa longa' }
@@ -59,6 +60,7 @@ export function PomodoroReports({ onClose }: { onClose: () => void }): React.Rea
     <div ref={panelsRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto md:flex-row md:overflow-hidden">
       <aside id="pomodoro-progress-panel" aria-label="Níveis e conquistas" className="w-full shrink-0 overflow-y-auto border-b border-surface-border bg-surface-bg p-5 md:w-[var(--progress-width)] md:border-b-0" style={{ '--progress-width': `${progressWidth}%` } as React.CSSProperties}>
         {timer ? <ProgressAchievements progress={timer.progress} /> : <p className="text-xs text-content-muted">Carregando progresso...</p>}
+        <div className="mt-4"><PomodoroDebug /></div>
       </aside>
       <div role="separator" aria-label="Redimensionar painel de níveis e XP" aria-orientation="vertical" aria-controls="pomodoro-progress-panel" aria-valuemin={20} aria-valuemax={60} aria-valuenow={Math.round(progressWidth)} tabIndex={0} className="hidden w-1.5 shrink-0 touch-none cursor-col-resize bg-surface-border hover:bg-accent focus-visible:bg-accent focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent md:block" onPointerDown={(event) => { if (event.button !== 0) return; event.currentTarget.setPointerCapture(event.pointerId); resize(event.clientX) }} onPointerMove={(event) => { if (event.currentTarget.hasPointerCapture(event.pointerId)) resize(event.clientX) }} onKeyDown={(event) => { if (event.key === 'ArrowLeft' || event.key === 'ArrowRight' || event.key === 'Home' || event.key === 'End') { event.preventDefault(); setProgressWidth((current) => event.key === 'Home' ? 20 : event.key === 'End' ? 60 : Math.max(20, Math.min(60, current + (event.key === 'ArrowLeft' ? -2 : 2)))) } }} />
       <main className="pomodoro-charts min-w-0 flex-1 p-5 md:min-h-0 md:overflow-y-auto"><div className="mx-auto max-w-6xl space-y-5">

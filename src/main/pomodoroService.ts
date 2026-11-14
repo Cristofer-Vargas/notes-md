@@ -1,8 +1,8 @@
 import { randomUUID } from 'crypto'
 import { copyFileSync, existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'fs'
-import type { PomodoroAction, PomodoroEventReason, PomodoroEventType, PomodoroNote, PomodoroPhase, PomodoroSession, PomodoroSettings, PomodoroState } from '../shared/pomodoro'
+import type { PomodoroAction, PomodoroDebugAction, PomodoroEventReason, PomodoroEventType, PomodoroNote, PomodoroPhase, PomodoroSession, PomodoroSettings, PomodoroState } from '../shared/pomodoro'
 import { DEFAULT_POMODORO_SETTINGS } from '../shared/pomodoro'
-import { calculateProgress, progressEntry, type ProgressArchive } from '../shared/pomodoroProgress'
+import { calculateProgress, progressEntry, type ProgressArchive, type ProgressEntry } from '../shared/pomodoroProgress'
 
 interface Snapshot { version: 2; state: PomodoroState; active: PomodoroSession | null }
 interface Archive { version: 2; sessions: PomodoroSession[] }
@@ -88,14 +88,54 @@ export class PomodoroService {
   }
   private award(session: PomodoroSession): void {
     const entry = progressEntry(session)
-    if (!entry || Object.hasOwn(this.progressArchive.entries, session.id)) return
+    if (entry) this.awardEntry(session.id, entry)
+  }
+  private awardEntry(id: string, entry: ProgressEntry): void {
+    if (Object.hasOwn(this.progressArchive.entries, id)) return
     const previous = this.state.progress
-    this.progressArchive.entries[session.id] = entry
+    this.progressArchive.entries[id] = entry
     this.write(this.progressFile, this.progressArchive)
     const next = calculateProgress(this.progressArchive.entries, this.progressArchive.constellationBaselineXp)
     const unlocked = new Set(previous.achievements.filter((item) => item.unlocked).map((item) => item.id))
-    next.lastReward = { sessionId: session.id, xp: entry.xp, levelUp: next.level > previous.level, achievements: next.achievements.filter((item) => item.unlocked && !unlocked.has(item.id)).map((item) => item.label), starsRevealed: next.constellation.totalStars - previous.constellation.totalStars, constellationsCompleted: next.constellation.completed - previous.constellation.completed }
+    next.lastReward = { sessionId: id, xp: entry.xp, levelUp: next.level > previous.level, achievements: next.achievements.filter((item) => item.unlocked && !unlocked.has(item.id)).map((item) => item.label), starsRevealed: next.constellation.totalStars - previous.constellation.totalStars, constellationsCompleted: next.constellation.completed - previous.constellation.completed }
     this.state.progress = next
+  }
+  debug(action: PomodoroDebugAction, context: { vaultPath: string; vaultName: string; activePath: string | null; notes: Array<{ relativePath: string; name: string }> }): PomodoroState {
+    if (this.state.storageError) throw new Error(this.state.storageError)
+    if (!action || typeof action !== 'object') throw new Error('Ação de teste inválida')
+    const valid = (value: number, max: number): boolean => Number.isInteger(value) && value >= 1 && value <= max
+    if (action.type === 'sessions' && (!valid(action.count, 100) || !valid(action.minutes, 180))) throw new Error('Use de 1 a 100 sessões e de 1 a 180 minutos.')
+    if (action.type === 'xp' && !valid(action.xp, 10000)) throw new Error('Use de 1 a 10000 XP.')
+    if (!['sessions', 'xp', 'complete', 'clear'].includes(action.type)) throw new Error('Ação de teste inválida')
+    if (action.type === 'complete' && (this.state.status === 'idle' || !this.active)) throw new Error('Inicie uma etapa antes de concluí-la.')
+    try {
+      if (action.type === 'complete') {
+        if (!this.active) throw new Error('Não há etapa ativa.')
+        this.updateElapsed()
+        const remaining = this.state.remainingMs; const end = this.now()
+        if (remaining > 0) (this.active.intervals ??= []).push({ start: end - remaining, end })
+        this.active.source = 'debug'; this.state.elapsedMs += remaining; this.state.remainingMs = 0
+        this.complete()
+      } else if (action.type === 'sessions') {
+        const note = context.notes.find((item) => item.relativePath === context.activePath)
+        for (let index = 0; index < action.count; index++) {
+          const end = this.now(); const duration = action.minutes * 60000
+          const linked = note && context.vaultPath ? { ...note, vaultPath: context.vaultPath, vaultName: context.vaultName } : null
+          const session: PomodoroSession = { id: randomUUID(), phase: 'focus', startedAt: end - duration, endedAt: end, elapsedMs: duration, outcome: 'completed', vaultPath: context.vaultPath, vaultName: context.vaultName, note: linked, initialNote: linked, initialVaultName: context.vaultName, plannedMs: duration, cyclePosition: null, settingsSnapshot: { ...this.state.settings }, intervals: [{ start: end - duration, end }], events: [], detailStatus: 'complete', source: 'debug' }
+          this.history.push(session); this.writeArchive(); this.award(session); this.state.historyVersion++; this.emit()
+        }
+      } else if (action.type === 'xp') {
+        this.awardEntry(randomUUID(), { xp: action.xp, focusMs: 0, source: 'debug', kind: 'xp' }); this.emit()
+      } else {
+        this.history = this.history.filter((item) => item.source !== 'debug')
+        this.writeArchive()
+        for (const [id, entry] of Object.entries(this.progressArchive.entries)) if (entry.source === 'debug') delete this.progressArchive.entries[id]
+        this.write(this.progressFile, this.progressArchive)
+        this.state.progress = calculateProgress(this.progressArchive.entries, this.progressArchive.constellationBaselineXp)
+        this.state.historyVersion++; this.emit()
+      }
+      return this.getState()
+    } catch (error) { this.fail(error); throw error }
   }
   getState(): PomodoroState { return structuredClone(this.state) }
   getHistory(): PomodoroSession[] { return structuredClone(this.history) }
