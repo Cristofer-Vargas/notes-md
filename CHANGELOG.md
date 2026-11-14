@@ -1,3 +1,19 @@
+# [1.1.0](https://github.com/Cristofer-Vargas/notes-md/compare/v1.0.0...v1.1.0) (2026-11-14)
+
+
+### Correções
+
+* ajuste de saida de estilo inline ao editar texto na nota ([](https://github.com/Cristofer-Vargas/notes-md/commit/01de088b71146c84ebbe90f289974680538f4f37))
+
+
+### Novos Recursos
+
+* feature de Inline Tool, que formata com atalhos do teclado ex.: shift + * = negrito ([](https://github.com/Cristofer-Vargas/notes-md/commit/abe992bbc491f1fc805d574bad045515959dec3a))
+* **notification:** sistema global de notificações, pomodoro agora notifica conquistas alcançadas ([](https://github.com/Cristofer-Vargas/notes-md/commit/fd8b4d50c28b0f0d39e91a98add519ca2d2790b3))
+* **pomodoro:** adicionado progresso de xp e conquista, possibilitando infinito acumulo de xp ([](https://github.com/Cristofer-Vargas/notes-md/commit/1370be7c7607febf4e2d3f37daa645077a1ec7b3))
+* **pomodoro:** adicionando constelação vinculado a xp de pomodoros e modo debug para ambiente dev ([](https://github.com/Cristofer-Vargas/notes-md/commit/ffc2c19c620f8a627297ebde5f9bd52edec3022b))
+* **pomodoro:** implementando sistema de pomodoro com timer, sessões e estatisticas ([](https://github.com/Cristofer-Vargas/notes-md/commit/ec4ad100422d0b39e926b32f9c0b0bbad2bd305f))
+
 # [1.0.0](https://github.com/Cristofer-Vargas/notes-md/compare/v0.2.0-alpha.4...v1.0.0) (2026-11-13)
 
 Primeiro lançamento estável do Notes-MD.
