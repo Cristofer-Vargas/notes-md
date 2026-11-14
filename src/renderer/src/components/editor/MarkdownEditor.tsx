@@ -27,6 +27,7 @@ import { WikiLinkSuggestion } from './WikiLinkSuggestion'
 import { WikiLinkHoverPreview } from './WikiLinkHoverPreview'
 import { CustomCodeBlock, lowlight } from './extensions/CustomCodeBlock'
 import { CustomHighlight } from './extensions/CustomHighlight'
+import { applyInlineFormatting, inlineFormattingKey, wrapMarkdownSelection } from './inlineFormatting'
 import {
   generateFallbackSuggestions,
   getWordRangeAtPos,
@@ -388,7 +389,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       })
     },
     editorProps: {
-      handleKeyDown: (_view, event) => {
+      handleKeyDown: (view, event) => {
         if (
           matchesShortcut(event, getShortcutKey(settings, 'quickTools')) ||
           (event.shiftKey && event.key === 'F10') ||
@@ -416,6 +417,11 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         if (matchesShortcut(event, getShortcutKey(settings, 'saveNote'))) {
           event.preventDefault()
           void flushPendingSave().catch(() => {})
+          return true
+        }
+        const inlineKey = inlineFormattingKey(event)
+        if (inlineKey && applyInlineFormatting(view, inlineKey)) {
+          event.preventDefault()
           return true
         }
         return false
@@ -813,8 +819,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     }
   }
 
-  const handleRawMarkdownChange = (e: React.ChangeEvent<HTMLTextAreaElement>): void => {
-    const nextMd = e.target.value
+  const updateRawMarkdown = (nextMd: string): void => {
     setRawMarkdown(nextMd)
     setSaveStatus('typing')
 
@@ -834,6 +839,10 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         window.setTimeout(() => setSaveStatus('saved'), 350)
       }
     }, 2000)
+  }
+
+  const handleRawMarkdownChange = (e: React.ChangeEvent<HTMLTextAreaElement>): void => {
+    updateRawMarkdown(e.target.value)
   }
 
   // Handle click & hover on [[WikiLink]] nodes and external links inside the editor
@@ -1090,6 +1099,18 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
                   e.preventDefault()
                   void flushPendingSave().catch(() => {})
                   return
+                }
+                const inlineKey = inlineFormattingKey(nativeEvent)
+                if (inlineKey) {
+                  const textarea = e.currentTarget
+                  const wrapped = wrapMarkdownSelection(textarea.value, textarea.selectionStart, textarea.selectionEnd, inlineKey)
+                  if (wrapped) {
+                    e.preventDefault()
+                    updateRawMarkdown(wrapped.value)
+                    window.requestAnimationFrame(() => {
+                      if (document.activeElement === textarea) textarea.setSelectionRange(wrapped.start, wrapped.end)
+                    })
+                  }
                 }
               }}
               spellCheck={settings.spellcheck}
