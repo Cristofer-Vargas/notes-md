@@ -14,6 +14,7 @@ export type EditorFontWeightPreset = '200' | '300' | '400' | '500'
 
 export type ShortcutActionId =
   | 'quickSwitcher'
+  | 'vaultSearch'
   | 'newNote'
   | 'openSettings'
   | 'toggleLeftSidebar'

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import {
   Link2,
   ArrowUpRight,
@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import type { VaultNoteData } from '../../../../preload/index.d'
 import type { IndexedNoteMeta, NoteHeading } from '../../types/app'
-import { resolveWikiLinkTarget } from '../../services/noteIndexer'
+import { extractHeadings, resolveWikiLinkTarget } from '../../services/noteIndexer'
 import { IconButton } from '../ui/IconButton'
 import { SelectionButton } from '../ui/SelectionButton'
 
@@ -60,6 +60,7 @@ interface HeadingTreeItemProps {
   collapsedNodes: Record<string, boolean>
   onToggleCollapse: (id: string) => void
   onNavigate: (node: HeadingTreeNode) => void
+  activeIndex: number
   depth?: number
 }
 
@@ -68,15 +69,19 @@ const HeadingTreeItem: React.FC<HeadingTreeItemProps> = ({
   collapsedNodes,
   onToggleCollapse,
   onNavigate,
+  activeIndex,
   depth = 0
 }) => {
   const hasChildren = node.children.length > 0
   const isCollapsed = Boolean(collapsedNodes[node.id])
+  const isActive = node.index === activeIndex
 
   return (
     <div className="flex flex-col">
       <div
         role="button"
+        aria-current={isActive ? 'location' : undefined}
+        data-active-heading={isActive ? 'true' : undefined}
         tabIndex={0}
         onClick={() => onNavigate(node)}
         onKeyDown={(e) => {
@@ -87,7 +92,9 @@ const HeadingTreeItem: React.FC<HeadingTreeItemProps> = ({
         }}
         title={`Ir para "${node.text}" (H${node.level})`}
         className={`flex items-center gap-1.5 py-1 px-1.5 rounded-sm text-xs group cursor-pointer transition-colors select-none ${
-          node.level === 1
+          isActive
+            ? 'bg-accent-soft text-accent font-semibold'
+            : node.level === 1
             ? 'text-content-primary font-semibold hover:bg-surface-tertiary'
             : node.level === 2
             ? 'text-content-primary/90 font-medium hover:bg-surface-tertiary'
@@ -147,6 +154,7 @@ const HeadingTreeItem: React.FC<HeadingTreeItemProps> = ({
               collapsedNodes={collapsedNodes}
               onToggleCollapse={onToggleCollapse}
               onNavigate={onNavigate}
+              activeIndex={activeIndex}
               depth={depth + 1}
             />
           ))}
@@ -160,6 +168,7 @@ interface BacklinksSidebarProps {
   width?: number
   vaultName?: string
   activeNote: VaultNoteData | null
+  activePaneId: 'pane-1' | 'pane-2'
   noteMeta?: IndexedNoteMeta
   allNotes: VaultNoteData[]
   onOpenNoteByPath: (relativePath: string, openInNewTab?: boolean) => void
@@ -172,6 +181,7 @@ interface BacklinksSidebarProps {
 export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
   width,
   activeNote,
+  activePaneId,
   noteMeta,
   allNotes,
   onOpenNoteByPath,
@@ -191,6 +201,49 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
   })
 
   const [collapsedNodes, setCollapsedNodes] = useState<Record<string, boolean>>({})
+  const [activeHeadingIndex, setActiveHeadingIndex] = useState(-1)
+  const outlineRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const updateActiveHeading = (): void => {
+      const pane = document.querySelector<HTMLElement>('[data-active-editor-pane="true"]')
+      if (!pane) return
+      const focused = document.activeElement
+      if (focused instanceof HTMLTextAreaElement && pane.contains(focused)) {
+        setActiveHeadingIndex(extractHeadings(focused.value.slice(0, focused.selectionStart)).length - 1)
+        return
+      }
+      const selection = document.getSelection()
+      const anchor = selection?.anchorNode
+      const editor = pane.querySelector('.ProseMirror')
+      if (!anchor || !editor?.contains(anchor)) return
+      const range = selection!.getRangeAt(0).cloneRange()
+      range.collapse(true)
+      const headings = Array.from(editor.querySelectorAll('h1, h2, h3, h4, h5, h6'))
+      let index = -1
+      headings.forEach((heading, i) => {
+        const headingRange = document.createRange()
+        headingRange.selectNodeContents(heading)
+        headingRange.collapse(true)
+        if (headingRange.compareBoundaryPoints(Range.START_TO_START, range) <= 0) index = i
+      })
+      setActiveHeadingIndex(index)
+    }
+    setActiveHeadingIndex(-1)
+    updateActiveHeading()
+    document.addEventListener('selectionchange', updateActiveHeading)
+    document.addEventListener('keyup', updateActiveHeading)
+    document.addEventListener('click', updateActiveHeading)
+    return () => {
+      document.removeEventListener('selectionchange', updateActiveHeading)
+      document.removeEventListener('keyup', updateActiveHeading)
+      document.removeEventListener('click', updateActiveHeading)
+    }
+  }, [activeNote?.fullPath, activePaneId])
+
+  useEffect(() => {
+    outlineRef.current?.querySelector<HTMLElement>('[data-active-heading="true"]')?.scrollIntoView({ block: 'nearest' })
+  }, [activeHeadingIndex, activeTab, collapsedNodes])
 
   const handleSelectTab = (tab: 'connections' | 'outline'): void => {
     setActiveTab(tab)
@@ -205,6 +258,26 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
     if (!noteMeta?.headings?.length) return []
     return buildHeadingTree(noteMeta.headings)
   }, [noteMeta?.headings])
+
+  useEffect(() => {
+    if (activeHeadingIndex < 0) return
+    const findAncestors = (nodes: HeadingTreeNode[], parents: string[]): string[] | null => {
+      for (const node of nodes) {
+        if (node.index === activeHeadingIndex) return parents
+        const found = findAncestors(node.children, [...parents, node.id])
+        if (found) return found
+      }
+      return null
+    }
+    const ancestors = findAncestors(headingTree, [])
+    if (!ancestors?.length) return
+    setCollapsedNodes((previous) => {
+      if (!ancestors.some((id) => previous[id])) return previous
+      const next = { ...previous }
+      ancestors.forEach((id) => { delete next[id] })
+      return next
+    })
+  }, [activeHeadingIndex, headingTree])
 
   const hasHeadingsWithChildren = useMemo(() => {
     const checkHasChildren = (nodes: HeadingTreeNode[]): boolean => {
@@ -241,7 +314,7 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
   const handleNavigateToHeading = (node: HeadingTreeNode): void => {
     const elements = Array.from(
       document.querySelectorAll<HTMLElement>(
-        '.ProseMirror h1, .ProseMirror h2, .ProseMirror h3, .ProseMirror h4, .ProseMirror h5, .ProseMirror h6'
+        '[data-active-editor-pane="true"] .ProseMirror :is(h1, h2, h3, h4, h5, h6)'
       )
     )
 
@@ -251,6 +324,13 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
     }
 
     if (target) {
+      const range = document.createRange()
+      range.selectNodeContents(target)
+      range.collapse(true)
+      const selection = document.getSelection()
+      selection?.removeAllRanges()
+      selection?.addRange(range)
+      setActiveHeadingIndex(node.index)
       target.scrollIntoView({ behavior: 'smooth', block: 'center' })
       target.classList.remove('heading-target-pulse')
       void target.offsetWidth // force reflow
@@ -533,7 +613,7 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3 space-y-1">
+          <div ref={outlineRef} className="flex-1 overflow-y-auto p-3 space-y-1">
             {headingTree.length > 0 ? (
               headingTree.map((node) => (
                 <HeadingTreeItem
@@ -542,6 +622,7 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
                   collapsedNodes={collapsedNodes}
                   onToggleCollapse={handleToggleCollapse}
                   onNavigate={handleNavigateToHeading}
+                  activeIndex={activeHeadingIndex}
                 />
               ))
             ) : (

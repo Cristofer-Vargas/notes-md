@@ -280,6 +280,36 @@ button svg { stroke-width: 1.7; }
   user-select: text;
 }
 
+.ProseMirror .heading-fold-hidden {
+  display: none !important;
+}
+
+.ProseMirror .heading-fold-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25em;
+  height: 1.25em;
+  margin-left: -1.35em;
+  margin-right: 0.1em;
+  border-radius: 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.65em;
+  vertical-align: middle;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ProseMirror .heading-fold-control:hover,
+.ProseMirror .heading-fold-control:focus-visible {
+  color: var(--accent-color);
+  background: var(--accent-soft);
+  outline: 1px solid var(--accent-border);
+}
+
+.ProseMirror .heading-fold-control::before { content: '\25be'; }
+.ProseMirror .heading-fold-control[aria-expanded='false']::before { content: '\25b8'; }
+
 .ProseMirror p,
 .ProseMirror li,
 .ProseMirror blockquote {

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import mermaid from 'mermaid'
+import { cacheMermaid, getCachedMermaid } from './mermaidRenderCache'
 import { Button, IconButton } from '../../ui'
 import {
   Code2,
@@ -66,9 +67,11 @@ export const MermaidViewer: React.FC<MermaidViewerProps> = ({
   theme
 }) => {
   const [svgHtml, setSvgHtml] = useState<string>('')
+  const [renderedInput, setRenderedInput] = useState('')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [zoomLevel, setZoomLevel] = useState<number>(100)
   const renderTimeoutRef = useRef<number | null>(null)
+  const instanceIdRef = useRef(`mermaid-cached-${crypto.randomUUID()}`)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [documentTheme, setDocumentTheme] = useState(() => document.documentElement.getAttribute('data-theme') || 'dark')
 
@@ -80,13 +83,19 @@ export const MermaidViewer: React.FC<MermaidViewerProps> = ({
   }, [theme])
 
   const cleanCode = code.trim()
+  const renderInput = `${theme || documentTheme}\n${cleanCode}`
+  const cachedSvg = cleanCode ? getCachedMermaid(renderInput, instanceIdRef.current) : null
+  const isRendered = Boolean(cachedSvg) || renderedInput === renderInput
 
   useEffect(() => {
+    let cancelled = false
     if (!cleanCode) {
       setSvgHtml('')
       setErrorMessage(null)
       return
     }
+
+    if (cachedSvg) return
 
     if (renderTimeoutRef.current) {
       window.clearTimeout(renderTimeoutRef.current)
@@ -129,22 +138,28 @@ export const MermaidViewer: React.FC<MermaidViewerProps> = ({
 
         const uniqueId = `mermaid-svg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
         const { svg } = await mermaid.render(uniqueId, cleanCode)
+        cacheMermaid(renderInput, svg, uniqueId)
+        if (cancelled) return
         setSvgHtml(svg)
         setErrorMessage(null)
+        setRenderedInput(renderInput)
       } catch (err: any) {
+        if (cancelled) return
         setSvgHtml('')
         const errorText =
           err?.str || err?.message || 'Erro de sintaxe no diagrama Mermaid. Verifique a estrutura.'
         setErrorMessage(errorText)
+        setRenderedInput(renderInput)
       }
     }, 120)
 
     return () => {
+      cancelled = true
       if (renderTimeoutRef.current) {
         window.clearTimeout(renderTimeoutRef.current)
       }
     }
-  }, [cleanCode, theme, documentTheme])
+  }, [cleanCode, theme, documentTheme, renderInput])
 
   // Se o bloco de código mermaid estiver vazio, exibe tela de boas-vindas com modelos
   if (!cleanCode) {
@@ -184,9 +199,9 @@ export const MermaidViewer: React.FC<MermaidViewerProps> = ({
   }
 
   // Se houver erro de sintaxe no Mermaid
-  if (errorMessage) {
+  if (errorMessage && !cachedSvg && renderedInput === renderInput) {
     return (
-      <div className="p-4 bg-surface-bg text-left">
+      <div data-mermaid-rendering={!isRendered} className="p-4 bg-surface-bg text-left">
         <div className="flex items-start gap-2.5">
           <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
           <div className="min-w-0 flex-1">
@@ -214,6 +229,7 @@ export const MermaidViewer: React.FC<MermaidViewerProps> = ({
 
   return (
     <div
+      data-mermaid-rendering={!isRendered}
       ref={containerRef}
       onDoubleClick={onEditCode}
       title="Duplo clique para editar o código do diagrama"
@@ -252,7 +268,7 @@ export const MermaidViewer: React.FC<MermaidViewerProps> = ({
         <div
           style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top center' }}
           className="transition-transform duration-150 inline-block max-w-full"
-          dangerouslySetInnerHTML={{ __html: svgHtml }}
+          dangerouslySetInnerHTML={{ __html: cachedSvg || (renderedInput === renderInput ? svgHtml : '') }}
         />
       </div>
     </div>

@@ -28,6 +28,11 @@ const api: ElectronAPI = {
     ipcRenderer.on('pomodoro:state', listener)
     return () => { ipcRenderer.removeListener('pomodoro:state', listener) }
   },
+  onPomodoroSound: (callback) => {
+    const listener = (_event: Electron.IpcRendererEvent, sound: Parameters<typeof callback>[0]): void => callback(sound)
+    ipcRenderer.on('pomodoro:sound', listener)
+    return () => { ipcRenderer.removeListener('pomodoro:sound', listener) }
+  },
   onPomodoroReward: (callback) => {
     const listener = (_event: Electron.IpcRendererEvent, reward: Parameters<typeof callback>[0], level: number): void => callback(reward, level)
     ipcRenderer.on('pomodoro:reward', listener)

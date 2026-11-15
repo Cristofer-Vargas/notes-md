@@ -1,201 +1,70 @@
-import React, { useEffect, useState } from 'react'
-import { Search, FileText, PlusCircle, Link2 } from 'lucide-react'
-import type { VaultNoteData } from '../../../../preload/index.d'
-import type { IndexedNoteMeta } from '../../types/app'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { FileText, Folder, PlusCircle, Search, X } from 'lucide-react'
+import type { VaultFileEntry, VaultNoteData } from '../../../../preload/index.d'
+import { listVaultFolders, quickSuggestions, type QuickSuggestion } from '../../services/quickSwitcher'
+import { IconButton, Input } from '../ui'
+import { SelectionButton } from '../ui/SelectionButton'
 
 interface QuickSwitcherModalProps {
   isOpen: boolean
   notes: VaultNoteData[]
-  vaultIndex: Record<string, IndexedNoteMeta>
+  tree: VaultFileEntry[]
   onSelectNote: (relativePath: string, openInNewTab?: boolean) => void
-  onCreateNewNoteWithTitle: (title: string, openInNewTab?: boolean) => void
+  onCreateNote: (folder: string, title: string, openInNewTab: boolean) => void
   onClose: () => void
 }
 
-export const QuickSwitcherModal: React.FC<QuickSwitcherModalProps> = ({
-  isOpen,
-  notes,
-  vaultIndex,
-  onSelectNote,
-  onCreateNewNoteWithTitle,
-  onClose
-}) => {
+export const QuickSwitcherModal: React.FC<QuickSwitcherModalProps> = ({ isOpen, notes, tree, onSelectNote, onCreateNote, onClose }) => {
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const resultsRef = useRef<HTMLDivElement>(null)
+  const folders = useMemo(() => listVaultFolders(tree), [tree])
+  const suggestions = useMemo(() => quickSuggestions(query, notes, folders), [query, notes, folders])
+  const currentIndex = Math.min(selectedIndex, Math.max(0, suggestions.length - 1))
 
-  useEffect(() => {
-    if (isOpen) {
-      setQuery('')
-      setSelectedIndex(0)
-    }
-  }, [isOpen])
-
+  useEffect(() => { if (isOpen) { setQuery(''); setSelectedIndex(0) } }, [isOpen])
+  useEffect(() => { resultsRef.current?.querySelector<HTMLElement>('[data-selected="true"]')?.scrollIntoView({ block: 'nearest' }) }, [currentIndex, query])
   if (!isOpen) return null
 
-  const normalized = query.trim().toLowerCase()
-  const filtered = notes.filter(
-    (n) =>
-      n.name.toLowerCase().includes(normalized) ||
-      n.relativePath.toLowerCase().includes(normalized) ||
-      n.content.toLowerCase().includes(normalized)
-  )
-
-  const exactExists = notes.some((n) => n.name.toLowerCase() === normalized)
-  const canCreate = normalized.length > 0 && !exactExists
-  const totalCount = filtered.length + (canCreate ? 1 : 0)
-
-  const handleKeyDown = (e: React.KeyboardEvent): void => {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      setSelectedIndex((prev) => (totalCount > 0 ? (prev + 1) % totalCount : 0))
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setSelectedIndex((prev) => (totalCount > 0 ? (prev - 1 + totalCount) % totalCount : 0))
-    } else if (e.key === 'Enter') {
-      e.preventDefault()
-      const openInNewTab = e.ctrlKey || e.metaKey
-      if (selectedIndex < filtered.length) {
-        onSelectNote(filtered[selectedIndex].relativePath, openInNewTab)
-        onClose()
-      } else if (canCreate) {
-        onCreateNewNoteWithTitle(query.trim(), openInNewTab)
-        onClose()
-      }
-    } else if (e.key === 'Escape') {
-      e.preventDefault()
-      onClose()
-    }
+  const complete = (item: QuickSuggestion): void => {
+    if (item.kind === 'folder') setQuery(`${item.path}/`)
+    else if (item.kind === 'note') setQuery(item.path.replace(/\.md$/i, ''))
+    else return
+    setSelectedIndex(0)
+  }
+  const activate = (item: QuickSuggestion | undefined, newTab: boolean): void => {
+    if (!item) return
+    if (item.kind === 'folder') { complete(item); return }
+    if (item.kind === 'note') onSelectNote(item.path, newTab)
+    else onCreateNote(item.folder, item.name, newTab)
+    onClose()
   }
 
-  return (
-    <div
-      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-start justify-center pt-20 p-4 animate-in fade-in duration-100"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-xl rounded-2xl bg-surface-bg border border-surface-border shadow-2xl overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={handleKeyDown}
-      >
-        {/* Search Input */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-surface-border bg-surface-secondary">
-          <Search className="w-4 h-4 text-accent shrink-0" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value)
-              setSelectedIndex(0)
-            }}
-            placeholder="Buscar nota por título ou conteúdo, ou digite um novo nome para criar..."
-            autoFocus
-            className="w-full bg-transparent text-sm text-content-primary placeholder:text-content-muted focus:outline-none"
-          />
-          <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-surface-tertiary text-content-muted">
-            ESC
-          </kbd>
-        </div>
-
-        {/* Results */}
-        <div className="max-h-80 overflow-y-auto p-2 space-y-1">
-          {filtered.map((note, idx) => {
-            const isSelected = idx === selectedIndex
-            const meta = vaultIndex[note.relativePath]
-            return (
-              <button
-                key={note.relativePath}
-                type="button"
-                onMouseEnter={() => setSelectedIndex(idx)}
-                onClick={() => {
-                  onSelectNote(note.relativePath, false)
-                  onClose()
-                }}
-                onMouseDown={(e) => {
-                  if (e.button === 1) e.preventDefault()
-                }}
-                onAuxClick={(e) => {
-                  if (e.button === 1) {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    onSelectNote(note.relativePath, true)
-                    onClose()
-                  }
-                }}
-                title={`${note.name}\nClique esquerdo: abrir nesta guia • Botão do meio ou Ctrl+Enter: abrir em nova guia`}
-                className={`w-full flex items-start justify-between gap-3 p-2.5 rounded-xl text-left transition-colors cursor-pointer select-none ${
-                  isSelected
-                    ? 'bg-accent text-white'
-                    : 'text-content-primary hover:bg-surface-secondary'
-                }`}
-              >
-                <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                  <FileText
-                    className={`w-4 h-4 mt-0.5 shrink-0 ${
-                      isSelected ? 'text-white' : 'text-accent'
-                    }`}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="text-xs font-bold truncate">{note.name}</div>
-                    <div
-                      className={`text-[11px] line-clamp-1 mt-0.5 ${
-                        isSelected ? 'text-white/85' : 'text-content-secondary'
-                      }`}
-                    >
-                      {meta?.excerpt || note.relativePath}
-                    </div>
-                  </div>
-                </div>
-
-                {meta && (
-                  <div
-                    className={`flex items-center gap-1 text-[10px] shrink-0 px-2 py-0.5 rounded-full ${
-                      isSelected
-                        ? 'bg-white/20 text-white'
-                        : 'bg-surface-tertiary text-content-muted'
-                    }`}
-                  >
-                    <Link2 className="w-3 h-3" />
-                    <span>{meta.backlinks.length}</span>
-                  </div>
-                )}
-              </button>
-            )
-          })}
-
-          {canCreate && (
-            <button
-              type="button"
-              onMouseEnter={() => setSelectedIndex(filtered.length)}
-              onClick={() => {
-                onCreateNewNoteWithTitle(query.trim(), false)
-                onClose()
-              }}
-              onMouseDown={(e) => {
-                if (e.button === 1) e.preventDefault()
-              }}
-              onAuxClick={(e) => {
-                if (e.button === 1) {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  onCreateNewNoteWithTitle(query.trim(), true)
-                  onClose()
-                }
-              }}
-              title={`Criar nova nota\nClique esquerdo: abrir nesta guia • Botão do meio ou Ctrl+Enter: abrir em nova guia`}
-              className={`w-full flex items-center gap-2.5 p-2.5 rounded-xl text-left transition-colors cursor-pointer select-none ${
-                selectedIndex === filtered.length
-                  ? 'bg-accent text-white'
-                  : 'text-accent hover:bg-surface-secondary'
-              }`}
-            >
-              <PlusCircle className="w-4 h-4 shrink-0" />
-              <div className="text-xs font-semibold">
-                Criar nova nota Markdown: &ldquo;{query.trim()}.md&rdquo;
-              </div>
-            </button>
-          )}
-        </div>
+  return <div className="fixed inset-0 z-50 flex items-start justify-center bg-surface-bg/70 p-4 pt-20 backdrop-blur-xs" onClick={onClose}>
+    <div role="dialog" aria-modal="true" aria-label="Busca rápida de notas e pastas" className="w-full max-w-xl overflow-hidden rounded-xl border border-surface-border bg-surface-bg shadow-2xl" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => {
+      if (event.key === 'ArrowDown' && suggestions.length) { event.preventDefault(); setSelectedIndex((currentIndex + 1) % suggestions.length) }
+      else if (event.key === 'ArrowUp' && suggestions.length) { event.preventDefault(); setSelectedIndex((currentIndex - 1 + suggestions.length) % suggestions.length) }
+      else if (event.key === 'Tab' && !event.shiftKey && suggestions[currentIndex]?.kind !== 'create') { event.preventDefault(); const item = suggestions[currentIndex]; if (item) complete(item) }
+      else if (event.key === 'Enter') { event.preventDefault(); activate(suggestions[currentIndex], event.ctrlKey || event.metaKey) }
+      else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onClose() }
+    }}>
+      <div className="flex items-center gap-2 border-b border-surface-border bg-surface-secondary p-3">
+        <Input aria-label="Buscar nota ou pasta" autoFocus value={query} onChange={(event) => { setQuery(event.target.value); setSelectedIndex(0) }} placeholder="Buscar nota ou pasta..." leftIcon={<Search className="h-4 w-4" />} />
+        <IconButton tooltip="Fechar busca" icon={<X className="h-4 w-4" />} onClick={onClose} />
       </div>
+      <div ref={resultsRef} className="max-h-80 overflow-y-auto p-2">
+        {suggestions.map((item, index) => {
+          const selected = index === currentIndex
+          const Icon = item.kind === 'folder' ? Folder : item.kind === 'note' ? FileText : PlusCircle
+          return <SelectionButton key={`${item.kind}:${item.path}`} data-selected={selected} onMouseEnter={() => setSelectedIndex(index)} onClick={(event) => activate(item, event.ctrlKey || event.metaKey)} onAuxClick={(event) => { if (event.button === 1) { event.preventDefault(); activate(item, true) } }} className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs ${selected ? 'bg-accent-soft text-content-primary' : 'text-content-secondary hover:bg-surface-secondary'}`}>
+            <Icon className="h-4 w-4 shrink-0 text-accent" />
+            <span className="min-w-0 flex-1"><span className="block truncate font-semibold">{item.kind === 'create' ? `Criar nota: ${item.name}` : item.kind === 'folder' ? item.name : item.note.name}</span><span className="block truncate text-[10px] text-content-muted">{item.kind === 'folder' ? `${item.path}/` : item.path}</span></span>
+            {item.kind === 'folder' && <span className="text-[10px] text-content-muted">Tab / Enter</span>}
+          </SelectionButton>
+        })}
+        {suggestions.length === 0 && <p className="p-4 text-center text-xs text-content-muted">Nenhuma nota ou pasta encontrada. Verifique o caminho informado.</p>}
+      </div>
+      <div className="border-t border-surface-border px-4 py-2 text-[10px] text-content-muted">Tab completa · Enter abre ou cria · Ctrl+Enter abre em nova guia</div>
     </div>
-  )
+  </div>
 }

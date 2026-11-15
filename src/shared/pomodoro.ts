@@ -1,5 +1,6 @@
 export type PomodoroPhase = 'focus' | 'shortBreak' | 'longBreak'
 export type PomodoroStatus = 'idle' | 'running' | 'paused'
+export type PomodoroSound = 'open' | 'focus' | 'break' | 'pause' | 'complete'
 export interface PomodoroNote { vaultPath: string; vaultName: string; relativePath: string; name: string }
 export interface PomodoroContext { vaultPath: string; vaultName: string; activePath: string | null; notes: Array<{ relativePath: string; name: string }> }
 export interface PomodoroSettings { focus: number; shortBreak: number; longBreak: number; longBreakEvery: number; continuous: boolean; notifications: boolean; sound: boolean }

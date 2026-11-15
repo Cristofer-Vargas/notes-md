@@ -22,9 +22,11 @@ import { EditorWorkspace } from './components/editor/EditorWorkspace'
 import { SettingsModal, type SettingsTab } from './components/modals/SettingsModal'
 import { ImagePreviewModal } from './components/modals/ImagePreviewModal'
 import { QuickSwitcherModal } from './components/modals/QuickSwitcherModal'
+import { VaultSearchModal } from './components/modals/VaultSearchModal'
 import { HelpShortcutsModal } from './components/modals/HelpShortcutsModal'
 import { PomodoroBar } from './components/pomodoro/PomodoroBar'
 import { PomodoroReports } from './components/pomodoro/PomodoroReports'
+import { playPomodoroSound } from './components/pomodoro/pomodoroSounds'
 import { InputPromptModal } from './components/modals/InputPromptModal'
 import { WikiLinkHoverPreview } from './components/editor/WikiLinkHoverPreview'
 import { DiscordLoadingScreen } from './components/common/DiscordLoadingScreen'
@@ -177,6 +179,7 @@ export function App(): React.ReactElement {
   const [isZenMode, setIsZenMode] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isPomodoroReportsOpen, setIsPomodoroReportsOpen] = useState(false)
+  useEffect(() => window.electronAPI.onPomodoroSound(playPomodoroSound), [])
   useEffect(() => window.electronAPI.onOpenPomodoroReports(() => setIsPomodoroReportsOpen(true)), [])
   const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTab>('appearance')
   const [appUpdateState, setAppUpdateState] = useState<AppUpdateState | null>(null)
@@ -185,6 +188,7 @@ export function App(): React.ReactElement {
   const [startupMessage, setStartupMessage] = useState('Iniciando o Notes MD...')
   const [showUpdateOverlay, setShowUpdateOverlay] = useState(false)
   const [isQuickSwitcherOpen, setIsQuickSwitcherOpen] = useState(false)
+  const [isVaultSearchOpen, setIsVaultSearchOpen] = useState(false)
   const [isHelpOpen, setIsHelpOpen] = useState(false)
   const [imageModal, setImageModal] = useState<{
     open: boolean
@@ -744,6 +748,36 @@ export function App(): React.ReactElement {
     [vaultPath]
   )
 
+  const openCreatedNote = useCallback((created: VaultNoteData, paneId: 'pane-1' | 'pane-2', openInNewTab: boolean) => {
+    const setTargetPane = paneId === 'pane-1' ? setPane1 : setPane2
+    setTargetPane((previous) => {
+      const tab = { relativePath: created.relativePath, title: created.name }
+      const tabs = openInNewTab || !previous.activeNotePath
+        ? [...previous.tabs, tab]
+        : previous.tabs.map((existing) => existing.relativePath === previous.activeNotePath ? tab : existing)
+      return { ...previous, tabs, activeNotePath: created.relativePath }
+    })
+    setActivePaneId(paneId)
+  }, [])
+
+  const handleQuickCreate = useCallback(async (folder: string, title: string, openInNewTab: boolean) => {
+    if (!vaultPath) return
+    const paneId = activePaneId
+    try {
+      const created = await window.electronAPI.createNote(vaultPath, folder, title)
+      const refreshed = await window.electronAPI.loadVault(vaultPath)
+      if (currentVaultPathRef.current !== vaultPath) return
+      setNotes(refreshed.notes)
+      setTree(refreshed.tree)
+      setLastSyncTime(Date.now())
+      if (folder) setExpandedFolders((previous) => ({ ...previous, [folder]: true }))
+      openCreatedNote(created, paneId, openInNewTab)
+    } catch (error) {
+      console.error('Falha ao criar nota:', error)
+      window.alert('Não foi possível criar a nota. Verifique o acesso à pasta e tente novamente.')
+    }
+  }, [vaultPath, activePaneId, openCreatedNote])
+
   // Navigate to [[WikiLink]] or automatically create the note if it doesn't exist
   const handleNavigateWikiLink = useCallback(
     async (targetTitle: string, openInNewTab = false) => {
@@ -766,12 +800,12 @@ export function App(): React.ReactElement {
         setTree(refreshed.tree)
         setLastSyncTime(Date.now())
 
-        navigateToNote(created.relativePath, openInNewTab)
+        openCreatedNote(created, activePaneId, true)
       } catch (err) {
         console.error('Erro ao criar nota vinculada:', err)
       }
     },
-    [vaultPath, notes, navigateToNote]
+    [vaultPath, notes, navigateToNote, openCreatedNote, activePaneId]
   )
 
   const handleCreateNote = useCallback(
@@ -1134,9 +1168,12 @@ export function App(): React.ReactElement {
         sourceNote.content
       )
       const refreshed = await window.electronAPI.loadVault(vaultPath)
-      applyVaultSnapshot(refreshed, created.relativePath)
+      setNotes(refreshed.notes)
+      setTree(refreshed.tree)
+      setLastSyncTime(Date.now())
+      openCreatedNote(created, activePaneId, true)
     },
-    [vaultPath, notes, applyVaultSnapshot]
+    [vaultPath, notes, activePaneId, openCreatedNote]
   )
 
   const activePaneIdRef = useRef(activePaneId)
@@ -1187,6 +1224,9 @@ export function App(): React.ReactElement {
       } else if (matchesShortcut(e, getShortcutKey(curSettings, 'quickSwitcher'))) {
         e.preventDefault()
         setIsQuickSwitcherOpen((prev) => !prev)
+      } else if (matchesShortcut(e, getShortcutKey(curSettings, 'vaultSearch'))) {
+        e.preventDefault()
+        setIsVaultSearchOpen((prev) => !prev)
       } else if (matchesShortcut(e, getShortcutKey(curSettings, 'newNote'))) {
         e.preventDefault()
         handleCreateNote('')
@@ -1262,6 +1302,7 @@ export function App(): React.ReactElement {
               onRefreshVault={handleRefreshVault}
               onOpenInExplorer={handleOpenInExplorer}
               onOpenQuickSwitcher={() => setIsQuickSwitcherOpen(true)}
+              onOpenVaultSearch={() => setIsVaultSearchOpen(true)}
               onOpenSettings={handleOpenSettings}
               theme={settings.theme}
               onToggleTheme={() =>
@@ -1335,6 +1376,7 @@ export function App(): React.ReactElement {
               width={rightSidebarWidth}
               vaultName={vaultName}
               activeNote={activeNote}
+              activePaneId={activePaneId}
               noteMeta={activeNote ? vaultIndex[activeNote.relativePath] : undefined}
               allNotes={notes}
               onOpenNoteByPath={navigateToNote}
@@ -1479,11 +1521,13 @@ export function App(): React.ReactElement {
       <QuickSwitcherModal
         isOpen={isQuickSwitcherOpen}
         notes={notes}
-        vaultIndex={vaultIndex}
+        tree={tree}
         onSelectNote={navigateToNote}
-        onCreateNewNoteWithTitle={(title, openInNewTab) => handleNavigateWikiLink(title, openInNewTab)}
+        onCreateNote={(folder, title, openInNewTab) => void handleQuickCreate(folder, title, openInNewTab)}
         onClose={() => setIsQuickSwitcherOpen(false)}
       />
+
+      <VaultSearchModal isOpen={isVaultSearchOpen} notes={notes} vaultName={vaultName} onSelectNote={navigateToNote} onClose={() => setIsVaultSearchOpen(false)} />
 
       <HelpShortcutsModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
 

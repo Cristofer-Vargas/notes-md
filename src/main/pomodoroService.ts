@@ -17,7 +17,7 @@ export class PomodoroService {
   private readonly backupFile: string
   private readonly progressFile: string
   private progressArchive: ProgressArchive = { version: 1, entries: {} }
-  constructor(private file: string, private changed: (state: PomodoroState) => void, private notify: (phase: PomodoroPhase, sound: boolean) => void, private now: () => number = Date.now) {
+  constructor(private file: string, private changed: (state: PomodoroState) => void, private notify: (phase: PomodoroPhase, sound: boolean) => void, private now: () => number = Date.now, private completed: () => void = () => {}) {
     this.snapshotFile = `${file}.state-v2.json`; this.archiveFile = `${file}.history-v2.json`; this.backupFile = `${file}.v1.backup`; this.progressFile = `${file}.progress-v1.json`
     const settings = { ...DEFAULT_POMODORO_SETTINGS }
     this.state = { phase: 'focus', status: 'idle', remainingMs: settings.focus * 60000, durationMs: settings.focus * 60000, startedAt: null, elapsedMs: 0, segmentStartedAt: null, completedInCycle: 0, vaultPath: '', vaultName: '', note: null, settings, historyVersion: 0, progress: calculateProgress({}) }
@@ -180,6 +180,7 @@ export class PomodoroService {
     const next: PomodoroPhase = phase === 'focus' ? (this.state.completedInCycle >= this.state.settings.longBreakEvery ? 'longBreak' : 'shortBreak') : 'focus'
     if (phase === 'longBreak') this.state.completedInCycle = 0
     this.prepare(next); if (this.state.settings.continuous) this.begin('automatic'); this.emit()
+    if (this.state.settings.sound) this.completed()
     if (this.state.settings.notifications) this.notify(phase, this.state.settings.sound)
   }
   private begin(reason: PomodoroEventReason): void {

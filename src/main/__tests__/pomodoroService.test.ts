@@ -104,6 +104,18 @@ describe('PomodoroService', () => {
     expect(service.getState()).toMatchObject({ phase: 'shortBreak', status: 'running' })
     expect(notify).not.toHaveBeenCalled()
   })
+  it('emite som de conclusão mesmo sem notificação visual e respeita o som desativado', () => {
+    service.shutdown()
+    const completed = vi.fn()
+    service = new PomodoroService(join(dir, 'sound.json'), vi.fn(), notify, () => now, completed)
+    service.configure({ focus: 1, shortBreak: 1, notifications: false, sound: true })
+    service.action('start'); advance(60_000)
+    expect(completed).toHaveBeenCalledTimes(1)
+    expect(notify).not.toHaveBeenCalled()
+    service.configure({ sound: false })
+    service.action('start'); advance(60_000)
+    expect(completed).toHaveBeenCalledTimes(1)
+  })
   it('guarda o cofre mesmo sem nota e aplica nova duração somente na próxima etapa', () => {
     service.action('start', null, { vaultPath: 'cofre', vaultName: 'Cofre' })
     service.configure({ focus: 2 })

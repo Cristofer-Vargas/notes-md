@@ -18,6 +18,13 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
     defaultKey: 'Ctrl+P'
   },
   {
+    id: 'vaultSearch',
+    label: 'Pesquisar no cofre',
+    description: 'Pesquisa em títulos, tags e conteúdo de todas as notas',
+    category: 'Geral',
+    defaultKey: 'Ctrl+Shift+F'
+  },
+  {
     id: 'newNote',
     label: 'Nova Nota Markdown',
     description: 'Cria uma nova nota vazia na raiz ou na pasta selecionada',

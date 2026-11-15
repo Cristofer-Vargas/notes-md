@@ -9,6 +9,7 @@ import {
   FilePlus2,
   FolderPlus,
   Search,
+  FileSearch,
   ChevronRight,
   ChevronDown,
   Trash2,
@@ -57,6 +58,7 @@ interface FileExplorerSidebarProps {
   onRefreshVault: () => void
   onOpenInExplorer: (subRelativePath?: string) => void
   onOpenQuickSwitcher: () => void
+  onOpenVaultSearch: () => void
   onOpenSettings: () => void
   theme?: 'light' | 'dark' | 'sepia'
   onToggleTheme?: () => void
@@ -152,6 +154,7 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
   onRefreshVault,
   onOpenInExplorer,
   onOpenQuickSwitcher,
+  onOpenVaultSearch,
   onOpenSettings,
   theme = 'dark',
   onToggleTheme,
@@ -582,6 +585,8 @@ export const FileExplorerSidebar: React.FC<FileExplorerSidebarProps> = ({
           <Search className="w-3.5 h-3.5 text-accent shrink-0" />
           <span className="truncate">Buscar...</span>
         </SelectionButton>
+
+        <IconButton variant="secondary" size="sm" onClick={onOpenVaultSearch} tooltip="Pesquisar no cofre (Ctrl+Shift+F)" icon={<FileSearch className="w-4 h-4" />} />
 
         <IconButton
           variant="accent"

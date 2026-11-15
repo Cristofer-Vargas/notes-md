@@ -27,8 +27,10 @@ import { WikiLinkSuggestion } from './WikiLinkSuggestion'
 import { WikiLinkHoverPreview } from './WikiLinkHoverPreview'
 import { CustomCodeBlock, lowlight } from './extensions/CustomCodeBlock'
 import { CustomHighlight } from './extensions/CustomHighlight'
+import { HeadingFold, headingFoldKey } from './extensions/HeadingFold'
 import { applyInlineFormatting, inlineFormattingKey, wrapMarkdownSelection } from './inlineFormatting'
 import { escapeInlineFormatting } from './escapeInlineFormatting'
+import { blockShortcut, moveEditorBlocks, moveMarkdownLines } from './moveBlocks'
 import {
   generateFallbackSuggestions,
   getWordRangeAtPos,
@@ -136,6 +138,12 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   } | null>(null)
   const isMouseOverPreviewRef = useRef(false)
   const activeNotePathRef = useRef<string | null>(null)
+  const activeNoteKeyRef = useRef<string | null>(null)
+  const documentScrollRef = useRef<HTMLDivElement>(null)
+  const noteScrollPositionsRef = useRef(new Map<string, number>())
+  const scrollNoteKeyRef = useRef<string | null>(null)
+  const scrollRestoreFrameRef = useRef<number | null>(null)
+  const [readyNoteKey, setReadyNoteKey] = useState<string | null>(null)
   const hydratedEditorRef = useRef<{ editor: unknown; path: string } | null>(null)
   const isInternalUpdateRef = useRef(false)
   const hasPendingSaveRef = useRef(false)
@@ -231,6 +239,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         lowlight,
         defaultLanguage: 'plaintext'
       }),
+      HeadingFold,
       Markdown.configure({
         html: true,
         tightLists: true,
@@ -393,6 +402,11 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     },
     editorProps: {
       handleKeyDown: (view, event) => {
+        const blockAction = blockShortcut(event)
+        if (blockAction) {
+          event.preventDefault()
+          return moveEditorBlocks(view, blockAction.direction, blockAction.duplicate)
+        }
         if (escapeInlineFormatting(view, event)) {
           event.preventDefault()
           return true
@@ -566,8 +580,14 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   // Synchronize editor when switching active note OR when external file changes occur
   useEffect(() => {
     if (!activeNote) {
+      if (scrollRestoreFrameRef.current !== null) {
+        window.cancelAnimationFrame(scrollRestoreFrameRef.current)
+        scrollRestoreFrameRef.current = null
+      }
+      scrollNoteKeyRef.current = null
       void flushPendingSave().catch(() => {})
       activeNotePathRef.current = null
+      activeNoteKeyRef.current = null
       hydratedEditorRef.current = null
       hasPendingSaveRef.current = false
       lastSavedMarkdownRef.current = ''
@@ -576,16 +596,17 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       return
     }
 
-    const isNewPath = activeNotePathRef.current !== activeNote.relativePath
+    const isNewPath = activeNoteKeyRef.current !== activeNote.fullPath
     const canHydrateEditor = Boolean(editor && !editor.isDestroyed)
     const needsEditorHydration =
       canHydrateEditor &&
       (hydratedEditorRef.current?.editor !== editor ||
-        hydratedEditorRef.current?.path !== activeNote.relativePath)
+        hydratedEditorRef.current?.path !== activeNote.fullPath)
 
     if (isNewPath) {
       void flushPendingSave().catch(() => {})
       activeNotePathRef.current = activeNote.relativePath
+      activeNoteKeyRef.current = activeNote.fullPath
       hasPendingSaveRef.current = false
       lastSavedMarkdownRef.current = activeNote.content
       setNoteTitleInput(activeNote.name)
@@ -601,8 +622,16 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         isInternalUpdateRef.current = true
         const prepared = preprocessMarkdownForEditor(activeNote.content)
         editor.commands.setContent(prepared, false)
+        if (isNewPath) editor.view.dispatch(editor.state.tr.setMeta(headingFoldKey, { reset: true }))
         isInternalUpdateRef.current = false
-        hydratedEditorRef.current = { editor, path: activeNote.relativePath }
+        hydratedEditorRef.current = { editor, path: activeNote.fullPath }
+      }
+      if (isNewPath || needsEditorHydration) {
+        scrollNoteKeyRef.current = null
+        if (scrollRestoreFrameRef.current !== null) {
+          window.cancelAnimationFrame(scrollRestoreFrameRef.current)
+        }
+        setReadyNoteKey(null)
       }
       return
     }
@@ -625,10 +654,62 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         const prepared = preprocessMarkdownForEditor(activeNote.content)
         editor.commands.setContent(prepared, false)
         isInternalUpdateRef.current = false
-        hydratedEditorRef.current = { editor, path: activeNote.relativePath }
+        hydratedEditorRef.current = { editor, path: activeNote.fullPath }
       }
     }
   }, [activeNote, editor, flushPendingSave, isRenaming])
+
+  useEffect(() => {
+    if (!activeNote || (!isSourceMode && (!editor || editor.isDestroyed))) return
+    const noteKey = activeNote.fullPath
+    const container = documentScrollRef.current
+    if (!container) return
+    let cancelled = false
+    let initialized = false
+    let finished = false
+    let frame = 0
+    const finish = (): void => {
+      if (cancelled || finished) return
+      finished = true
+      observer.disconnect()
+      window.clearTimeout(timeout)
+      scrollRestoreFrameRef.current = window.requestAnimationFrame(() => {
+        if (cancelled) return
+        container.scrollTop = noteScrollPositionsRef.current.get(noteKey) ?? 0
+        scrollNoteKeyRef.current = noteKey
+        scrollRestoreFrameRef.current = null
+        setReadyNoteKey(noteKey)
+      })
+    }
+    const check = (): void => {
+      if (initialized && !container.querySelector('[data-mermaid-rendering="true"]')) finish()
+    }
+    const observer = new MutationObserver(check)
+    observer.observe(container, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-mermaid-rendering'] })
+    const timeout = window.setTimeout(finish, 15000)
+    frame = window.requestAnimationFrame(() => {
+      frame = window.requestAnimationFrame(() => {
+        initialized = true
+        check()
+      })
+    })
+    return () => {
+      cancelled = true
+      observer.disconnect()
+      window.clearTimeout(timeout)
+      window.cancelAnimationFrame(frame)
+      if (scrollRestoreFrameRef.current !== null) {
+        window.cancelAnimationFrame(scrollRestoreFrameRef.current)
+        scrollRestoreFrameRef.current = null
+      }
+    }
+  }, [activeNote?.fullPath, editor, isSourceMode])
+
+  useEffect(() => () => {
+    if (scrollRestoreFrameRef.current !== null) {
+      window.cancelAnimationFrame(scrollRestoreFrameRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     if (!shouldFocusTitle || !activeNote) return
@@ -965,6 +1046,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
 
   const wordCount = (editor?.storage as any)?.characterCount?.words?.() ?? countWords(rawMarkdown)
   const readingTimeMin = Math.max(1, Math.ceil(wordCount / 200))
+  const isNoteLoading = readyNoteKey !== activeNote.fullPath || activeNoteKeyRef.current !== activeNote.fullPath
   const resolvedHoverNote = hoverPreview
     ? resolveWikiLinkTarget(hoverPreview.targetName, allNotes)
     : undefined
@@ -1002,8 +1084,21 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       />
 
       {/* Scrollable Document Canvas */}
+      <div className="relative flex-1 min-h-0">
+      {isNoteLoading && (
+        <div role="status" aria-label="Carregando nota" className="absolute inset-0 z-10 flex items-center justify-center bg-surface-bg">
+          <RefreshCw aria-hidden="true" className="h-5 w-5 animate-spin text-accent" />
+        </div>
+      )}
       <div
-        className={`flex-1 overflow-y-auto ${
+        ref={documentScrollRef}
+        onScroll={(event) => {
+          if (scrollNoteKeyRef.current === activeNote.fullPath) {
+            noteScrollPositionsRef.current.set(activeNote.fullPath, event.currentTarget.scrollTop)
+          }
+        }}
+        aria-busy={isNoteLoading}
+        className={`h-full overflow-y-auto ${
           settings.canvasStyle === 'paper' ? 'px-6 py-6 md:px-10 md:py-8' : 'px-0 py-0'
         }`}
       >
@@ -1083,6 +1178,20 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
               onChange={handleRawMarkdownChange}
               onKeyDown={(e) => {
                 const nativeEvent = e.nativeEvent
+                const blockAction = blockShortcut(nativeEvent)
+                if (blockAction) {
+                  e.preventDefault()
+                  const textarea = e.currentTarget
+                  const result = moveMarkdownLines(textarea.value, textarea.selectionStart, textarea.selectionEnd, blockAction.direction, blockAction.duplicate)
+                  if (result) {
+                    const selectionDirection = textarea.selectionDirection
+                    updateRawMarkdown(result.value)
+                    window.requestAnimationFrame(() => {
+                      if (document.activeElement === textarea) textarea.setSelectionRange(result.start, result.end, selectionDirection)
+                    })
+                  }
+                  return
+                }
                 if (
                   matchesShortcut(nativeEvent, getShortcutKey(settings, 'quickTools')) ||
                   (nativeEvent.shiftKey && nativeEvent.key === 'F10') ||
@@ -1220,6 +1329,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
             </div>
           )}
         </div>
+      </div>
       </div>
 
       {/* Inline Standard Link [Text](url) Editor Bar when cursor is on a link */}
