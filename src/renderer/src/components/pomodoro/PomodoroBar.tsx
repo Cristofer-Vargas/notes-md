@@ -4,6 +4,7 @@ import { Timer } from 'lucide-react'
 import type { PomodoroContext } from '../../../../shared/pomodoro'
 import { Button } from '../ui'
 import { formatPomodoroTime, PomodoroPanel, usePomodoro } from './PomodoroPanel'
+import { playPomodoroSound } from './pomodoroSounds'
 
 export function PomodoroBar({ context }: { context: PomodoroContext }): React.ReactElement {
   const [open, setOpen] = useState(false)
@@ -34,6 +35,6 @@ export function PomodoroBar({ context }: { context: PomodoroContext }): React.Re
   }, [open])
   return <div ref={triggerRef} className="shrink-0">
     {open && createPortal(<div style={position} onPointerDown={(event) => event.stopPropagation()} className="fixed z-50 h-[min(600px,80vh)] w-[min(420px,95vw)] overflow-hidden border border-surface-border bg-surface-bg shadow-xl"><PomodoroPanel onClose={() => setOpen(false)} /></div>, document.body)}
-    <Button size="xs" variant="ghost" aria-expanded={open} leftIcon={<Timer className="h-3.5 w-3.5" />} onClick={() => setOpen(!open)}>{state?.status === 'running' || state?.status === 'paused' ? formatPomodoroTime(state.remainingMs) : 'Pomodoro'}</Button>
+    <Button size="xs" variant="ghost" aria-expanded={open} leftIcon={<Timer className="h-3.5 w-3.5" />} onClick={() => { if (!open && state?.settings.sound) playPomodoroSound('open'); setOpen(!open) }}>{state?.status === 'running' || state?.status === 'paused' ? formatPomodoroTime(state.remainingMs) : 'Pomodoro'}</Button>
   </div>
 }

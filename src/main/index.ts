@@ -136,6 +136,7 @@ function createWindow(): void {
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
+      autoplayPolicy: 'no-user-gesture-required',
       spellcheck: true
     }
   })
@@ -332,8 +333,10 @@ app.whenReady().then(() => {
       win.webContents.send('pomodoro:state', state)
       if (isNewReward && reward) win.webContents.send('pomodoro:reward', reward, state.progress.level)
     }
-  }, (phase, sound) => {
-    if (Notification.isSupported()) new Notification({ title: 'Pomodoro — Notes MD', body: phase === 'focus' ? 'Foco concluído. Hora de uma pausa.' : 'Pausa concluída. Pronto para voltar ao foco.', silent: !sound }).show()
+  }, (phase) => {
+    if (Notification.isSupported()) new Notification({ title: 'Pomodoro — Notes MD', body: phase === 'focus' ? 'Foco concluído. Hora de uma pausa.' : 'Pausa concluída. Pronto para voltar ao foco.', silent: true }).show()
+  }, Date.now, () => {
+    if (primaryWindow && !primaryWindow.isDestroyed()) primaryWindow.webContents.send('pomodoro:sound', 'complete')
   })
   powerMonitor.on('suspend', () => { if (pomodoroService?.getState().status === 'running') pomodoroService.action('pause', undefined, undefined, 'suspend') })
   ipcMain.handle('pomodoro:get', () => pomodoroService?.getState())
@@ -342,7 +345,18 @@ app.whenReady().then(() => {
   ipcMain.handle('pomodoro:show-reports', () => { if (primaryWindow && !primaryWindow.isDestroyed()) { if (primaryWindow.isMinimized()) primaryWindow.restore(); primaryWindow.show(); primaryWindow.focus(); primaryWindow.webContents.send('pomodoro:show-reports') } })
   ipcMain.handle('pomodoro:get-context', () => pomodoroContext)
   ipcMain.handle('pomodoro:set-context', (_event, context: PomodoroContext) => { pomodoroContext = context; if (pomodoroWindow && !pomodoroWindow.isDestroyed()) pomodoroWindow.webContents.send('pomodoro:context', context) })
-  ipcMain.handle('pomodoro:action', (_event, action: PomodoroAction, note?: PomodoroNote | null) => pomodoroService?.action(action, note, pomodoroContext))
+  ipcMain.handle('pomodoro:action', (_event, action: PomodoroAction, note?: PomodoroNote | null) => {
+    const before = pomodoroService?.getState()
+    const after = pomodoroService?.action(action, note, pomodoroContext)
+    if (before && after && after.settings.sound && primaryWindow && !primaryWindow.isDestroyed()) {
+      if ((action === 'start' || action === 'resume') && before.status !== 'running' && after.status === 'running') {
+        primaryWindow.webContents.send('pomodoro:sound', after.phase === 'focus' ? 'focus' : 'break')
+      } else if (action === 'pause' && before.status === 'running' && after.status === 'paused') {
+        primaryWindow.webContents.send('pomodoro:sound', 'pause')
+      }
+    }
+    return after
+  })
   ipcMain.handle('pomodoro:configure', (_event, settings: Partial<PomodoroSettings>) => pomodoroService?.configure(settings))
   if (!app.isPackaged && runtimeConfig.environment === 'dev') ipcMain.handle('pomodoro:debug', (_event, action: PomodoroDebugAction) => {
     if (app.isPackaged || runtimeConfig.environment !== 'dev' || !pomodoroService) throw new Error('Controles de teste indisponíveis.')

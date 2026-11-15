@@ -25,6 +25,7 @@ import { QuickSwitcherModal } from './components/modals/QuickSwitcherModal'
 import { HelpShortcutsModal } from './components/modals/HelpShortcutsModal'
 import { PomodoroBar } from './components/pomodoro/PomodoroBar'
 import { PomodoroReports } from './components/pomodoro/PomodoroReports'
+import { playPomodoroSound } from './components/pomodoro/pomodoroSounds'
 import { InputPromptModal } from './components/modals/InputPromptModal'
 import { WikiLinkHoverPreview } from './components/editor/WikiLinkHoverPreview'
 import { DiscordLoadingScreen } from './components/common/DiscordLoadingScreen'
@@ -177,6 +178,7 @@ export function App(): React.ReactElement {
   const [isZenMode, setIsZenMode] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isPomodoroReportsOpen, setIsPomodoroReportsOpen] = useState(false)
+  useEffect(() => window.electronAPI.onPomodoroSound(playPomodoroSound), [])
   useEffect(() => window.electronAPI.onOpenPomodoroReports(() => setIsPomodoroReportsOpen(true)), [])
   const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTab>('appearance')
   const [appUpdateState, setAppUpdateState] = useState<AppUpdateState | null>(null)
