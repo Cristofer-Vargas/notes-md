@@ -22,6 +22,7 @@ import { EditorWorkspace } from './components/editor/EditorWorkspace'
 import { SettingsModal, type SettingsTab } from './components/modals/SettingsModal'
 import { ImagePreviewModal } from './components/modals/ImagePreviewModal'
 import { QuickSwitcherModal } from './components/modals/QuickSwitcherModal'
+import { VaultSearchModal } from './components/modals/VaultSearchModal'
 import { HelpShortcutsModal } from './components/modals/HelpShortcutsModal'
 import { PomodoroBar } from './components/pomodoro/PomodoroBar'
 import { PomodoroReports } from './components/pomodoro/PomodoroReports'
@@ -187,6 +188,7 @@ export function App(): React.ReactElement {
   const [startupMessage, setStartupMessage] = useState('Iniciando o Notes MD...')
   const [showUpdateOverlay, setShowUpdateOverlay] = useState(false)
   const [isQuickSwitcherOpen, setIsQuickSwitcherOpen] = useState(false)
+  const [isVaultSearchOpen, setIsVaultSearchOpen] = useState(false)
   const [isHelpOpen, setIsHelpOpen] = useState(false)
   const [imageModal, setImageModal] = useState<{
     open: boolean
@@ -1189,6 +1191,9 @@ export function App(): React.ReactElement {
       } else if (matchesShortcut(e, getShortcutKey(curSettings, 'quickSwitcher'))) {
         e.preventDefault()
         setIsQuickSwitcherOpen((prev) => !prev)
+      } else if (matchesShortcut(e, getShortcutKey(curSettings, 'vaultSearch'))) {
+        e.preventDefault()
+        setIsVaultSearchOpen((prev) => !prev)
       } else if (matchesShortcut(e, getShortcutKey(curSettings, 'newNote'))) {
         e.preventDefault()
         handleCreateNote('')
@@ -1264,6 +1269,7 @@ export function App(): React.ReactElement {
               onRefreshVault={handleRefreshVault}
               onOpenInExplorer={handleOpenInExplorer}
               onOpenQuickSwitcher={() => setIsQuickSwitcherOpen(true)}
+              onOpenVaultSearch={() => setIsVaultSearchOpen(true)}
               onOpenSettings={handleOpenSettings}
               theme={settings.theme}
               onToggleTheme={() =>
@@ -1487,6 +1493,8 @@ export function App(): React.ReactElement {
         onCreateNewNoteWithTitle={(title, openInNewTab) => handleNavigateWikiLink(title, openInNewTab)}
         onClose={() => setIsQuickSwitcherOpen(false)}
       />
+
+      <VaultSearchModal isOpen={isVaultSearchOpen} notes={notes} vaultName={vaultName} onSelectNote={navigateToNote} onClose={() => setIsVaultSearchOpen(false)} />
 
       <HelpShortcutsModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
 
