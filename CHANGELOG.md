@@ -1,3 +1,22 @@
+# [1.2.0](https://github.com/Cristofer-Vargas/notes-md/compare/v1.1.0...v1.2.0) (2026-11-15)
+
+
+### Correções
+
+* movimentação de blocos com ctrl conseguem separar items de listas para fora do titulo superior ([](https://github.com/Cristofer-Vargas/notes-md/commit/ee0cc50d608d25468f0996922e2c385e52231e78))
+* transição de guias com renderizações mermaid flickando ([](https://github.com/Cristofer-Vargas/notes-md/commit/3a88d56cc1d6773fb93a019c48679133438cd3ba))
+
+
+### Novos Recursos
+
+* agora é possivel pesquisar por palavras em todo cofre e conteúdos dentro de notas ([](https://github.com/Cristofer-Vargas/notes-md/commit/92e5200749515a1ef4e93917012eabd5bdc51870))
+* ao pesquisar por arquivos rápidos agora tem opções de autocomplete ao buscar e criar notas ([](https://github.com/Cristofer-Vargas/notes-md/commit/0590e2c2b639427fc93c33ea5ba05f94e5111195))
+* movimentações de blocos de textos com atalhos igual no VS Code, possibilitando duplicações ([](https://github.com/Cristofer-Vargas/notes-md/commit/c987cde78552558b89fc6b60a65d3a61b5f34ffd))
+* **pomodoro:** agora ações oriundas do pomodoro emitem sons de notificação ([](https://github.com/Cristofer-Vargas/notes-md/commit/b78b4f5824a38d84f20cb022ecd4b04705f35cb7))
+* **pomodoro:** agora é possível fechar o painel clicando fora do mesmo ([](https://github.com/Cristofer-Vargas/notes-md/commit/0939587c02179a499c9cb8f9baddf4b1cd054c05))
+* sumário agora segue o tópico onde o cursor esta posicionado na nota ([](https://github.com/Cristofer-Vargas/notes-md/commit/1bb5c166270482f86a686510eb8343e0732799f5))
+* titulos pode ser recolhidos, escondendo o conteudo contido sem replicar para sub titulos ([](https://github.com/Cristofer-Vargas/notes-md/commit/d3fd96e49eeecf3c89fec28a56b3a2fd4e91d3ca))
+
 # [1.1.0](https://github.com/Cristofer-Vargas/notes-md/compare/v1.0.0...v1.1.0) (2026-11-14)
 
 
