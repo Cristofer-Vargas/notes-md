@@ -242,6 +242,7 @@ export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
   return (
     <div
       onClick={onFocusPane}
+      data-active-editor-pane={isActivePane ? 'true' : undefined}
       className={`relative flex-1 flex flex-col min-w-0 min-h-0 bg-surface-bg overflow-hidden transition-all ${
         isActivePane && splitLayout !== 'single'
           ? 'ring-1 ring-accent/40 shadow-sm'

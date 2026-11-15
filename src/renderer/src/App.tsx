@@ -1337,6 +1337,7 @@ export function App(): React.ReactElement {
               width={rightSidebarWidth}
               vaultName={vaultName}
               activeNote={activeNote}
+              activePaneId={activePaneId}
               noteMeta={activeNote ? vaultIndex[activeNote.relativePath] : undefined}
               allNotes={notes}
               onOpenNoteByPath={navigateToNote}
