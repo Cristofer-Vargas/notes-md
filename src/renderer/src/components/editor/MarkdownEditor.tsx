@@ -27,6 +27,7 @@ import { WikiLinkSuggestion } from './WikiLinkSuggestion'
 import { WikiLinkHoverPreview } from './WikiLinkHoverPreview'
 import { CustomCodeBlock, lowlight } from './extensions/CustomCodeBlock'
 import { CustomHighlight } from './extensions/CustomHighlight'
+import { HeadingFold, headingFoldKey } from './extensions/HeadingFold'
 import { applyInlineFormatting, inlineFormattingKey, wrapMarkdownSelection } from './inlineFormatting'
 import { escapeInlineFormatting } from './escapeInlineFormatting'
 import { blockShortcut, moveEditorBlocks, moveMarkdownLines } from './moveBlocks'
@@ -238,6 +239,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         lowlight,
         defaultLanguage: 'plaintext'
       }),
+      HeadingFold,
       Markdown.configure({
         html: true,
         tightLists: true,
@@ -620,6 +622,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         isInternalUpdateRef.current = true
         const prepared = preprocessMarkdownForEditor(activeNote.content)
         editor.commands.setContent(prepared, false)
+        if (isNewPath) editor.view.dispatch(editor.state.tr.setMeta(headingFoldKey, { reset: true }))
         isInternalUpdateRef.current = false
         hydratedEditorRef.current = { editor, path: activeNote.fullPath }
       }
