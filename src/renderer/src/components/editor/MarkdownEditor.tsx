@@ -29,6 +29,7 @@ import { CustomCodeBlock, lowlight } from './extensions/CustomCodeBlock'
 import { CustomHighlight } from './extensions/CustomHighlight'
 import { applyInlineFormatting, inlineFormattingKey, wrapMarkdownSelection } from './inlineFormatting'
 import { escapeInlineFormatting } from './escapeInlineFormatting'
+import { blockShortcut, moveEditorBlocks, moveMarkdownLines } from './moveBlocks'
 import {
   generateFallbackSuggestions,
   getWordRangeAtPos,
@@ -399,6 +400,11 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     },
     editorProps: {
       handleKeyDown: (view, event) => {
+        const blockAction = blockShortcut(event)
+        if (blockAction) {
+          event.preventDefault()
+          return moveEditorBlocks(view, blockAction.direction, blockAction.duplicate)
+        }
         if (escapeInlineFormatting(view, event)) {
           event.preventDefault()
           return true
@@ -1169,6 +1175,20 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
               onChange={handleRawMarkdownChange}
               onKeyDown={(e) => {
                 const nativeEvent = e.nativeEvent
+                const blockAction = blockShortcut(nativeEvent)
+                if (blockAction) {
+                  e.preventDefault()
+                  const textarea = e.currentTarget
+                  const result = moveMarkdownLines(textarea.value, textarea.selectionStart, textarea.selectionEnd, blockAction.direction, blockAction.duplicate)
+                  if (result) {
+                    const selectionDirection = textarea.selectionDirection
+                    updateRawMarkdown(result.value)
+                    window.requestAnimationFrame(() => {
+                      if (document.activeElement === textarea) textarea.setSelectionRange(result.start, result.end, selectionDirection)
+                    })
+                  }
+                  return
+                }
                 if (
                   matchesShortcut(nativeEvent, getShortcutKey(settings, 'quickTools')) ||
                   (nativeEvent.shiftKey && nativeEvent.key === 'F10') ||
