@@ -21,7 +21,39 @@ export function moveEditorBlocks(view: EditorView, direction: -1 | 1, duplicate:
   if (selection instanceof NodeSelection) endIndex = startIndex
   endIndex = Math.max(startIndex, Math.min(endIndex, parent.childCount - 1))
   if (startIndex >= parent.childCount) return true
-  if (!duplicate && ((direction < 0 && startIndex === 0) || (direction > 0 && endIndex === parent.childCount - 1))) return true
+  const atBoundary = direction < 0 ? startIndex === 0 : endIndex === parent.childCount - 1
+  if (!duplicate && atBoundary && depth > 0) {
+    const grandparent = $from.node(depth - 1)
+    const listIndex = $from.index(depth - 1)
+    const neighborIndex = listIndex + direction
+    if (neighborIndex < 0 || neighborIndex >= grandparent.childCount) return true
+
+    const children = Array.from({ length: parent.childCount }, (_, i) => parent.child(i))
+    const selected = children.slice(startIndex, endIndex + 1)
+    const remaining = [...children.slice(0, startIndex), ...children.slice(endIndex + 1)]
+    const movedList = parent.copy(Fragment.fromArray(selected))
+    const remainingList = remaining.length ? parent.copy(Fragment.fromArray(remaining)) : null
+    const neighbor = grandparent.child(neighborIndex)
+    const replacement = direction < 0
+      ? [movedList, neighbor, ...(remainingList ? [remainingList] : [])]
+      : [...(remainingList ? [remainingList] : []), neighbor, movedList]
+    const fragment = Fragment.fromArray(replacement)
+    const replaceIndex = Math.min(listIndex, neighborIndex)
+    if (!grandparent.canReplace(replaceIndex, replaceIndex + 2, fragment)) return true
+
+    const listPos = $from.before(depth)
+    const replaceFrom = direction < 0 ? listPos - neighbor.nodeSize : listPos
+    const replaceTo = replaceFrom + parent.nodeSize + neighbor.nodeSize
+    const movedListPos = direction < 0 ? replaceFrom : replaceFrom + (remainingList?.nodeSize ?? 0) + neighbor.nodeSize
+    const originalItemPos = parentStart + children.slice(0, startIndex).reduce((sum, node) => sum + node.nodeSize, 0)
+    const shift = movedListPos + 1 - originalItemPos
+    const tr = state.tr.replaceWith(replaceFrom, replaceTo, fragment)
+    if (selection instanceof NodeSelection) tr.setSelection(NodeSelection.create(tr.doc, movedListPos + 1))
+    else if (selection instanceof TextSelection) tr.setSelection(TextSelection.create(tr.doc, selection.anchor + shift, selection.head + shift))
+    view.dispatch(tr.scrollIntoView())
+    return true
+  }
+  if (!duplicate && atBoundary) return true
 
   const children = Array.from({ length: parent.childCount }, (_, i) => parent.child(i))
   const selected = children.slice(startIndex, endIndex + 1)

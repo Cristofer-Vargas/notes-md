@@ -7,8 +7,11 @@ import { blockShortcut, moveEditorBlocks, moveMarkdownLines } from '../moveBlock
 const schema = new Schema({ nodes: {
   doc: { content: 'block+' },
   paragraph: { group: 'block', content: 'text*' },
+  heading: { group: 'block', content: 'text*', attrs: { level: { default: 3 } } },
   bulletList: { group: 'block', content: 'listItem+' },
   listItem: { content: 'paragraph block*' },
+  taskList: { group: 'block', content: 'taskItem+' },
+  taskItem: { content: 'paragraph block*', attrs: { checked: { default: false } } },
   text: { group: 'inline' }
 } })
 
@@ -42,6 +45,32 @@ describe('movimentação de blocos', () => {
     const view = viewFor(schema.node('doc', null, [list]), 10)
     moveEditorBlocks(view, -1, false)
     expect(view.state.doc.firstChild?.textContent).toBe('doisum')
+  })
+
+  it('move checkbox pelo limite da lista para antes do título, preservando seu estado', () => {
+    const heading = schema.node('heading', null, schema.text('H3'))
+    const first = schema.node('taskItem', { checked: true }, paragraph('primeiro'))
+    const second = schema.node('taskItem', { checked: false }, paragraph('segundo'))
+    const list = schema.node('taskList', null, [first, second])
+    const view = viewFor(schema.node('doc', null, [heading, list]), heading.nodeSize + 3)
+    moveEditorBlocks(view, -1, false)
+    expect(view.state.doc.content.content.map((n) => n.type.name)).toEqual(['taskList', 'heading', 'taskList'])
+    expect(view.state.doc.child(0).firstChild?.attrs.checked).toBe(true)
+    expect(view.state.doc.child(2).textContent).toBe('segundo')
+    expect(view.state.selection.$from.parent.textContent).toBe('primeiro')
+  })
+
+  it('move o último item para depois do próximo título sem remover os demais', () => {
+    const first = schema.node('taskItem', { checked: false }, paragraph('um'))
+    const last = schema.node('taskItem', { checked: true }, paragraph('dois'))
+    const list = schema.node('taskList', null, [first, last])
+    const heading = schema.node('heading', null, schema.text('Próxima seção'))
+    const view = viewFor(schema.node('doc', null, [list, heading]), 1 + first.nodeSize + 2)
+    moveEditorBlocks(view, 1, false)
+    expect(view.state.doc.content.content.map((n) => n.type.name)).toEqual(['taskList', 'heading', 'taskList'])
+    expect(view.state.doc.child(0).textContent).toBe('um')
+    expect(view.state.doc.child(2).firstChild?.attrs.checked).toBe(true)
+    expect(view.state.selection.$from.parent.textContent).toBe('dois')
   })
 
   it('opera sobre linhas no Markdown e respeita limites', () => {
