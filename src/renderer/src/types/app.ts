@@ -43,6 +43,9 @@ export interface AppSettings {
   editorFontWeight: EditorFontWeightPreset
   baseFontSize: number // 14 to 22
   lineHeight: number // 1.5 to 2.0
+  paragraphSpacing: number
+  letterSpacing: number
+  wordSpacing: number
   pageWidth: PageWidthPreset
   canvasStyle: CanvasStylePreset
   showLeftSidebar: boolean

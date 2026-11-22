@@ -1106,7 +1106,10 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
           style={
             {
               '--editor-font-size': `${settings.baseFontSize}px`,
-              '--editor-line-height': String(settings.lineHeight)
+              '--editor-line-height': String(settings.lineHeight),
+              '--editor-paragraph-spacing': `${settings.paragraphSpacing}em`,
+              '--editor-letter-spacing': `${settings.letterSpacing}em`,
+              '--editor-word-spacing': `${settings.wordSpacing}em`
             } as React.CSSProperties
           }
           className={`mx-auto transition-all duration-200 ${maxWidthClass} ${fontClass} ${
@@ -1231,7 +1234,8 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
               }}
               spellCheck={settings.spellcheck}
               placeholder="Escreva em Markdown puro..."
-              className="w-full min-h-[620px] bg-transparent text-content-primary font-mono text-sm leading-relaxed focus:outline-none resize-none"
+              style={{ lineHeight: 'var(--editor-line-height, 1.7)', letterSpacing: 'var(--editor-letter-spacing, 0em)', wordSpacing: 'var(--editor-word-spacing, 0em)' }}
+              className="w-full min-h-[620px] bg-transparent text-content-primary font-mono text-sm focus:outline-none resize-none"
             />
           ) : (
             <div

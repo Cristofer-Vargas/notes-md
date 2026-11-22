@@ -277,6 +277,8 @@ button svg { stroke-width: 1.7; }
   color: var(--text-primary);
   font-size: var(--editor-font-size, 16px);
   line-height: var(--editor-line-height, 1.7);
+  letter-spacing: var(--editor-letter-spacing, 0em);
+  word-spacing: var(--editor-word-spacing, 0em);
   user-select: text;
 }
 
@@ -415,6 +417,11 @@ button svg { stroke-width: 1.7; }
 .ProseMirror p {
   margin-top: 0.55em;
   margin-bottom: 0.55em;
+}
+
+.ProseMirror > p {
+  margin-top: var(--editor-paragraph-spacing, 0.55em);
+  margin-bottom: var(--editor-paragraph-spacing, 0.55em);
 }
 
 .ProseMirror hr {

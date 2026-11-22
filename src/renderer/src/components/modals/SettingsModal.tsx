@@ -767,6 +767,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         aria-label="Espaçamento entre linhas"
                       />
                     </div>
+                    <div className="p-3 rounded-md bg-surface-secondary border border-surface-border space-y-1.5">
+                      <div className="flex justify-between text-xs"><span className="font-medium text-content-primary">Espaçamento entre parágrafos</span><span className="font-bold text-accent">{settings.paragraphSpacing.toFixed(2)} em</span></div>
+                      <RangeInput min={0} max={1.5} step={0.05} value={settings.paragraphSpacing} onChange={(event) => onUpdateSettings({ paragraphSpacing: Number(event.target.value) })} aria-label="Espaçamento entre parágrafos" />
+                      <p className="text-[11px] text-content-muted">Altera a distância entre parágrafos no editor visual.</p>
+                    </div>
+                    <div className="p-3 rounded-md bg-surface-secondary border border-surface-border space-y-1.5">
+                      <div className="flex justify-between text-xs"><span className="font-medium text-content-primary">Espaçamento entre letras</span><span className="font-bold text-accent">{settings.letterSpacing.toFixed(2)} em</span></div>
+                      <RangeInput min={-0.05} max={0.15} step={0.01} value={settings.letterSpacing} onChange={(event) => onUpdateSettings({ letterSpacing: Number(event.target.value) })} aria-label="Espaçamento entre letras" />
+                    </div>
+                    <div className="p-3 rounded-md bg-surface-secondary border border-surface-border space-y-1.5">
+                      <div className="flex justify-between text-xs"><span className="font-medium text-content-primary">Espaçamento entre palavras</span><span className="font-bold text-accent">{settings.wordSpacing.toFixed(2)} em</span></div>
+                      <RangeInput min={0} max={0.3} step={0.01} value={settings.wordSpacing} onChange={(event) => onUpdateSettings({ wordSpacing: Number(event.target.value) })} aria-label="Espaçamento entre palavras" />
+                    </div>
                   </div>
                 </section>
 
@@ -777,14 +790,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <span>Prévia</span>
                   </div>
                   <div
-                    className="p-3 rounded-lg bg-surface-bg border border-surface-border/80 text-content-primary leading-relaxed"
+                    className={cn('p-3 rounded-lg bg-surface-bg border border-surface-border/80 text-content-primary', settings.fontFamily === 'serif' ? 'font-serif' : settings.fontFamily === 'mono' ? 'font-mono' : 'font-sans')}
                     style={{
                       fontSize: `${settings.baseFontSize}px`,
                       lineHeight: settings.lineHeight,
-                      fontWeight: Number(currentWeight)
+                      fontWeight: Number(currentWeight),
+                      letterSpacing: `${settings.letterSpacing}em`,
+                      wordSpacing: `${settings.wordSpacing}em`
                     }}
                   >
-                    Este é um parágrafo de exemplo com a espessura selecionada ({currentWeight}). Você pode combinar texto suave com <strong>palavras em negrito para ênfase forte</strong> e termos em <em className="italic text-[var(--note-italic-color)]">itálico com cor sutil do tema</em> para conceitos interligados.
+                    <p>Este é um parágrafo de exemplo com <strong>palavras em negrito</strong> e termos em <em className="italic text-[var(--note-italic-color)]">itálico</em>.</p>
+                    <p style={{ marginTop: `${settings.paragraphSpacing}em` }}>Um segundo parágrafo mostra a distância entre os textos e os espaços escolhidos.</p>
                   </div>
                 </section>
               </div>
