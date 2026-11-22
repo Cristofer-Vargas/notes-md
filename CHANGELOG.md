@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/Cristofer-Vargas/notes-md/compare/v1.2.0...v1.3.0) (2026-11-22)
+
+
+### Novos Recursos
+
+* adicionando possibilidade de personalizar alguns espaçamentos nas notas ([](https://github.com/Cristofer-Vargas/notes-md/commit/933108fe9ec36f412fd2999bf11f473955533c53))
+
 # [1.2.0](https://github.com/Cristofer-Vargas/notes-md/compare/v1.1.0...v1.2.0) (2026-11-15)
 
 
