@@ -32,6 +32,7 @@ import { useSideNotes } from './useSideNotes'
 import { anchorFromEditorSelection, mapEditorAnchor, mapEditorAnchorByDiff, projectDocumentText, resolveEditorAnchor } from './sideNoteAnchors'
 import { findSideNoteInSource } from './sideNoteSource'
 import { shouldCompactSideNotes } from './sideNoteLayout'
+import { recoverEditorFocusAfterClick } from './editorFocus'
 import { createSideNoteAnchor, resolveSideNoteAnchor } from '../../../../shared/sideNotes'
 import { DOMParser as ProseMirrorDOMParser } from '@tiptap/pm/model'
 import { WikiLinkSuggestion } from './WikiLinkSuggestion'
@@ -172,6 +173,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   const activeNotePathRef = useRef<string | null>(null)
   const activeNoteKeyRef = useRef<string | null>(null)
   const documentScrollRef = useRef<HTMLDivElement>(null)
+  const focusRecoveryFrameRef = useRef<number | null>(null)
   const noteScrollPositionsRef = useRef(new Map<string, number>())
   const scrollNoteKeyRef = useRef<string | null>(null)
   const scrollRestoreFrameRef = useRef<number | null>(null)
@@ -856,6 +858,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     if (scrollRestoreFrameRef.current !== null) {
       window.cancelAnimationFrame(scrollRestoreFrameRef.current)
     }
+    if (focusRecoveryFrameRef.current !== null) window.cancelAnimationFrame(focusRecoveryFrameRef.current)
   }, [])
 
   useEffect(() => {
@@ -1418,7 +1421,22 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
             />
           ) : (
             <div
-              onClick={handleEditorClick}
+              onMouseDownCapture={(event) => {
+                const target = event.target as HTMLElement
+                if (event.button === 0 && editor?.view.dom.contains(target) && !target.closest('[contenteditable="false"], button, input, textarea, select')) setSideEditor(null)
+              }}
+              onClick={(event) => {
+                handleEditorClick(event)
+                const target = event.target as HTMLElement
+                if (!editor || event.button !== 0 || event.defaultPrevented || !editor.view.dom.contains(target) || target.closest('[contenteditable="false"], button, input, textarea, select')) return
+                const previousFocus = document.activeElement
+                const point = { left: event.clientX, top: event.clientY }
+                if (focusRecoveryFrameRef.current !== null) window.cancelAnimationFrame(focusRecoveryFrameRef.current)
+                focusRecoveryFrameRef.current = window.requestAnimationFrame(() => {
+                  focusRecoveryFrameRef.current = null
+                  recoverEditorFocusAfterClick(editor, point, previousFocus)
+                })
+              }}
               onContextMenu={(e) => {
                 e.preventDefault()
                 setHoverPreview(null)
