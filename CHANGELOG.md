@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/Cristofer-Vargas/notes-md/compare/v1.3.0...v1.4.0) (2026-11-23)
+
+
+### Novos Recursos
+
+* adicionando funcionalidade de Observações para sessões nas notas ([](https://github.com/Cristofer-Vargas/notes-md/commit/768f15c4665e9a7801151e46031c1a155187f2ad))
+
 # [1.3.0](https://github.com/Cristofer-Vargas/notes-md/compare/v1.2.0...v1.3.0) (2026-11-22)
 
 
