@@ -25,6 +25,7 @@ import { WikiLinkExtension } from './extensions/WikiLinkExtension'
 import { EditorToolbar } from './EditorToolbar'
 import { EditorContextMenu, type EditorContextMenuPosition } from './EditorContextMenu'
 import { SideNoteCard } from './SideNoteCard'
+import { SideNoteDeleteDialog } from './SideNoteDeleteDialog'
 import { SideNotePreview } from './SideNotePreview'
 import { SelectionButton } from '../ui/SelectionButton'
 import { SideNoteLane, measureSideNoteSourceRange } from './SideNoteLane'
@@ -111,6 +112,8 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   const [compactSideNotes, setCompactSideNotes] = useState(true)
   const [selectedSideNote, setSelectedSideNote] = useState<string | null>(null)
   const [editingSideNote, setEditingSideNote] = useState<string | null>(null)
+  const [sideNoteToDelete, setSideNoteToDelete] = useState<string | null>(null)
+  const sideNotesPanelRef = useRef<HTMLDivElement>(null)
   const [sideNoteNavigation, setSideNoteNavigation] = useState<{ id: string; path: string } | null>(null)
   const sourceRef = useRef<HTMLTextAreaElement>(null)
   const savedSelectionRef = useRef<{ from: number; to: number } | null>(null)
@@ -1534,7 +1537,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         </div>
       </div>
       </div>
-      {observationsPanelTarget && createPortal(<div aria-label="Consulta de observações" className="flex flex-1 min-h-0 flex-col">
+      {observationsPanelTarget && createPortal(<div ref={sideNotesPanelRef} tabIndex={-1} aria-label="Consulta de observações" className="flex flex-1 min-h-0 flex-col">
         <div className="space-y-2 p-2"><Input value={sideSearch} onChange={(event) => setSideSearch(event.target.value)} placeholder="Buscar observações" aria-label="Buscar observações" /><div className="flex gap-1"><Button size="xs" variant={sideFilter === 'current' ? 'primary' : 'ghost'} onClick={() => setSideFilter('current')}>Nota atual</Button><Button size="xs" variant={sideFilter === 'vault' ? 'primary' : 'ghost'} onClick={() => setSideFilter('vault')}>Todo o cofre</Button></div></div>
         <div className="flex-1 space-y-1 overflow-y-auto p-2">{visibleSideNotes.length === 0 && <p className="p-2 text-xs text-content-muted">Nenhuma observação encontrada.</p>}{visibleSideNotes.map((note) => {
           const sourceNote = allNotes.find((item) => item.relativePath === note.sourcePath)
@@ -1557,7 +1560,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
                 if (anchor) { sideNotes.update(note.id, { anchor, sourcePath: activeNote.relativePath, detached: false }); setSelectedSideNote(note.id) }
                 else window.alert('Selecione primeiro o trecho ao qual deseja vincular esta observação.')
               }} />
-              <IconButton size="xs" tooltip="Excluir observação" icon={<Trash2 className="h-3 w-3" />} onClick={() => { if (window.confirm('Excluir esta observação?')) void sideNotes.remove(note.id) }} />
+              <IconButton size="xs" tooltip="Excluir observação" icon={<Trash2 className="h-3 w-3" />} onClick={() => setSideNoteToDelete(note.id)} />
             </div>
             <div role="button" tabIndex={0} aria-label={`Ir para a observação em ${note.sourcePath}: ${note.body || note.anchor.quote}`} onClick={navigate} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); navigate() } }} className="group min-w-0 cursor-pointer overflow-hidden rounded-sm px-1 py-1 text-xs text-content-secondary hover:bg-surface-tertiary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40">
               <SideNotePreview content={note.body} fallback={note.anchor.quote} extensions={editorExtensions} />
@@ -1567,6 +1570,10 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
           </div>
         })}</div>
       </div>, observationsPanelTarget)}
+      {sideNoteToDelete && <SideNoteDeleteDialog fallbackFocus={sideNotesPanelRef} onCancel={() => setSideNoteToDelete(null)} onConfirm={async () => {
+        await sideNotes.remove(sideNoteToDelete)
+        setSideNoteToDelete(null)
+      }} />}
       </div>
 
       {/* Inline Standard Link [Text](url) Editor Bar when cursor is on a link */}
