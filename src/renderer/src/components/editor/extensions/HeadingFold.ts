@@ -1,8 +1,30 @@
 import { Extension } from '@tiptap/core'
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 
 export const headingFoldKey = new PluginKey<Set<number>>('headingFold')
+
+/** Find a folded heading that currently hides the given document position. */
+export function foldedHeadingContainingPosition(doc: ProseMirrorNode, folded: Set<number>, target: number): number | null {
+  const blocks: Array<{ position: number; node: ProseMirrorNode }> = []
+  doc.forEach((node, position) => blocks.push({ node, position }))
+  for (let i = 0; i < blocks.length; i++) {
+    const heading = blocks[i]
+    if (heading.node.type.name !== 'heading' || !folded.has(heading.position) || i + 1 >= blocks.length) continue
+    const next = blocks[i + 1].node
+    const branch = next.type.name === 'heading' && next.attrs.level > heading.node.attrs.level
+    const start = heading.position + heading.node.nodeSize
+    let end = start
+    for (let j = i + 1; j < blocks.length; j++) {
+      const block = blocks[j]
+      if (block.node.type.name === 'heading' && (!branch || block.node.attrs.level <= heading.node.attrs.level)) break
+      end = block.position + block.node.nodeSize
+    }
+    if (target >= start && target < end) return heading.position
+  }
+  return null
+}
 
 export function createHeadingFoldPlugin(): Plugin<Set<number>> {
     return new Plugin<Set<number>>({

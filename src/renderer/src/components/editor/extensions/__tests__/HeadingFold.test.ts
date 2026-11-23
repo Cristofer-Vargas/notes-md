@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { Schema } from '@tiptap/pm/model'
 import { EditorState } from '@tiptap/pm/state'
 import { DecorationSet } from '@tiptap/pm/view'
-import { createHeadingFoldPlugin, headingFoldKey } from '../HeadingFold'
+import { createHeadingFoldPlugin, foldedHeadingContainingPosition, headingFoldKey } from '../HeadingFold'
 
 const schema = new Schema({ nodes: {
   doc: { content: 'block+' },
@@ -48,5 +48,18 @@ describe('recolhimento de títulos', () => {
     expect(state.doc.eq(doc)).toBe(true)
     state = state.apply(state.tr.setMeta(headingFoldKey, { toggle: 0 }))
     expect((plugin.props.decorations!.call(plugin, state) as DecorationSet).find().filter((d) => d.from !== d.to)).toHaveLength(0)
+  })
+  it('identifica apenas o título recolhido que oculta o trecho solicitado', () => {
+    const heading = (text: string, level: number) => schema.node('heading', { level }, schema.text(text))
+    const parent = heading('Pai', 1)
+    const child = heading('Filho', 2)
+    const paragraph = node('paragraph', 'trecho')
+    const sibling = heading('Outro', 1)
+    const doc = schema.node('doc', null, [parent, child, paragraph, sibling])
+    const childPosition = parent.nodeSize
+    const target = childPosition + child.nodeSize + 1
+    expect(foldedHeadingContainingPosition(doc, new Set([0, childPosition]), target)).toBe(0)
+    expect(foldedHeadingContainingPosition(doc, new Set([childPosition]), target)).toBe(childPosition)
+    expect(foldedHeadingContainingPosition(doc, new Set([0]), doc.content.size - sibling.nodeSize + 1)).toBeNull()
   })
 })

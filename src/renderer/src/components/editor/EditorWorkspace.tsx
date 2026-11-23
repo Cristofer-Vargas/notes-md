@@ -14,6 +14,9 @@ import {
 } from './EditorPaneView'
 
 interface EditorWorkspaceProps {
+  vaultPath: string
+  observationsPanelTarget: HTMLDivElement | null
+  onOpenNoteByPath: (path: string, paneId: 'pane-1' | 'pane-2') => void
   splitLayout: SplitLayoutMode
   onUpdateSplitLayout: (layout: SplitLayoutMode) => void
   splitRatio: number
@@ -44,6 +47,9 @@ interface EditorWorkspaceProps {
 }
 
 export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
+  vaultPath,
+  observationsPanelTarget,
+  onOpenNoteByPath,
   splitLayout,
   onUpdateSplitLayout,
   splitRatio,
@@ -547,6 +553,9 @@ export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
         className="flex flex-col min-w-0 min-h-0 overflow-hidden"
       >
         <EditorPaneView
+          vaultPath={vaultPath}
+          observationsPanelTarget={observationsPanelTarget}
+          onOpenNoteByPath={(path) => onOpenNoteByPath(path, 'pane-1')}
           pane={pane1}
           isActivePane={activePaneId === 'pane-1'}
           splitLayout={splitLayout}
@@ -613,6 +622,9 @@ export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
           className="flex flex-col min-w-0 min-h-0 overflow-hidden"
         >
           <EditorPaneView
+            vaultPath={vaultPath}
+            observationsPanelTarget={observationsPanelTarget}
+            onOpenNoteByPath={(path) => onOpenNoteByPath(path, 'pane-2')}
             pane={pane2}
             isActivePane={activePaneId === 'pane-2'}
             splitLayout={splitLayout}

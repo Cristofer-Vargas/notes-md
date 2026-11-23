@@ -205,6 +205,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   return (
     <div
       ref={toolbarRef}
+      data-editor-toolbar
       className="relative z-30 bg-surface-bg border-b border-surface-border px-3 py-1.5 flex flex-wrap items-center gap-1 select-none"
     >
       {/* Undo / Redo */}

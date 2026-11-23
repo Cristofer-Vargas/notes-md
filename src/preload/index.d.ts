@@ -4,6 +4,7 @@ import type {
   DiscordPresenceStatus
 } from '../shared/discordPresence'
 import type { AppRuntimeInfo, AppUpdateState } from '../shared/appUpdate'
+import type { SideNote } from '../shared/sideNotes'
 import type { PomodoroAction, PomodoroContext, PomodoroDebugAction, PomodoroNote, PomodoroReward, PomodoroSession, PomodoroSettings, PomodoroSound, PomodoroState } from '../shared/pomodoro'
 
 export interface VaultFileEntry {
@@ -33,6 +34,11 @@ export interface VaultSnapshot {
 }
 
 export interface ElectronAPI {
+  listSideNotes: (vaultPath: string) => Promise<SideNote[]>
+  createSideNote: (vaultPath: string, data: Omit<SideNote, 'id' | 'createdAt' | 'updatedAt'>) => Promise<SideNote>
+  updateSideNote: (vaultPath: string, note: SideNote) => Promise<SideNote>
+  deleteSideNote: (vaultPath: string, id: string) => Promise<void>
+  onSideNotesChanged: (callback: (vaultPath: string) => void) => () => void
   getPomodoro: () => Promise<PomodoroState>
   getPomodoroHistory: () => Promise<PomodoroSession[]>
   deletePomodoroHistory: (from: number, to: number) => Promise<number>

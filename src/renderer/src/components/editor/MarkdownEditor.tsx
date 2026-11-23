@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
-import { useEditor, EditorContent } from '@tiptap/react'
+import { createPortal } from 'react-dom'
+import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from 'tiptap-markdown'
 import Underline from '@tiptap/extension-underline'
@@ -23,11 +24,21 @@ import { FontSizeExtension } from './extensions/FontSizeExtension'
 import { WikiLinkExtension } from './extensions/WikiLinkExtension'
 import { EditorToolbar } from './EditorToolbar'
 import { EditorContextMenu, type EditorContextMenuPosition } from './EditorContextMenu'
+import { SideNoteCard } from './SideNoteCard'
+import { SideNotePreview } from './SideNotePreview'
+import { SelectionButton } from '../ui/SelectionButton'
+import { SideNoteLane, measureSideNoteSourceRange } from './SideNoteLane'
+import { useSideNotes } from './useSideNotes'
+import { anchorFromEditorSelection, mapEditorAnchor, mapEditorAnchorByDiff, projectDocumentText, resolveEditorAnchor } from './sideNoteAnchors'
+import { findSideNoteInSource } from './sideNoteSource'
+import { shouldCompactSideNotes } from './sideNoteLayout'
+import { createSideNoteAnchor, resolveSideNoteAnchor } from '../../../../shared/sideNotes'
+import { DOMParser as ProseMirrorDOMParser } from '@tiptap/pm/model'
 import { WikiLinkSuggestion } from './WikiLinkSuggestion'
 import { WikiLinkHoverPreview } from './WikiLinkHoverPreview'
 import { CustomCodeBlock, lowlight } from './extensions/CustomCodeBlock'
 import { CustomHighlight } from './extensions/CustomHighlight'
-import { HeadingFold, headingFoldKey } from './extensions/HeadingFold'
+import { HeadingFold, foldedHeadingContainingPosition, headingFoldKey } from './extensions/HeadingFold'
 import { applyInlineFormatting, inlineFormattingKey, wrapMarkdownSelection } from './inlineFormatting'
 import { escapeInlineFormatting } from './escapeInlineFormatting'
 import { blockShortcut, moveEditorBlocks, moveMarkdownLines } from './moveBlocks'
@@ -46,11 +57,14 @@ import {
 import { getShortcutKey, matchesShortcut } from '../../services/shortcutService'
 import type { VaultNoteData } from '../../../../preload/index.d'
 import type { AppSettings, IndexedNoteMeta } from '../../types/app'
-import { CheckCircle2, Clock, ExternalLink, FolderOpen, Link2, RefreshCw, Sparkles, Unlink } from 'lucide-react'
+import { CheckCircle2, Clock, ExternalLink, FolderOpen, Link2, MessageSquarePlus, Pencil, RefreshCw, Sparkles, Trash2, Unlink } from 'lucide-react'
 import appLogo from '../../assets/logo.png'
-import { IconButton, Input } from '../ui'
+import { Button, IconButton, Input } from '../ui'
 
 interface MarkdownEditorProps {
+  vaultPath: string
+  observationsPanelTarget: HTMLDivElement | null
+  onOpenNoteByPath: (path: string) => void
   activeNote: VaultNoteData | null
   allNotes: VaultNoteData[]
   vaultIndex: Record<string, IndexedNoteMeta>
@@ -68,6 +82,9 @@ interface MarkdownEditorProps {
 }
 
 export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
+  vaultPath,
+  observationsPanelTarget,
+  onOpenNoteByPath,
   activeNote,
   allNotes,
   vaultIndex,
@@ -83,6 +100,21 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   onOpenHelpModal,
   pomodoroControl
 }) => {
+  const sideNotes = useSideNotes(vaultPath)
+  const sideNotesRef = useRef(sideNotes)
+  sideNotesRef.current = sideNotes
+  const [sideEditor, setSideEditor] = useState<Editor | null>(null)
+  const [sideFilter, setSideFilter] = useState<'current' | 'vault'>('current')
+  const [sideSearch, setSideSearch] = useState('')
+  const [sourceMenu, setSourceMenu] = useState<{ x: number; y: number } | null>(null)
+  const [compactSideNotes, setCompactSideNotes] = useState(true)
+  const [selectedSideNote, setSelectedSideNote] = useState<string | null>(null)
+  const [editingSideNote, setEditingSideNote] = useState<string | null>(null)
+  const [sideNoteNavigation, setSideNoteNavigation] = useState<{ id: string; path: string } | null>(null)
+  const sourceRef = useRef<HTMLTextAreaElement>(null)
+  const savedSelectionRef = useRef<{ from: number; to: number } | null>(null)
+  const wikiEditorRef = useRef<Editor | null>(null)
+  const disposeSideEditor = useCallback((instance: Editor) => setSideEditor((current) => current === instance ? null : current), [])
   const [isSourceMode, setIsSourceMode] = useState(false)
   const [rawMarkdown, setRawMarkdown] = useState('')
   const [noteTitleInput, setNoteTitleInput] = useState('')
@@ -223,6 +255,46 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
 
   const handleOpenQuickToolsAtCaretRef = useRef<() => void>(() => {})
 
+  const getSideNoteAnchor = useCallback(() => {
+    if (!editorRef.current) return null
+    const current = editorRef.current as Editor
+    let anchor
+    if (isSourceModeRef.current && sourceRef.current) {
+      const input = sourceRef.current
+      let from = input.selectionStart
+      let to = input.selectionEnd
+      if (from === to) {
+        from = input.value.lastIndexOf('\n', Math.max(0, from - 1)) + 1
+        const end = input.value.indexOf('\n', to)
+        to = end < 0 ? input.value.length : end
+      }
+      const selected = input.value.slice(from, to)
+      const projection = projectDocumentText(current.state.doc)
+      let match = resolveSideNoteAnchor(projection.text, { quote: selected, prefix: '', suffix: '' })
+      if (match.status !== 'attached') {
+        const container = document.createElement('div')
+        container.innerHTML = (current.storage as any).markdown.parser.parse(selected)
+        const parsed = ProseMirrorDOMParser.fromSchema(current.schema).parse(container)
+        const quote = projectDocumentText(parsed).text
+        match = resolveSideNoteAnchor(projection.text, { quote, prefix: '', suffix: '' })
+      }
+      anchor = match.status === 'attached' ? createSideNoteAnchor(projection.text, match.from, match.to) : null
+    } else {
+      const selection = savedSelectionRef.current ?? current.state.selection
+      anchor = anchorFromEditorSelection(current.state.doc, selection.from, selection.to)
+    }
+    savedSelectionRef.current = null
+    return anchor
+  }, [])
+
+  const createSideAnnotation = useCallback(async () => {
+    if (!activeNote) return
+    const anchor = getSideNoteAnchor()
+    if (!anchor) { window.alert('Selecione um trecho ou posicione o cursor em um parágrafo com texto.'); return }
+    const created = await sideNotesRef.current.create(activeNote.relativePath, anchor)
+    if (created) setSelectedSideNote(created.id)
+  }, [activeNote, getSideNoteAnchor])
+
   const editorExtensions = useMemo(
     () => [
       StarterKit.configure({
@@ -286,6 +358,18 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   const editor = useEditor({
     extensions: editorExtensions,
     content: '',
+    onFocus: () => setSideEditor(null),
+    onTransaction: ({ transaction }) => {
+      if (!transaction.docChanged || isInternalUpdateRef.current) return
+      for (const note of sideNotesRef.current.notesRef.current) {
+        if (note.sourcePath !== activeNotePathRef.current || note.detached) continue
+        const before = resolveEditorAnchor(transaction.before, note.anchor)
+        if (before.status !== 'attached') continue
+        const anchor = mapEditorAnchor(transaction.before, transaction.doc, transaction.mapping, note.anchor)
+        if (anchor && JSON.stringify(anchor) !== JSON.stringify(note.anchor)) sideNotesRef.current.update(note.id, { anchor })
+        else if (!anchor) sideNotesRef.current.update(note.id, { detached: true })
+      }
+    },
     onUpdate: ({ editor: ed }) => {
       if (isInternalUpdateRef.current) return
 
@@ -449,6 +533,52 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       }
     }
   })
+
+  useEffect(() => {
+    if (!sideNoteNavigation || !editor || editor.isDestroyed || activeNote?.relativePath !== sideNoteNavigation.path || readyNoteKey !== activeNote.fullPath || activeNoteKeyRef.current !== activeNote.fullPath || hydratedEditorRef.current?.path !== activeNote.fullPath) return
+    const note = sideNotes.notes.find((item) => item.id === sideNoteNavigation.id)
+    if (!note || note.detached) { setSideNoteNavigation(null); return }
+    const range = resolveEditorAnchor(editor.state.doc, note.anchor)
+    if (range.status !== 'attached') { setSideNoteNavigation(null); return }
+    if (isSourceMode) {
+      const input = sourceRef.current
+      const match = input ? findSideNoteInSource(input.value, note.anchor) : null
+      if (input && match) {
+        input.focus({ preventScroll: true })
+        input.setSelectionRange(match.from, match.from)
+        let bounds = measureSideNoteSourceRange(input, note)
+        if (bounds) {
+          const inputRect = input.getBoundingClientRect()
+          input.scrollTop += bounds.top - inputRect.top - input.clientHeight / 2
+          bounds = measureSideNoteSourceRange(input, note)
+          const container = documentScrollRef.current
+          if (container && bounds) container.scrollTo({ top: container.scrollTop + bounds.top - container.getBoundingClientRect().top - container.clientHeight / 2, behavior: 'smooth' })
+        }
+        setSideNoteNavigation(null)
+      } else {
+        setReadyNoteKey(null)
+        setIsSourceMode(false)
+      }
+      return
+    }
+    const frame = window.requestAnimationFrame(() => {
+      if (!editor.isDestroyed) {
+        let hiddenHeading = foldedHeadingContainingPosition(editor.state.doc, headingFoldKey.getState(editor.state) ?? new Set(), range.from)
+        while (hiddenHeading !== null) {
+          editor.view.dispatch(editor.state.tr.setMeta(headingFoldKey, { toggle: hiddenHeading }))
+          hiddenHeading = foldedHeadingContainingPosition(editor.state.doc, headingFoldKey.getState(editor.state) ?? new Set(), range.from)
+        }
+        editor.chain().focus(undefined, { scrollIntoView: false }).setTextSelection(range.from).run()
+        const container = documentScrollRef.current
+        if (container) {
+          const target = editor.view.coordsAtPos(range.from)
+          container.scrollTo({ top: container.scrollTop + target.top - container.getBoundingClientRect().top - container.clientHeight / 2, behavior: 'smooth' })
+        }
+      }
+      setSideNoteNavigation(null)
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [sideNoteNavigation, editor, activeNote, readyNoteKey, sideNotes.notes, isSourceMode])
 
   const requestEnhancedSpellSuggestions = useCallback(
     (word: string): void => {
@@ -705,6 +835,23 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     }
   }, [activeNote?.fullPath, editor, isSourceMode])
 
+  useEffect(() => {
+    const container = documentScrollRef.current
+    if (!container) return
+    const update = (): void => {
+      const style = getComputedStyle(container)
+      const width = Math.max(0, container.clientWidth - parseFloat(style.paddingLeft || '0') - parseFloat(style.paddingRight || '0'))
+      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+      const maxWidth = settings.pageWidth === 'standard' ? 48 * rem : settings.pageWidth === 'wide' ? 64 * rem : Infinity
+      setCompactSideNotes(shouldCompactSideNotes(width, maxWidth, 14 * rem))
+    }
+    const observer = new ResizeObserver(update)
+    observer.observe(container)
+    window.addEventListener('resize', update)
+    update()
+    return () => { observer.disconnect(); window.removeEventListener('resize', update) }
+  }, [activeNote?.fullPath, settings.pageWidth, settings.canvasStyle])
+
   useEffect(() => () => {
     if (scrollRestoreFrameRef.current !== null) {
       window.cancelAnimationFrame(scrollRestoreFrameRef.current)
@@ -734,29 +881,34 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   const handleSelectWikiSuggestion = useCallback(
     (targetNoteTitle: string, alias?: string) => {
       if (!editor) return
+      const targetEditor = wikiEditorRef.current && !wikiEditorRef.current.isDestroyed ? wikiEditorRef.current : editor
+      if (!targetEditor) return
       if (wikiSuggest) {
-        editor
+        targetEditor
           .chain()
           .focus()
           .deleteRange({ from: wikiSuggest.rangeFrom, to: wikiSuggest.rangeTo })
           .insertWikiLink({ target: targetNoteTitle, alias })
           .run()
       } else {
-        editor.chain().focus().insertWikiLink({ target: targetNoteTitle, alias }).run()
+        targetEditor.chain().focus().insertWikiLink({ target: targetNoteTitle, alias }).run()
       }
+      wikiEditorRef.current = null
       setWikiSuggest(null)
     },
     [editor, wikiSuggest]
   )
 
   const handleOpenWikiPickerFromToolbar = (): void => {
-    if (!editor) return
-    const { from, to, $from } = editor.state.selection
-    const coords = editor.view.coordsAtPos(from)
+    const targetEditor = sideEditor && !sideEditor.isDestroyed ? sideEditor : editor
+    if (!targetEditor) return
+    wikiEditorRef.current = targetEditor
+    const { from, to, $from } = targetEditor.state.selection
+    const coords = targetEditor.view.coordsAtPos(from)
 
     // If text is selected, use the selected text as initialAlias and replace the selection range
     if (from !== to) {
-      const selectedText = editor.state.doc
+      const selectedText = targetEditor.state.doc
         .textBetween(from, to, ' ')
         .replace(/^\[+|\]+$/g, '')
         .trim()
@@ -909,6 +1061,19 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
 
   const updateRawMarkdown = (nextMd: string): void => {
     setRawMarkdown(nextMd)
+    if (editor && !editor.isDestroyed) {
+      const previousDoc = editor.state.doc
+      isInternalUpdateRef.current = true
+      editor.commands.setContent(preprocessMarkdownForEditor(nextMd), false)
+      isInternalUpdateRef.current = false
+      const nextDoc = editor.state.doc
+      for (const note of sideNotesRef.current.notesRef.current) {
+        if (note.sourcePath !== activeNotePathRef.current || note.detached || resolveEditorAnchor(previousDoc, note.anchor).status !== 'attached') continue
+        const anchor = mapEditorAnchorByDiff(previousDoc, nextDoc, note.anchor)
+        if (anchor && JSON.stringify(anchor) !== JSON.stringify(note.anchor)) sideNotesRef.current.update(note.id, { anchor })
+        else if (!anchor) sideNotesRef.current.update(note.id, { detached: true })
+      }
+    }
     setSaveStatus('typing')
 
     if (saveTimeoutRef.current) {
@@ -1053,6 +1218,9 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   const resolvedHoverMeta = resolvedHoverNote
     ? vaultIndex[resolvedHoverNote.relativePath]
     : undefined
+  const currentSideNotes = sideNotes.notes.filter((note) => note.sourcePath === activeNote.relativePath)
+  const hasAttachedSideNotes = Boolean(editor && currentSideNotes.some((note) => !note.detached && resolveEditorAnchor(editor.state.doc, note.anchor).status === 'attached'))
+  const visibleSideNotes = sideNotes.notes.filter((note) => (sideFilter === 'vault' || note.sourcePath === activeNote.relativePath) && `${note.body} ${note.anchor.quote} ${note.sourcePath}`.toLocaleLowerCase().includes(sideSearch.toLocaleLowerCase()))
 
   const maxWidthClass =
     settings.pageWidth === 'standard'
@@ -1072,8 +1240,8 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     <div className={`flex-1 flex flex-col min-w-0 h-full overflow-hidden ${settings.canvasStyle === 'paper' ? 'bg-surface-canvas' : 'bg-surface-bg'}`}>
       {/* Top Rich WYSIWYG Toolbar (inspired by reference image) */}
       <EditorToolbar
-        editor={editor}
-        isSourceMode={isSourceMode}
+        editor={sideEditor ?? editor}
+        isSourceMode={isSourceMode && !sideEditor}
         onToggleSourceMode={handleToggleSourceMode}
         isZenMode={isZenMode}
         onToggleZenMode={onToggleZenMode}
@@ -1082,8 +1250,13 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         baseFontSize={settings.baseFontSize}
         onChangeBaseFontSize={(newSize) => onUpdateSettings({ baseFontSize: newSize })}
       />
+      <div className="flex items-center justify-end gap-1 border-b border-surface-border px-2 py-1">
+        <Button size="xs" variant="ghost" leftIcon={<MessageSquarePlus className="h-4 w-4" />} onMouseDown={(event) => event.preventDefault()} onClick={() => void createSideAnnotation()}>Adicionar observação</Button>
+      </div>
+      {sideNotes.error && <div role="alert" className="border-b border-surface-border px-3 py-2 text-xs text-content-primary">{sideNotes.error}</div>}
 
       {/* Scrollable Document Canvas */}
+      <div className="flex flex-1 min-h-0 min-w-0">
       <div className="relative flex-1 min-h-0">
       {isNoteLoading && (
         <div role="status" aria-label="Carregando nota" className="absolute inset-0 z-10 flex items-center justify-center bg-surface-bg">
@@ -1102,6 +1275,8 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
           settings.canvasStyle === 'paper' ? 'px-6 py-6 md:px-10 md:py-8' : 'px-0 py-0'
         }`}
       >
+        <div className="flex min-h-full justify-center">
+        {hasAttachedSideNotes && !compactSideNotes && <div aria-hidden="true" className="w-56 shrink-0" />}
         <div
           style={
             {
@@ -1112,12 +1287,13 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
               '--editor-word-spacing': `${settings.wordSpacing}em`
             } as React.CSSProperties
           }
-          className={`mx-auto transition-all duration-200 ${maxWidthClass} ${fontClass} ${
+          className={`relative w-full min-w-0 transition-all duration-200 ${maxWidthClass} ${fontClass} ${
             settings.canvasStyle === 'paper'
               ? 'bg-surface-bg border border-surface-border rounded-lg px-8 py-8 md:px-14 md:py-10 min-h-full'
               : 'bg-surface-bg px-8 py-8 md:px-14 md:py-10 min-h-full'
           }`}
         >
+          <SideNoteLane notes={currentSideNotes} editor={editor} extensions={editorExtensions} sourceMode={isSourceMode} sourceRef={sourceRef} compact={compactSideNotes} onFocusEditor={setSideEditor} onDisposeEditor={disposeSideEditor} onSave={(id, body) => sideNotes.update(id, { body })} />
           {/* The file name is the note title; it is not part of the Markdown body. */}
           <div className="flex items-center gap-4 pb-3 mb-6 border-b border-surface-border/60">
             <div className="flex items-center gap-2 text-xs text-content-muted min-w-0 flex-1">
@@ -1176,6 +1352,9 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
           {/* Editor Surface: WYSIWYG vs Raw Markdown Source */}
           {isSourceMode ? (
             <textarea
+              ref={sourceRef}
+              onFocus={() => setSideEditor(null)}
+              onContextMenu={(event) => { event.preventDefault(); setSourceMenu({ x: event.clientX, y: event.clientY }) }}
               value={rawMarkdown}
               disabled={isRenaming}
               onChange={handleRawMarkdownChange}
@@ -1251,6 +1430,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
                 )
                 const clickPos = editor.view.posAtCoords({ left: e.clientX, top: e.clientY })
                 const pos = clickPos?.pos ?? editor.state.selection.from
+                savedSelectionRef.current = editor.state.selection.empty ? { from: pos, to: pos } : { from: editor.state.selection.from, to: editor.state.selection.to }
                 const inCode = isCodeDom || isPosInsideCode(editor, pos)
 
                 if (inCode) {
@@ -1333,7 +1513,42 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
             </div>
           )}
         </div>
+        </div>
       </div>
+      </div>
+      {observationsPanelTarget && createPortal(<div aria-label="Consulta de observações" className="flex flex-1 min-h-0 flex-col">
+        <div className="space-y-2 p-2"><Input value={sideSearch} onChange={(event) => setSideSearch(event.target.value)} placeholder="Buscar observações" aria-label="Buscar observações" /><div className="flex gap-1"><Button size="xs" variant={sideFilter === 'current' ? 'primary' : 'ghost'} onClick={() => setSideFilter('current')}>Nota atual</Button><Button size="xs" variant={sideFilter === 'vault' ? 'primary' : 'ghost'} onClick={() => setSideFilter('vault')}>Todo o cofre</Button></div></div>
+        <div className="flex-1 space-y-1 overflow-y-auto p-2">{visibleSideNotes.length === 0 && <p className="p-2 text-xs text-content-muted">Nenhuma observação encontrada.</p>}{visibleSideNotes.map((note) => {
+          const sourceNote = allNotes.find((item) => item.relativePath === note.sourcePath)
+          const sourceExists = Boolean(sourceNote)
+          const sourceName = sourceNote?.name || note.sourcePath.replace(/\\/g, '/').split('/').pop()?.replace(/\.md$/i, '') || note.sourcePath
+          const orphan = note.detached || !sourceExists || (note.sourcePath === activeNote.relativePath && editor && resolveEditorAnchor(editor.state.doc, note.anchor).status !== 'attached')
+          const navigate = (): void => {
+            setSelectedSideNote(note.id)
+            if (sourceExists) {
+              setSideNoteNavigation({ id: note.id, path: note.sourcePath })
+              if (note.sourcePath !== activeNote.relativePath) onOpenNoteByPath(note.sourcePath)
+            }
+          }
+          return <div key={note.id} className="min-w-0 overflow-hidden rounded-sm border border-surface-border p-2">
+            <div className="flex min-w-0 items-center gap-1">
+              <SelectionButton type="button" className="min-w-0 flex-1 truncate rounded-sm px-1 py-1 text-left text-xs font-semibold text-content-secondary hover:bg-surface-tertiary hover:text-content-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40" title={note.sourcePath} onClick={navigate}>{sourceName}</SelectionButton>
+              <IconButton size="xs" tooltip="Editar observação no painel" icon={<Pencil className="h-3 w-3" />} onClick={() => setEditingSideNote((current) => current === note.id ? null : note.id)} />
+              <IconButton size="xs" tooltip="Vincular à seleção da nota atual" icon={<Link2 className="h-3 w-3" />} onMouseDown={(event) => event.preventDefault()} onClick={() => {
+                const anchor = getSideNoteAnchor()
+                if (anchor) { sideNotes.update(note.id, { anchor, sourcePath: activeNote.relativePath, detached: false }); setSelectedSideNote(note.id) }
+                else window.alert('Selecione primeiro o trecho ao qual deseja vincular esta observação.')
+              }} />
+              <IconButton size="xs" tooltip="Excluir observação" icon={<Trash2 className="h-3 w-3" />} onClick={() => { if (window.confirm('Excluir esta observação?')) void sideNotes.remove(note.id) }} />
+            </div>
+            <div role="button" tabIndex={0} aria-label={`Ir para a observação em ${note.sourcePath}: ${note.body || note.anchor.quote}`} onClick={navigate} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); navigate() } }} className="group min-w-0 cursor-pointer overflow-hidden rounded-sm px-1 py-1 text-xs text-content-secondary hover:bg-surface-tertiary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40">
+              <SideNotePreview content={note.body} fallback={note.anchor.quote} extensions={editorExtensions} />
+            </div>
+            {orphan && <p className="px-2 text-xs text-content-muted">Vínculo não localizado</p>}
+            {(editingSideNote === note.id || (selectedSideNote === note.id && (orphan || note.sourcePath !== activeNote.relativePath))) && <div className="mt-2 border-t border-surface-border px-2 pt-2"><SideNoteCard minimal note={note} extensions={editorExtensions} attached={!orphan} onFocusEditor={setSideEditor} onDisposeEditor={disposeSideEditor} onSave={(body) => sideNotes.update(note.id, { body })} onNavigate={() => {}} onRelink={() => {}} onDelete={() => {}} /></div>}
+          </div>
+        })}</div>
+      </div>, observationsPanelTarget)}
       </div>
 
       {/* Inline Standard Link [Text](url) Editor Bar when cursor is on a link */}
@@ -1390,7 +1605,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         <EditorContextMenu
           editor={editor}
           position={contextMenuPos}
-          onClose={() => setContextMenuPos(null)}
+          onClose={() => { setContextMenuPos(null); savedSelectionRef.current = null }}
           targetWordRange={targetWordRange}
           spellSuggestions={spellSuggestions}
           ignoredWords={settings.ignoredWords}
@@ -1401,8 +1616,10 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
           }}
           onAddIgnoredWord={handleAddIgnoredWord}
           onOpenWikiLinkPicker={handleOpenWikiPickerFromToolbar}
+          onCreateSideNote={() => void createSideAnnotation()}
         />
       )}
+      {sourceMenu && <div role="menu" className="fixed z-50 rounded-sm border border-surface-border bg-surface-bg p-1 shadow-lg" style={{ left: sourceMenu.x, top: sourceMenu.y }} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setSourceMenu(null) }}><Button role="menuitem" size="xs" variant="ghost" onMouseDown={(event) => event.preventDefault()} onClick={() => { void createSideAnnotation(); setSourceMenu(null) }} leftIcon={<MessageSquarePlus className="h-4 w-4" />}>Adicionar observação</Button></div>}
 
       {/* [[WikiLink]] Autocomplete Popover */}
       {wikiSuggest && wikiSuggest.open && (

@@ -3,6 +3,7 @@ import {
   Link2,
   ArrowUpRight,
   ListTree,
+  MessageSquareText,
   PanelRight,
   FileText,
   PlusCircle,
@@ -16,6 +17,7 @@ import type { IndexedNoteMeta, NoteHeading } from '../../types/app'
 import { extractHeadings, resolveWikiLinkTarget } from '../../services/noteIndexer'
 import { IconButton } from '../ui/IconButton'
 import { SelectionButton } from '../ui/SelectionButton'
+import { useSideNotes } from '../editor/useSideNotes'
 
 export interface HeadingTreeNode extends NoteHeading {
   index: number
@@ -166,6 +168,8 @@ const HeadingTreeItem: React.FC<HeadingTreeItemProps> = ({
 
 interface BacklinksSidebarProps {
   width?: number
+  vaultPath: string
+  onObservationsPanelTarget: (element: HTMLDivElement | null) => void
   vaultName?: string
   activeNote: VaultNoteData | null
   activePaneId: 'pane-1' | 'pane-2'
@@ -180,6 +184,8 @@ interface BacklinksSidebarProps {
 
 export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
   width,
+  vaultPath,
+  onObservationsPanelTarget,
   activeNote,
   activePaneId,
   noteMeta,
@@ -190,10 +196,11 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
   onLeaveTarget,
   onCloseSidebar
 }) => {
-  const [activeTab, setActiveTab] = useState<'connections' | 'outline'>(() => {
+  const { notes: observations } = useSideNotes(vaultPath)
+  const [activeTab, setActiveTab] = useState<'connections' | 'outline' | 'observations'>(() => {
     try {
       const saved = localStorage.getItem('notes-md:right-sidebar-tab')
-      if (saved === 'connections' || saved === 'outline') return saved
+      if (saved === 'connections' || saved === 'outline' || saved === 'observations') return saved
     } catch {
       // ignore
     }
@@ -245,7 +252,7 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
     outlineRef.current?.querySelector<HTMLElement>('[data-active-heading="true"]')?.scrollIntoView({ block: 'nearest' })
   }, [activeHeadingIndex, activeTab, collapsedNodes])
 
-  const handleSelectTab = (tab: 'connections' | 'outline'): void => {
+  const handleSelectTab = (tab: 'connections' | 'outline' | 'observations'): void => {
     setActiveTab(tab)
     try {
       localStorage.setItem('notes-md:right-sidebar-tab', tab)
@@ -345,6 +352,7 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
   const isIconOnly = typeof width === 'number' && width < 230
   const linksCount = noteMeta ? noteMeta.backlinks.length + noteMeta.outgoingLinks.length : 0
   const headingsCount = noteMeta ? noteMeta.headings.length : 0
+  const observationsCount = activeNote ? observations.filter((note) => note.sourcePath === activeNote.relativePath).length : 0
 
   return (
     <aside
@@ -397,6 +405,16 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
           )}
         </SelectionButton>
 
+        <SelectionButton
+          type="button"
+          onClick={() => handleSelectTab('observations')}
+          title={`Observações da nota (${observationsCount})`}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-sm text-xs font-semibold transition-colors min-w-0 ${activeTab === 'observations' ? 'bg-accent-soft text-accent' : 'text-content-secondary hover:bg-surface-tertiary'}`}
+        >
+          <MessageSquareText className="w-3.5 h-3.5 shrink-0" />
+          {!isIconOnly && (!isCompact ? <span className="truncate">Observações ({observationsCount})</span> : <span className="text-[10px] px-1 py-0.2 rounded-sm bg-accent/20 text-accent font-bold">{observationsCount}</span>)}
+        </SelectionButton>
+
         {onCloseSidebar && (
           <IconButton
             variant="ghost"
@@ -408,7 +426,11 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
         )}
       </div>
 
-      {!activeNote || !noteMeta ? (
+      {activeTab === 'observations' ? (
+        <div ref={onObservationsPanelTarget} className="flex flex-1 min-h-0 flex-col select-text">
+          {!activeNote && <div className="flex flex-1 items-center justify-center p-4 text-center text-xs text-content-muted">Abra uma nota para consultar suas observações.</div>}
+        </div>
+      ) : !activeNote || !noteMeta ? (
         <div className="flex-1 p-4 flex flex-col items-center justify-center text-center text-xs text-content-muted">
           Abra uma nota para visualizar suas conexões e sumário.
         </div>

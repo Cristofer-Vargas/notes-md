@@ -36,7 +36,8 @@ import {
   Workflow,
   Check,
   EyeOff,
-  Sparkles
+  Sparkles,
+  MessageSquarePlus
 } from 'lucide-react'
 import { HIGHLIGHT_COLORS, TEXT_COLORS } from './EditorToolbar'
 import {
@@ -68,6 +69,7 @@ interface EditorContextMenuProps {
   onAddIgnoredWord?: (word: string) => void
   onClose: () => void
   onOpenWikiLinkPicker: () => void
+  onCreateSideNote?: () => void
 }
 
 type SubmenuId =
@@ -89,7 +91,8 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
   onClearSpellSuggestions,
   onAddIgnoredWord,
   onClose,
-  onOpenWikiLinkPicker
+  onOpenWikiLinkPicker,
+  onCreateSideNote
 }) => {
   const [activeSubmenu, setActiveSubmenu] = useState<SubmenuId>(null)
   const [selectedSugIndex, setSelectedSugIndex] = useState(0)
@@ -414,6 +417,7 @@ export const EditorContextMenu: React.FC<EditorContextMenuProps> = ({
       onContextMenu={(e) => e.preventDefault()}
       className="app-context-menu fixed z-50 border border-surface-border bg-surface-bg shadow-xl p-1.5 select-none"
     >
+      {onCreateSideNote && <SelectionButton role="menuitem" onMouseDown={(event) => event.preventDefault()} onClick={() => { onCreateSideNote(); onClose() }} className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-xs text-content-primary hover:bg-surface-secondary"><MessageSquarePlus className="h-4 w-4 text-accent" />Adicionar observação</SelectionButton>}
       {/* Seção de Ortografia e Dicionário */}
       {showSpellSection && (
         <div

@@ -21,6 +21,8 @@ import {
   warmSpellCheckers
 } from './spellcheckService'
 import { DiscordPresenceService } from './discordPresenceService'
+import { createSideNote, listSideNotes, updateSideNote, remapSideNotePaths, getSideNoteFilePath } from './sideNotesService'
+import type { SideNote } from '../shared/sideNotes'
 import {
   formatWindowTitle,
   resolveAppIconPath,
@@ -373,6 +375,20 @@ app.whenReady().then(() => {
     broadcastVaultChanged(snapshot)
   })
 
+  const notifySideNotes = (vaultPath: string): void => {
+    for (const win of BrowserWindow.getAllWindows()) if (!win.isDestroyed()) win.webContents.send('side-notes:changed', vaultPath)
+  }
+  ipcMain.handle('side-notes:list', (_event, vaultPath: string) => listSideNotes(vaultPath))
+  ipcMain.handle('side-notes:create', async (_event, vaultPath: string, data: Omit<SideNote, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const result = await createSideNote(vaultPath, data); notifySideNotes(vaultPath); return result
+  })
+  ipcMain.handle('side-notes:update', async (_event, vaultPath: string, note: SideNote) => {
+    const result = await updateSideNote(vaultPath, note); notifySideNotes(vaultPath); return result
+  })
+  ipcMain.handle('side-notes:delete', async (_event, vaultPath: string, id: string) => {
+    await shell.trashItem(getSideNoteFilePath(vaultPath, id)); notifySideNotes(vaultPath)
+  })
+
   const defaultVaultDir = runtimeConfig.defaultVaultDir
 
   ipcMain.handle('vault:get-default', async () => {
@@ -454,6 +470,7 @@ app.whenReady().then(() => {
     'vault:rename-entry',
     async (_event, vaultPath: string, oldRelativePath: string, newName: string) => {
       const renamed = await renameVaultEntry(vaultPath, oldRelativePath, newName)
+      try { await remapSideNotePaths(vaultPath, oldRelativePath, renamed.newRelativePath); notifySideNotes(vaultPath) } catch { dialog.showErrorBox('Notas laterais', 'O arquivo foi renomeado, mas não foi possível atualizar todas as notas laterais. Verifique seus vínculos.') }
       pomodoroService?.rename(vaultPath, oldRelativePath, renamed.newRelativePath)
       vaultWatcher?.scheduleCheck(60)
       return renamed
@@ -469,6 +486,7 @@ app.whenReady().then(() => {
       newParentFolderRelativePath: string
     ) => {
       const moved = await moveVaultEntry(vaultPath, oldRelativePath, newParentFolderRelativePath)
+      try { await remapSideNotePaths(vaultPath, oldRelativePath, moved.newRelativePath); notifySideNotes(vaultPath) } catch { dialog.showErrorBox('Notas laterais', 'O arquivo foi movido, mas não foi possível atualizar todas as notas laterais. Verifique seus vínculos.') }
       pomodoroService?.rename(vaultPath, oldRelativePath, moved.newRelativePath)
       vaultWatcher?.scheduleCheck(40)
       return moved

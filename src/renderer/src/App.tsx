@@ -78,6 +78,10 @@ export function App(): React.ReactElement {
   const [settings, setSettings] = useState<AppSettings>(() => loadSettings())
 
   const [vaultPath, setVaultPath] = useState<string>('')
+  const [observationsPanelTarget, setObservationsPanelTarget] = useState<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (vaultPath) void window.electronAPI.listSideNotes(vaultPath).catch(() => {})
+  }, [vaultPath])
   const [vaultName, setVaultName] = useState<string>('Vault-Notas')
   const [tree, setTree] = useState<VaultFileEntry[]>([])
   const [notes, setNotes] = useState<VaultNoteData[]>([])
@@ -674,14 +678,14 @@ export function App(): React.ReactElement {
   }, [activeNote?.name, vaultName])
 
   const navigateToNote = useCallback(
-    (relativePath: string, openInNewTab = false) => {
+    (relativePath: string, openInNewTab = false, targetPaneId = activePaneId) => {
       const normTargetRel = relativePath.replace(/\\/g, '/').toLowerCase()
       const target = notes.find(
         (n) => n.relativePath.replace(/\\/g, '/').toLowerCase() === normTargetRel
       )
       if (!target) return
 
-      const setTargetPane = activePaneId === 'pane-1' ? setPane1 : setPane2
+      const setTargetPane = targetPaneId === 'pane-1' ? setPane1 : setPane2
 
       setTargetPane((prev) => {
         const existing = prev.tabs.find(
@@ -1263,7 +1267,7 @@ export function App(): React.ReactElement {
             variant="secondary"
             size="sm"
             onClick={() => updateSettings({ showRightSidebar: true })}
-            tooltip="Mostrar Painel Direito (Links e Sumário)"
+            tooltip="Mostrar painel direito (links, sumário e observações)"
             icon={<PanelRight className="w-4 h-4 text-content-primary" />}
             className="shadow-sm bg-surface-secondary/95 backdrop-blur-sm border border-surface-border hover:bg-surface-tertiary hover:border-accent/40 transition-all hover:scale-105"
           />
@@ -1333,6 +1337,9 @@ export function App(): React.ReactElement {
 
         {/* Central Flexible Editor Workspace (Single or Split Panes Lado a Lado / Em Cima e Embaixo) */}
         <EditorWorkspace
+          vaultPath={vaultPath}
+          observationsPanelTarget={observationsPanelTarget}
+          onOpenNoteByPath={(path, paneId) => navigateToNote(path, false, paneId)}
           splitLayout={splitLayout}
           onUpdateSplitLayout={setSplitLayout}
           splitRatio={splitRatio}
@@ -1374,6 +1381,8 @@ export function App(): React.ReactElement {
             </div>
             <BacklinksSidebar
               width={rightSidebarWidth}
+              vaultPath={vaultPath}
+              onObservationsPanelTarget={setObservationsPanelTarget}
               vaultName={vaultName}
               activeNote={activeNote}
               activePaneId={activePaneId}

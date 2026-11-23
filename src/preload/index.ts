@@ -2,6 +2,15 @@ import { contextBridge, ipcRenderer, webFrame } from 'electron'
 import type { ElectronAPI, VaultSnapshot } from './index.d'
 
 const api: ElectronAPI = {
+  listSideNotes: (vaultPath) => ipcRenderer.invoke('side-notes:list', vaultPath),
+  createSideNote: (vaultPath, data) => ipcRenderer.invoke('side-notes:create', vaultPath, data),
+  updateSideNote: (vaultPath, note) => ipcRenderer.invoke('side-notes:update', vaultPath, note),
+  deleteSideNote: (vaultPath, id) => ipcRenderer.invoke('side-notes:delete', vaultPath, id),
+  onSideNotesChanged: (callback) => {
+    const listener = (_event: Electron.IpcRendererEvent, vaultPath: string): void => callback(vaultPath)
+    ipcRenderer.on('side-notes:changed', listener)
+    return () => { ipcRenderer.removeListener('side-notes:changed', listener) }
+  },
   getPomodoro: () => ipcRenderer.invoke('pomodoro:get'),
   getPomodoroHistory: () => ipcRenderer.invoke('pomodoro:history'),
   deletePomodoroHistory: (from, to) => ipcRenderer.invoke('pomodoro:delete-history', from, to),

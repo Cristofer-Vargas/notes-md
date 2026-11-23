@@ -32,6 +32,9 @@ export interface DraggedTabInfo {
 export type DropZoneDirection = 'left' | 'right' | 'top' | 'bottom' | 'center'
 
 interface EditorPaneViewProps {
+  vaultPath: string
+  observationsPanelTarget: HTMLDivElement | null
+  onOpenNoteByPath: (path: string) => void
   pane: EditorPaneState
   isActivePane: boolean
   splitLayout: SplitLayoutMode
@@ -65,6 +68,9 @@ interface EditorPaneViewProps {
 }
 
 export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
+  vaultPath,
+  observationsPanelTarget,
+  onOpenNoteByPath,
   pane,
   isActivePane,
   splitLayout,
@@ -450,6 +456,9 @@ export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
       >
         {activeNote ? (
           <MarkdownEditor
+            vaultPath={vaultPath}
+            observationsPanelTarget={isActivePane ? observationsPanelTarget : null}
+            onOpenNoteByPath={onOpenNoteByPath}
             activeNote={activeNote}
             allNotes={allNotes}
             vaultIndex={vaultIndex}
