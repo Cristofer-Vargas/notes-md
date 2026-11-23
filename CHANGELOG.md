@@ -1,3 +1,10 @@
+## [1.4.2](https://github.com/Cristofer-Vargas/notes-md/compare/v1.4.1...v1.4.2) (2026-11-23)
+
+
+### Correções
+
+* ajustando bug com o cursor que ainda persistia mesmo ultimos ajustes ([](https://github.com/Cristofer-Vargas/notes-md/commit/376f25d17b643b9ccda5dac830fd73f1a0edcaee)), closes [#1](https://github.com/Cristofer-Vargas/notes-md/issues/1)
+
 ## [1.4.1](https://github.com/Cristofer-Vargas/notes-md/compare/v1.4.0...v1.4.1) (2026-11-23)
 
 
