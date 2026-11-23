@@ -1,3 +1,10 @@
+## [1.4.1](https://github.com/Cristofer-Vargas/notes-md/compare/v1.4.0...v1.4.1) (2026-11-23)
+
+
+### Correções
+
+* correção do problema com o cursor que perdia o foco no documento ([](https://github.com/Cristofer-Vargas/notes-md/commit/fdc8c78ef571d0ff565122f12c512a623aba8daf)), closes [#1](https://github.com/Cristofer-Vargas/notes-md/issues/1)
+
 # [1.4.0](https://github.com/Cristofer-Vargas/notes-md/compare/v1.3.0...v1.4.0) (2026-11-23)
 
 
