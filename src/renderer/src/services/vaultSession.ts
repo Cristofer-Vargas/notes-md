@@ -9,6 +9,7 @@ export interface PersistedHeadingFoldReference {
 export interface PersistedNoteViewState {
   foldedHeadings: PersistedHeadingFoldReference[]
   scrollTop: number
+  sideNotesCollapsed: boolean
 }
 
 export interface PersistedVaultSession {
@@ -64,7 +65,8 @@ export function loadNoteViewState(vaultPath: string, notePath: string): Persiste
     : []
   return {
     foldedHeadings,
-    scrollTop: Number.isFinite(saved.scrollTop) ? Math.max(0, saved.scrollTop) : 0
+    scrollTop: Number.isFinite(saved.scrollTop) ? Math.max(0, saved.scrollTop) : 0,
+    sideNotesCollapsed: saved.sideNotesCollapsed === true
   }
 }
 
@@ -79,10 +81,11 @@ export function saveNoteViewState(
     const session = allSessions[vaultPath]
     if (session && !session.openTabPaths?.includes(notePath)) return
 
-    const previous = session?.noteViewStates?.[notePath] ?? { foldedHeadings: [], scrollTop: 0 }
+    const previous = session?.noteViewStates?.[notePath] ?? { foldedHeadings: [], scrollTop: 0, sideNotesCollapsed: false }
     const nextState: PersistedNoteViewState = {
       foldedHeadings: update.foldedHeadings ?? previous.foldedHeadings,
-      scrollTop: update.scrollTop === undefined ? previous.scrollTop : Math.max(0, update.scrollTop)
+      scrollTop: update.scrollTop === undefined ? previous.scrollTop : Math.max(0, update.scrollTop),
+      sideNotesCollapsed: update.sideNotesCollapsed ?? previous.sideNotesCollapsed ?? false
     }
     const nextSession: PersistedVaultSession = session
       ? { ...session, noteViewStates: { ...session.noteViewStates, [notePath]: nextState } }

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
@@ -131,6 +131,13 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   const [sourceMenu, setSourceMenu] = useState<{ x: number; y: number } | null>(null)
   const [compactSideNotes, setCompactSideNotes] = useState(true)
   const [manuallyCompactSideNotes, setManuallyCompactSideNotes] = useState(false)
+  useLayoutEffect(() => {
+    if (!activeNote) {
+      setManuallyCompactSideNotes(false)
+      return
+    }
+    setManuallyCompactSideNotes(loadNoteViewState(vaultPath, activeNote.relativePath)?.sideNotesCollapsed ?? false)
+  }, [vaultPath, activeNote?.relativePath])
   const [selectedSideNote, setSelectedSideNote] = useState<string | null>(null)
   const [editingSideNote, setEditingSideNote] = useState<string | null>(null)
   const [sideNoteToDelete, setSideNoteToDelete] = useState<string | null>(null)
@@ -1491,7 +1498,11 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
             ? 'Observações recolhidas por falta de espaço'
             : manuallyCompactSideNotes ? 'Expandir observações' : 'Recolher observações para ícones'}
           icon={sideNotesAreCompact ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-          onClick={() => setManuallyCompactSideNotes((collapsed) => !collapsed)}
+          onClick={() => {
+            const collapsed = !manuallyCompactSideNotes
+            setManuallyCompactSideNotes(collapsed)
+            saveNoteViewState(vaultPath, activeNote.relativePath, { sideNotesCollapsed: collapsed })
+          }}
         />}
         <Button size="xs" variant="ghost" leftIcon={<MessageSquarePlus className="h-4 w-4" />} onMouseDown={(event) => event.preventDefault()} onClick={() => void createSideAnnotation()}>Adicionar observação</Button>
       </div>
