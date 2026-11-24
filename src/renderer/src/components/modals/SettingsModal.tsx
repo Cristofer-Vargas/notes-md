@@ -783,6 +783,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                 </section>
 
+                <section className="flex items-center justify-between gap-4 rounded-md border border-surface-border bg-surface-secondary p-3">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-content-primary">Destaque visual dos títulos</p>
+                    <p className="text-xs text-content-muted">
+                      Mostra os marcadores por nível e o sublinhado especial dos títulos principais.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={settings.headingHighlightEnabled}
+                    onCheckedChange={(checked) => onUpdateSettings({ headingHighlightEnabled: checked })}
+                    label="Ativar destaque visual dos títulos"
+                  />
+                </section>
+
                 {/* Interactive Live Sample Box */}
                 <section className="p-3.5 rounded-md bg-surface-secondary border border-surface-border space-y-2">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-content-muted flex items-center gap-1.5">

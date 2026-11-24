@@ -348,6 +348,29 @@ button svg { stroke-width: 1.7; }
   pointer-events: none;
 }
 
+.heading-highlights-disabled .ProseMirror .heading-decoration-group {
+  gap: 0;
+  width: 0;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.heading-highlights-disabled .ProseMirror .heading-decoration-group[data-foldable='true'] {
+  width: 0.7rem;
+  margin-left: -0.8rem;
+  margin-right: 0.1rem;
+}
+
+.heading-highlights-disabled .ProseMirror .heading-level-marker {
+  display: none;
+}
+
+.heading-highlights-disabled .ProseMirror h1 {
+  padding-bottom: 0;
+  border-bottom: 0;
+  border-image: none;
+}
+
 .ProseMirror .heading-level-marker::before {
   display: block;
   width: 0.42rem;

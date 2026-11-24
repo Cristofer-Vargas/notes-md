@@ -23,6 +23,7 @@ const mockSettings: AppSettings = {
   wordSpacing: 0,
   pageWidth: 'standard',
   canvasStyle: 'paper',
+  headingHighlightEnabled: true,
   showLeftSidebar: true,
   showRightSidebar: true,
   spellcheck: true,

@@ -48,6 +48,7 @@ export interface AppSettings {
   wordSpacing: number
   pageWidth: PageWidthPreset
   canvasStyle: CanvasStylePreset
+  headingHighlightEnabled: boolean
   showLeftSidebar: boolean
   showRightSidebar: boolean
   spellcheck: boolean

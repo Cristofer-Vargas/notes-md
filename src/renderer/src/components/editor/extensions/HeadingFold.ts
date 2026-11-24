@@ -133,6 +133,7 @@ export function createHeadingFoldPlugin(): Plugin<Set<number>> {
                 const group = document.createElement('span')
                 group.className = 'heading-decoration-group'
                 group.dataset.level = String(node.attrs.level)
+                group.dataset.foldable = String(canFold)
                 group.setAttribute('contenteditable', 'false')
 
                 const marker = document.createElement('span')

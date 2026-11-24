@@ -18,6 +18,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   wordSpacing: 0,
   pageWidth: 'wide',
   canvasStyle: 'flat',
+  headingHighlightEnabled: true,
   showLeftSidebar: true,
   showRightSidebar: true,
   spellcheck: true,
@@ -55,6 +56,10 @@ export function applyThemeToDocument(settings: AppSettings): void {
   document.documentElement.setAttribute('data-theme', settings.theme)
   document.documentElement.setAttribute('data-accent', settings.accent)
   document.documentElement.classList.toggle('dark', settings.theme === 'dark')
+  document.documentElement.classList.toggle(
+    'heading-highlights-disabled',
+    settings.headingHighlightEnabled === false
+  )
   document.documentElement.style.setProperty(
     '--editor-font-weight',
     settings.editorFontWeight || '300'
