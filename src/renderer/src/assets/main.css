@@ -316,6 +316,7 @@ button svg { stroke-width: 1.7; }
   outline: none;
   min-height: 620px;
   color: var(--text-primary);
+  font-family: var(--editor-font-family, inherit);
   font-size: var(--editor-font-size, 16px);
   line-height: var(--editor-line-height, 1.7);
   letter-spacing: var(--editor-letter-spacing, 0em);

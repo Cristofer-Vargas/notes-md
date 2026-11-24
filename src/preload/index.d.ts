@@ -122,6 +122,7 @@ export interface ElectronAPI {
   broadcastSettings: (settings: unknown) => Promise<void>
   onSettingsChanged: (callback: (settings: unknown) => void) => () => void
   getAppRuntimeInfo: () => Promise<AppRuntimeInfo>
+  getSystemFonts: () => Promise<string[]>
   getAppUpdateState: () => Promise<AppUpdateState | undefined>
   checkForAppUpdates: () => Promise<AppUpdateState | undefined>
   downloadAppUpdate: () => Promise<AppUpdateState | undefined>

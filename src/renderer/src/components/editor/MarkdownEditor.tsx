@@ -57,6 +57,7 @@ import {
   countWords
 } from '../../services/noteIndexer'
 import { loadNoteViewState, saveNoteViewState } from '../../services/vaultSession'
+import { getEditorFontStack } from '../../services/settingsManager'
 import { getShortcutKey, matchesShortcut } from '../../services/shortcutService'
 import type { VaultNoteData } from '../../../../preload/index.d'
 import type { AppSettings, IndexedNoteMeta } from '../../types/app'
@@ -1468,13 +1469,6 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         ? 'max-w-5xl'
         : 'max-w-full'
 
-  const fontClass =
-    settings.fontFamily === 'serif'
-      ? 'font-serif'
-      : settings.fontFamily === 'mono'
-        ? 'font-mono'
-        : 'font-sans'
-
   return (
     <div className={`flex-1 flex flex-col min-w-0 h-full overflow-hidden ${settings.canvasStyle === 'paper' ? 'bg-surface-canvas' : 'bg-surface-bg'}`}>
       {/* Top Rich WYSIWYG Toolbar (inspired by reference image) */}
@@ -1534,6 +1528,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         <div
           style={
             {
+              fontFamily: getEditorFontStack(settings),
               '--editor-font-size': `${settings.baseFontSize}px`,
               '--editor-line-height': String(settings.lineHeight),
               '--editor-paragraph-spacing': `${settings.paragraphSpacing}em`,
@@ -1541,7 +1536,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
               '--editor-word-spacing': `${settings.wordSpacing}em`
             } as React.CSSProperties
           }
-          className={`relative w-full min-w-0 transition-all duration-200 ${maxWidthClass} ${fontClass} ${
+          className={`relative w-full min-w-0 transition-all duration-200 ${maxWidthClass} ${
             settings.canvasStyle === 'paper'
               ? 'bg-surface-bg border border-surface-border rounded-lg px-8 py-8 md:px-14 md:py-10 min-h-full'
               : 'bg-surface-bg px-8 py-8 md:px-14 md:py-10 min-h-full'

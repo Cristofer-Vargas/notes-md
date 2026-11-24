@@ -50,6 +50,7 @@ import {
   getShortcutKey,
   findShortcutConflict
 } from '../../services/shortcutService'
+import { getEditorFontStack } from '../../services/settingsManager'
 import { useFloatingModal } from './useFloatingModal'
 import { ResizeHandles } from './ResizeHandles'
 import { cn } from '../../utils/cn'
@@ -184,6 +185,7 @@ const FONT_OPTIONS: Array<{ id: FontFamilyPreset; label: string; sample: string 
   { id: 'serif', label: 'Serifada Editorial (Georgia)', sample: 'Abc 123' },
   { id: 'mono', label: 'IBM Plex Mono', sample: 'Abc 123' }
 ]
+const SYSTEM_FONT_BATCH_SIZE = 36
 
 const FONT_WEIGHT_OPTIONS: Array<{
   id: EditorFontWeightPreset
@@ -220,6 +222,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [newIgnoredWord, setNewIgnoredWord] = useState('')
   const [recordingActionId, setRecordingActionId] = useState<ShortcutActionId | null>(null)
   const [shortcutSearch, setShortcutSearch] = useState('')
+  const [systemFonts, setSystemFonts] = useState<string[]>([])
+  const [systemFontsLoading, setSystemFontsLoading] = useState(false)
+  const [systemFontsUnavailable, setSystemFontsUnavailable] = useState(false)
+  const [fontSearch, setFontSearch] = useState('')
+  const [visibleSystemFontCount, setVisibleSystemFontCount] = useState(SYSTEM_FONT_BATCH_SIZE)
   const [discordStatus, setDiscordStatus] = useState<DiscordPresenceStatus>({
     state: 'disabled',
     message: 'Presença do Discord desativada.',
@@ -239,6 +246,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setActiveTab(initialTab)
     }
   }, [isOpen, initialTab])
+
+  useEffect(() => {
+    if (!isOpen || activeTab !== 'typography') return
+    if (!window.electronAPI?.getSystemFonts) {
+      setSystemFontsUnavailable(true)
+      return
+    }
+
+    let mounted = true
+    setSystemFontsLoading(true)
+    setSystemFontsUnavailable(false)
+    window.electronAPI.getSystemFonts()
+      .then((fonts) => {
+        if (mounted) setSystemFonts(fonts)
+      })
+      .catch(() => {
+        if (mounted) setSystemFontsUnavailable(true)
+      })
+      .finally(() => {
+        if (mounted) setSystemFontsLoading(false)
+      })
+
+    return () => { mounted = false }
+  }, [isOpen, activeTab])
+
+  const filteredSystemFonts = useMemo(() => {
+    const query = fontSearch.trim().toLocaleLowerCase()
+    return systemFonts.filter((font) => !query || font.toLocaleLowerCase().includes(query))
+  }, [systemFonts, fontSearch])
 
   // Listen to keyboard events when recording a shortcut
   useEffect(() => {
@@ -666,13 +702,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                     {FONT_OPTIONS.map((f) => {
-                      const active = settings.fontFamily === f.id
+                      const active = !settings.customFontFamily && settings.fontFamily === f.id
                       return (
                         <SelectionButton
                           key={f.id}
                           aria-pressed={active}
                           type="button"
-                          onClick={() => onUpdateSettings({ fontFamily: f.id })}
+                          onClick={() => onUpdateSettings({ fontFamily: f.id, customFontFamily: '' })}
                           className={cn(
                             'p-3 rounded-md border text-left transition-all cursor-pointer',
                             active
@@ -685,6 +721,83 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         </SelectionButton>
                       )
                     })}
+                  </div>
+
+                  <div className="space-y-2 rounded-md border border-surface-border bg-surface-secondary p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold text-content-primary">Fontes instaladas no sistema</span>
+                      <span className="text-[11px] text-content-muted">
+                        {systemFontsLoading ? 'Carregando…' : `${systemFonts.length} disponíveis`}
+                      </span>
+                    </div>
+                    <Input
+                      leftIcon={<Search className="h-3.5 w-3.5" />}
+                      value={fontSearch}
+                      onChange={(event) => {
+                        setFontSearch(event.target.value)
+                        setVisibleSystemFontCount(SYSTEM_FONT_BATCH_SIZE)
+                      }}
+                      placeholder="Buscar uma fonte instalada..."
+                      aria-label="Buscar fontes instaladas"
+                    />
+                    <div
+                      role="listbox"
+                      aria-label="Fontes do sistema"
+                      onScroll={(event) => {
+                        const list = event.currentTarget
+                        if (list.scrollTop + list.clientHeight >= list.scrollHeight - 48) {
+                          setVisibleSystemFontCount((count) => Math.min(count + SYSTEM_FONT_BATCH_SIZE, filteredSystemFonts.length))
+                        }
+                      }}
+                      className="max-h-40 space-y-1 overflow-y-auto rounded-sm border border-surface-border bg-surface-bg p-1"
+                    >
+                      {filteredSystemFonts.slice(0, visibleSystemFontCount).map((font) => {
+                        const selected = (settings.customFontFamily || '').toLocaleLowerCase() === font.toLocaleLowerCase()
+                        return (
+                          <SelectionButton
+                            key={font}
+                            role="option"
+                            aria-selected={selected}
+                            type="button"
+                            onClick={() => onUpdateSettings({ customFontFamily: font })}
+                            className={cn(
+                              'flex w-full items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-left text-xs transition-colors',
+                              selected ? 'bg-accent-soft text-accent' : 'text-content-primary hover:bg-surface-tertiary'
+                            )}
+                          >
+                            <span className="truncate" style={{ fontFamily: getEditorFontStack({ ...settings, customFontFamily: font }) }}>{font}</span>
+                            {selected && <Check className="h-3.5 w-3.5 shrink-0" />}
+                          </SelectionButton>
+                        )
+                      })}
+                      {filteredSystemFonts.length === 0 && !systemFontsLoading && (
+                        <p className="px-2 py-2 text-xs text-content-muted">
+                          {systemFonts.length ? 'Nenhuma fonte encontrada.' : 'Não foi possível carregar a lista de fontes deste sistema.'}
+                        </p>
+                      )}
+                      {visibleSystemFontCount < filteredSystemFonts.length && (
+                        <p aria-live="polite" className="px-2 py-2 text-center text-[11px] text-content-muted">
+                          Role para carregar mais fontes ({filteredSystemFonts.length - visibleSystemFontCount} restantes)
+                        </p>
+                      )}
+                    </div>
+                    {systemFontsUnavailable && (
+                      <p className="text-[11px] text-content-muted">Você também pode digitar o nome de uma fonte instalada:</p>
+                    )}
+                    {fontSearch.trim() && !systemFonts.some((font) => font.toLocaleLowerCase() === fontSearch.trim().toLocaleLowerCase()) && (
+                      <SelectionButton
+                        type="button"
+                        onClick={() => onUpdateSettings({ customFontFamily: fontSearch.trim() })}
+                        className="w-full rounded-sm border border-surface-border px-2 py-1.5 text-left text-xs text-content-secondary hover:bg-surface-tertiary"
+                      >
+                        Usar “{fontSearch.trim()}” se estiver instalada
+                      </SelectionButton>
+                    )}
+                    {settings.customFontFamily && (
+                      <p className="text-[11px] text-content-muted">
+                        Fonte atual: <span className="font-medium text-content-primary">{settings.customFontFamily}</span>
+                      </p>
+                    )}
                   </div>
                 </section>
 
@@ -804,8 +917,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <span>Prévia</span>
                   </div>
                   <div
-                    className={cn('p-3 rounded-lg bg-surface-bg border border-surface-border/80 text-content-primary', settings.fontFamily === 'serif' ? 'font-serif' : settings.fontFamily === 'mono' ? 'font-mono' : 'font-sans')}
+                    className="p-3 rounded-lg bg-surface-bg border border-surface-border/80 text-content-primary"
                     style={{
+                      fontFamily: getEditorFontStack(settings),
                       fontSize: `${settings.baseFontSize}px`,
                       lineHeight: settings.lineHeight,
                       fontWeight: Number(currentWeight),

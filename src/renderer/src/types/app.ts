@@ -40,6 +40,7 @@ export interface AppSettings {
   theme: ThemeMode
   accent: AccentPreset
   fontFamily: FontFamilyPreset
+  customFontFamily: string
   editorFontWeight: EditorFontWeightPreset
   baseFontSize: number // 14 to 22
   lineHeight: number // 1.5 to 2.0

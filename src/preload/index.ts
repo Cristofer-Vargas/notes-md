@@ -169,6 +169,7 @@ const api: ElectronAPI = {
     }
   },
   getAppRuntimeInfo: () => ipcRenderer.invoke('app:get-runtime-info'),
+  getSystemFonts: () => ipcRenderer.invoke('system-fonts:list'),
   getAppUpdateState: () => ipcRenderer.invoke('app-update:get-state'),
   checkForAppUpdates: () => ipcRenderer.invoke('app-update:check'),
   downloadAppUpdate: () => ipcRenderer.invoke('app-update:download'),

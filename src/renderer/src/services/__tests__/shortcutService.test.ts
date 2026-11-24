@@ -15,6 +15,7 @@ const mockSettings: AppSettings = {
   theme: 'light',
   accent: 'blue',
   fontFamily: 'sans',
+  customFontFamily: '',
   editorFontWeight: '200',
   baseFontSize: 16,
   lineHeight: 1.7,

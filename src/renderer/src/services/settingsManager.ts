@@ -10,6 +10,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'dark',
   accent: 'lime',
   fontFamily: 'sans',
+  customFontFamily: '',
   editorFontWeight: '300',
   baseFontSize: 16,
   lineHeight: 1.7,
@@ -26,6 +27,18 @@ export const DEFAULT_SETTINGS: AppSettings = {
   ignoredWords: [],
   shortcuts: {},
   discordPresence: DEFAULT_DISCORD_PRESENCE_SETTINGS
+}
+
+const FONT_FAMILY_STACKS: Record<AppSettings['fontFamily'], string> = {
+  sans: 'Geist, "Segoe UI", system-ui, sans-serif',
+  serif: 'Georgia, "Times New Roman", serif',
+  mono: '"IBM Plex Mono", Consolas, "Courier New", monospace'
+}
+
+export function getEditorFontStack(settings: Pick<AppSettings, 'fontFamily' | 'customFontFamily'>): string {
+  const customFont = settings.customFontFamily?.replace(/[\u0000-\u001f\u007f]/g, '').trim()
+  if (!customFont) return FONT_FAMILY_STACKS[settings.fontFamily]
+  return `${JSON.stringify(customFont)}, ${FONT_FAMILY_STACKS[settings.fontFamily]}`
 }
 
 export function loadSettings(): AppSettings {
@@ -56,6 +69,7 @@ export function applyThemeToDocument(settings: AppSettings): void {
   document.documentElement.setAttribute('data-theme', settings.theme)
   document.documentElement.setAttribute('data-accent', settings.accent)
   document.documentElement.classList.toggle('dark', settings.theme === 'dark')
+  document.documentElement.style.setProperty('--editor-font-family', getEditorFontStack(settings))
   document.documentElement.classList.toggle(
     'heading-highlights-disabled',
     settings.headingHighlightEnabled === false

@@ -30,6 +30,7 @@ import {
 } from './runtimeEnv'
 import { AppUpdateService } from './updateService'
 import { PomodoroService } from './pomodoroService'
+import { listSystemFonts } from './fontService'
 import type { PomodoroAction, PomodoroContext, PomodoroDebugAction, PomodoroNote, PomodoroSettings } from '../shared/pomodoro'
 import type {
   DiscordPresenceContext,
@@ -636,6 +637,8 @@ app.whenReady().then(() => {
     openSettingsWindow()
     return true
   })
+
+  ipcMain.handle('system-fonts:list', () => listSystemFonts())
 
   ipcMain.handle('window:close-current', async (event) => {
     const win = BrowserWindow.fromWebContents(event.sender)
