@@ -1,3 +1,10 @@
+## [1.5.1](https://github.com/Cristofer-Vargas/notes-md/compare/v1.5.0...v1.5.1) (2026-11-24)
+
+
+### Correções
+
+* ajustando inserção de nova linha após uma lista ([](https://github.com/Cristofer-Vargas/notes-md/commit/4f41c862c4a1de780ecc6b5270a4d07fc67f4131))
+
 # [1.5.0](https://github.com/Cristofer-Vargas/notes-md/compare/v1.4.2...v1.5.0) (2026-11-24)
 
 
