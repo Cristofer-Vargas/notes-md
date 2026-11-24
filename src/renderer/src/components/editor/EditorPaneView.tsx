@@ -226,6 +226,13 @@ export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
     }
   }
 
+  const handleTabDropCapture = (e: React.DragEvent): void => {
+    const isTabDrop =
+      e.dataTransfer.types.includes('application/notes-md-tab') ||
+      draggedTabInfo !== null
+    if (isTabDrop) handleEditorDrop(e)
+  }
+
   const handleTabBarDrop = (e: React.DragEvent): void => {
     e.preventDefault()
     e.stopPropagation()
@@ -451,6 +458,7 @@ export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
         ref={editorContentRef}
         onDragOver={handleEditorDragOver}
         onDragLeave={handleEditorDragLeave}
+        onDropCapture={handleTabDropCapture}
         onDrop={handleEditorDrop}
         className="flex-1 min-h-0 relative flex flex-col overflow-hidden"
       >

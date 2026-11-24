@@ -381,12 +381,16 @@ export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
       if (dropZone === 'left' || dropZone === 'top') {
         const nextLayout: SplitLayoutMode = dropZone === 'left' ? 'horizontal' : 'vertical'
 
-        if (splitLayout === 'single' && pane1.tabs.length <= 1) {
-          onUpdatePane2(() => ({
-            id: 'pane-2',
-            tabs: [newTab],
-            activeNotePath: notePath
-          }))
+        if (splitLayout === 'single') {
+          // Pane 1 is the new left/top pane; keep the remaining tabs in pane 2.
+          const rightTabs = pane1.tabs.filter((tab) => tab.relativePath !== notePath)
+          const tabsForRightPane = rightTabs.length > 0 ? rightTabs : [newTab]
+          const rightActivePath = tabsForRightPane.some((tab) => tab.relativePath === pane1.activeNotePath)
+            ? pane1.activeNotePath
+            : tabsForRightPane[0].relativePath
+
+          onUpdatePane1(() => ({ id: 'pane-1', tabs: [newTab], activeNotePath: notePath }))
+          onUpdatePane2(() => ({ id: 'pane-2', tabs: tabsForRightPane, activeNotePath: rightActivePath }))
           onUpdateSplitLayout(nextLayout)
           onSetActivePaneId('pane-1')
           setDraggedTabInfo(null)
@@ -395,22 +399,8 @@ export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
 
         if (sourcePaneId === 'pane-2') {
           const remainingInPane2 = pane2.tabs.filter((t) => t.relativePath !== notePath)
-          if (remainingInPane2.length === 0) {
-            // pane-2 would become empty! Auto-close pane-2 and remain in single mode
-            onUpdatePane2(() => ({ id: 'pane-2', tabs: [], activeNotePath: null }))
-            onUpdatePane1((prev) => {
-              const exists = prev.tabs.some((t) => t.relativePath === notePath)
-              return {
-                ...prev,
-                tabs: exists ? prev.tabs : [...prev.tabs, newTab],
-                activeNotePath: notePath
-              }
-            })
-            onUpdateSplitLayout('single')
-            onSetActivePaneId('pane-1')
-            setDraggedTabInfo(null)
-            return
-          } else {
+          // Keep a single-tab source pane alive by duplicating the dropped note into pane 1.
+          if (remainingInPane2.length > 0) {
             onUpdatePane2((prev) => {
               const nextTabs = prev.tabs.filter((t) => t.relativePath !== notePath)
               const nextActive =
