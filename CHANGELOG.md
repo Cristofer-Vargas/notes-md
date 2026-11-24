@@ -1,3 +1,16 @@
+# [1.5.0](https://github.com/Cristofer-Vargas/notes-md/compare/v1.4.2...v1.5.0) (2026-11-24)
+
+
+### Correções
+
+* a memoria da sessão agora guarda a escolha do usuário em colapsar ou não as observações ([](https://github.com/Cristofer-Vargas/notes-md/commit/a85f9e53d7462120cc3cc6c9f4778458279f826e))
+* ajustando subtitulos e observações colapsadas com a opção também de colapsar através de ubotão ([](https://github.com/Cristofer-Vargas/notes-md/commit/6e30ffd520e67dcbb0c33c6cb74552fb0077438e))
+
+
+### Novos Recursos
+
+* adicionando opção de configurar estilo destacado de titulos e subtitulos ([](https://github.com/Cristofer-Vargas/notes-md/commit/cda8a53ed84df111d97e6756a0689127dd463540))
+
 ## [1.4.2](https://github.com/Cristofer-Vargas/notes-md/compare/v1.4.1...v1.4.2) (2026-11-23)
 
 
