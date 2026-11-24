@@ -40,7 +40,7 @@ import { WikiLinkSuggestion } from './WikiLinkSuggestion'
 import { WikiLinkHoverPreview } from './WikiLinkHoverPreview'
 import { CustomCodeBlock, lowlight } from './extensions/CustomCodeBlock'
 import { CustomHighlight } from './extensions/CustomHighlight'
-import { HeadingFold, foldedHeadingContainingPosition, headingFoldKey } from './extensions/HeadingFold'
+import { HeadingFold, foldedHeadingsContainingRange, getFoldedHeadingReferences, headingFoldKey, restoreFoldedHeadings, type FoldedHeadingReference } from './extensions/HeadingFold'
 import { applyInlineFormatting, inlineFormattingKey, wrapMarkdownSelection } from './inlineFormatting'
 import { escapeInlineFormatting } from './escapeInlineFormatting'
 import { blockShortcut, moveEditorBlocks, moveMarkdownLines } from './moveBlocks'
@@ -56,10 +56,11 @@ import {
   resolveWikiLinkTarget,
   countWords
 } from '../../services/noteIndexer'
+import { loadNoteViewState, saveNoteViewState } from '../../services/vaultSession'
 import { getShortcutKey, matchesShortcut } from '../../services/shortcutService'
 import type { VaultNoteData } from '../../../../preload/index.d'
 import type { AppSettings, IndexedNoteMeta } from '../../types/app'
-import { CheckCircle2, Clock, ExternalLink, FolderOpen, Link2, MessageSquarePlus, Pencil, RefreshCw, Sparkles, Trash2, Unlink } from 'lucide-react'
+import { CheckCircle2, Clock, ExternalLink, FolderOpen, Link2, MessageSquarePlus, PanelLeftClose, PanelLeftOpen, Pencil, RefreshCw, Sparkles, Trash2, Unlink } from 'lucide-react'
 import appLogo from '../../assets/logo.png'
 import { Button, IconButton, Input } from '../ui'
 
@@ -81,6 +82,25 @@ interface MarkdownEditorProps {
   onToggleZenMode: () => void
   onOpenHelpModal: () => void
   pomodoroControl?: React.ReactNode
+}
+
+function legacyHeadingFoldStorageKey(vaultPath: string, notePath: string): string {
+  return `notes-md:heading-folds:v1:${JSON.stringify([vaultPath, notePath])}`
+}
+
+function readHeadingFoldReferences(key: string): FoldedHeadingReference[] {
+  try {
+    const stored: unknown = JSON.parse(window.localStorage.getItem(key) ?? '[]')
+    if (!Array.isArray(stored)) return []
+    return stored.filter((reference): reference is FoldedHeadingReference =>
+      Boolean(reference) &&
+      Number.isInteger(reference.level) && reference.level >= 1 && reference.level <= 6 &&
+      typeof reference.text === 'string' &&
+      Number.isInteger(reference.occurrence) && reference.occurrence > 0
+    )
+  } catch {
+    return []
+  }
 }
 
 export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
@@ -110,6 +130,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   const [sideSearch, setSideSearch] = useState('')
   const [sourceMenu, setSourceMenu] = useState<{ x: number; y: number } | null>(null)
   const [compactSideNotes, setCompactSideNotes] = useState(true)
+  const [manuallyCompactSideNotes, setManuallyCompactSideNotes] = useState(false)
   const [selectedSideNote, setSelectedSideNote] = useState<string | null>(null)
   const [editingSideNote, setEditingSideNote] = useState<string | null>(null)
   const [sideNoteToDelete, setSideNoteToDelete] = useState<string | null>(null)
@@ -175,11 +196,15 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   const isMouseOverPreviewRef = useRef(false)
   const activeNotePathRef = useRef<string | null>(null)
   const activeNoteKeyRef = useRef<string | null>(null)
+  const headingFoldStorageRef = useRef<{ key: string; value: string }>({ key: '', value: '' })
   const documentScrollRef = useRef<HTMLDivElement>(null)
   const focusRecoveryFrameRef = useRef<number | null>(null)
-  const noteScrollPositionsRef = useRef(new Map<string, number>())
+  const pendingScrollPositionsRef = useRef(new Map<string, number>())
+  const scrollSaveTimeoutsRef = useRef(new Map<string, number>())
   const scrollNoteKeyRef = useRef<string | null>(null)
   const scrollRestoreFrameRef = useRef<number | null>(null)
+  const [bottomScrollSpace, setBottomScrollSpace] = useState(0)
+  const bottomScrollSpaceRef = useRef(0)
   const [readyNoteKey, setReadyNoteKey] = useState<string | null>(null)
   const hydratedEditorRef = useRef<{ editor: unknown; path: string } | null>(null)
   const isInternalUpdateRef = useRef(false)
@@ -192,6 +217,83 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   rawMarkdownRef.current = rawMarkdown
   const allNotesRef = useRef<VaultNoteData[]>(allNotes)
   allNotesRef.current = allNotes
+
+  const persistHeadingFolds = useCallback((instance: Editor) => {
+    const notePath = activeNotePathRef.current
+    if (!notePath || instance.isDestroyed) return
+    const key = JSON.stringify([vaultPath, notePath])
+    const references = getFoldedHeadingReferences(instance.state.doc, headingFoldKey.getState(instance.state) ?? new Set())
+    const value = JSON.stringify(references)
+    if (headingFoldStorageRef.current.key === key && headingFoldStorageRef.current.value === value) return
+    saveNoteViewState(vaultPath, notePath, { foldedHeadings: references })
+    headingFoldStorageRef.current = { key, value }
+  }, [vaultPath])
+
+  const restoreHeadingFolds = useCallback((instance: Editor, notePath: string, legacyFullPath: string) => {
+    if (instance.isDestroyed) return
+    const key = JSON.stringify([vaultPath, notePath])
+    const savedViewState = loadNoteViewState(vaultPath, notePath)
+    const legacyKey = legacyHeadingFoldStorageKey(vaultPath, legacyFullPath)
+    const references = savedViewState?.foldedHeadings ?? (!savedViewState ? readHeadingFoldReferences(legacyKey) : [])
+    const restored = restoreFoldedHeadings(instance.state.doc, references)
+    const normalizedReferences = getFoldedHeadingReferences(instance.state.doc, restored)
+    const value = JSON.stringify(normalizedReferences)
+    headingFoldStorageRef.current = { key, value }
+    try {
+      if (JSON.stringify(savedViewState?.foldedHeadings ?? []) !== value) {
+        saveNoteViewState(vaultPath, notePath, { foldedHeadings: normalizedReferences })
+      }
+      window.localStorage.removeItem(legacyKey)
+    } catch {
+      // The editor can still open the note if persistent storage is unavailable.
+    }
+    instance.view.dispatch(instance.state.tr.setMeta(headingFoldKey, { restore: Array.from(restored) }))
+  }, [vaultPath])
+
+  const queueScrollPositionSave = useCallback((notePath: string, scrollTop: number) => {
+    pendingScrollPositionsRef.current.set(notePath, scrollTop)
+    const previousTimeout = scrollSaveTimeoutsRef.current.get(notePath)
+    if (previousTimeout !== undefined) window.clearTimeout(previousTimeout)
+    const timeout = window.setTimeout(() => {
+      scrollSaveTimeoutsRef.current.delete(notePath)
+      const latestPosition = pendingScrollPositionsRef.current.get(notePath)
+      if (latestPosition === undefined) return
+      pendingScrollPositionsRef.current.delete(notePath)
+      saveNoteViewState(vaultPath, notePath, { scrollTop: latestPosition })
+    }, 300)
+    scrollSaveTimeoutsRef.current.set(notePath, timeout)
+  }, [vaultPath])
+
+  const flushQueuedScrollPositions = useCallback(() => {
+    for (const timeout of scrollSaveTimeoutsRef.current.values()) window.clearTimeout(timeout)
+    scrollSaveTimeoutsRef.current.clear()
+    for (const [notePath, scrollTop] of pendingScrollPositionsRef.current) {
+      saveNoteViewState(vaultPath, notePath, { scrollTop })
+    }
+    pendingScrollPositionsRef.current.clear()
+  }, [vaultPath])
+
+  const flushActiveScrollPosition = useCallback(() => {
+    const notePath = activeNote?.relativePath
+    const noteKey = activeNote?.fullPath
+    const container = documentScrollRef.current
+    if (notePath && noteKey && scrollNoteKeyRef.current === noteKey && container) {
+      const timeout = scrollSaveTimeoutsRef.current.get(notePath)
+      if (timeout !== undefined) window.clearTimeout(timeout)
+      scrollSaveTimeoutsRef.current.delete(notePath)
+      pendingScrollPositionsRef.current.delete(notePath)
+      saveNoteViewState(vaultPath, notePath, { scrollTop: container.scrollTop })
+    }
+    flushQueuedScrollPositions()
+  }, [activeNote?.fullPath, activeNote?.relativePath, flushQueuedScrollPositions, vaultPath])
+
+  useEffect(() => {
+    window.addEventListener('beforeunload', flushActiveScrollPosition)
+    return () => {
+      window.removeEventListener('beforeunload', flushActiveScrollPosition)
+      flushActiveScrollPosition()
+    }
+  }, [flushActiveScrollPosition])
 
   const flushPendingSave = useCallback((): Promise<void> => {
     const hadPendingTimeout = Boolean(saveTimeoutRef.current)
@@ -364,8 +466,10 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     extensions: editorExtensions,
     content: '',
     onFocus: () => setSideEditor(null),
-    onTransaction: ({ transaction }) => {
-      if (!transaction.docChanged || isInternalUpdateRef.current) return
+    onTransaction: ({ transaction, editor: instance }) => {
+      if (isInternalUpdateRef.current) return
+      if (transaction.docChanged || transaction.getMeta(headingFoldKey)) persistHeadingFolds(instance)
+      if (!transaction.docChanged) return
       for (const note of sideNotesRef.current.notesRef.current) {
         if (note.sourcePath !== activeNotePathRef.current || note.detached) continue
         const before = resolveEditorAnchor(transaction.before, note.anchor)
@@ -568,10 +672,12 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     }
     const frame = window.requestAnimationFrame(() => {
       if (!editor.isDestroyed) {
-        let hiddenHeading = foldedHeadingContainingPosition(editor.state.doc, headingFoldKey.getState(editor.state) ?? new Set(), range.from)
-        while (hiddenHeading !== null) {
-          editor.view.dispatch(editor.state.tr.setMeta(headingFoldKey, { toggle: hiddenHeading }))
-          hiddenHeading = foldedHeadingContainingPosition(editor.state.doc, headingFoldKey.getState(editor.state) ?? new Set(), range.from)
+        const folded = headingFoldKey.getState(editor.state) ?? new Set()
+        const headingsToExpand = foldedHeadingsContainingRange(editor.state.doc, folded, range.from, range.to)
+        for (const headingPosition of headingsToExpand) {
+          if (headingFoldKey.getState(editor.state)?.has(headingPosition)) {
+            editor.view.dispatch(editor.state.tr.setMeta(headingFoldKey, { toggle: headingPosition }))
+          }
         }
         editor.chain().focus(undefined, { scrollIntoView: false }).setTextSelection(range.from).run()
         const container = documentScrollRef.current
@@ -757,7 +863,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         isInternalUpdateRef.current = true
         const prepared = preprocessMarkdownForEditor(activeNote.content)
         editor.commands.setContent(prepared, false)
-        if (isNewPath) editor.view.dispatch(editor.state.tr.setMeta(headingFoldKey, { reset: true }))
+        restoreHeadingFolds(editor, activeNote.relativePath, activeNote.fullPath)
         isInternalUpdateRef.current = false
         hydratedEditorRef.current = { editor, path: activeNote.fullPath }
       }
@@ -788,11 +894,12 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         isInternalUpdateRef.current = true
         const prepared = preprocessMarkdownForEditor(activeNote.content)
         editor.commands.setContent(prepared, false)
+        restoreHeadingFolds(editor, activeNote.relativePath, activeNote.fullPath)
         isInternalUpdateRef.current = false
         hydratedEditorRef.current = { editor, path: activeNote.fullPath }
       }
     }
-  }, [activeNote, editor, flushPendingSave, isRenaming])
+  }, [activeNote, editor, flushPendingSave, isRenaming, restoreHeadingFolds])
 
   useEffect(() => {
     if (!activeNote || (!isSourceMode && (!editor || editor.isDestroyed))) return
@@ -810,7 +917,8 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       window.clearTimeout(timeout)
       scrollRestoreFrameRef.current = window.requestAnimationFrame(() => {
         if (cancelled) return
-        container.scrollTop = noteScrollPositionsRef.current.get(noteKey) ?? 0
+        const savedScrollTop = loadNoteViewState(vaultPath, activeNote.relativePath)?.scrollTop ?? 0
+        container.scrollTop = savedScrollTop
         scrollNoteKeyRef.current = noteKey
         scrollRestoreFrameRef.current = null
         setReadyNoteKey(noteKey)
@@ -838,7 +946,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         scrollRestoreFrameRef.current = null
       }
     }
-  }, [activeNote?.fullPath, editor, isSourceMode])
+  }, [activeNote?.fullPath, activeNote?.relativePath, editor, isSourceMode, vaultPath])
 
   useEffect(() => {
     const container = documentScrollRef.current
@@ -856,6 +964,110 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     update()
     return () => { observer.disconnect(); window.removeEventListener('resize', update) }
   }, [activeNote?.fullPath, settings.pageWidth, settings.canvasStyle])
+
+  useEffect(() => {
+    const container = documentScrollRef.current
+    if (!container || !activeNote) return
+
+    let frame = 0
+    const measure = (): void => {
+      frame = 0
+      const viewportHeight = container.clientHeight
+      if (!viewportHeight) return
+
+      const containerRect = container.getBoundingClientRect()
+      const editorContent = isSourceMode ? sourceRef.current : editor?.view.dom
+      let contentBottom = titleInputRef.current?.getBoundingClientRect().bottom ?? containerRect.top
+      let sourceTextHeight = 0
+
+      if (isSourceMode && sourceRef.current) {
+        const textarea = sourceRef.current
+        const computed = window.getComputedStyle(textarea)
+        const mirror = document.createElement('div')
+        Object.assign(mirror.style, {
+          position: 'absolute',
+          visibility: 'hidden',
+          pointerEvents: 'none',
+          left: '-100000px',
+          top: '0',
+          boxSizing: computed.boxSizing,
+          width: `${textarea.clientWidth}px`,
+          padding: computed.padding,
+          border: computed.border,
+          font: computed.font,
+          lineHeight: computed.lineHeight,
+          letterSpacing: computed.letterSpacing,
+          wordSpacing: computed.wordSpacing,
+          whiteSpace: 'pre-wrap',
+          overflowWrap: 'break-word',
+          wordBreak: computed.wordBreak,
+          tabSize: computed.tabSize
+        })
+        mirror.textContent = `${textarea.value}\u200b`
+        document.body.appendChild(mirror)
+        sourceTextHeight = mirror.getBoundingClientRect().height
+        contentBottom = Math.max(contentBottom, textarea.getBoundingClientRect().top + sourceTextHeight)
+        mirror.remove()
+      } else if (editorContent) {
+        const visibleBlocks = Array.from(editorContent.children).filter((child) => {
+          const element = child as HTMLElement
+          return getComputedStyle(element).display !== 'none' && element.getBoundingClientRect().height > 0
+        })
+        const lastBlock = visibleBlocks[visibleBlocks.length - 1] as HTMLElement | undefined
+        if (lastBlock) contentBottom = Math.max(contentBottom, lastBlock.getBoundingClientRect().bottom)
+      }
+
+      if (editorContent) {
+        const page = editorContent.closest<HTMLElement>('.relative.w-full.min-w-0')
+        const pagePaddingBottom = page ? parseFloat(getComputedStyle(page).paddingBottom) || 0 : 0
+        const containerPaddingBottom = parseFloat(getComputedStyle(container).paddingBottom) || 0
+        const editorTop = editorContent.getBoundingClientRect().top - containerRect.top + container.scrollTop
+        const availableEditorHeight = Math.max(0, viewportHeight - editorTop - pagePaddingBottom - containerPaddingBottom)
+        const minimumEditorHeight = Math.min(620, availableEditorHeight)
+        editorContent.style.minHeight = `${minimumEditorHeight}px`
+        if (isSourceMode && sourceRef.current) {
+          sourceRef.current.style.height = `${Math.max(minimumEditorHeight, sourceTextHeight)}px`
+        }
+      }
+
+      const contentHeight = contentBottom - containerRect.top + container.scrollTop
+      const minimumHeightBeforeExtraScroll = viewportHeight * (2 / 3)
+      const targetBottomPosition = viewportHeight * 0.45
+      const desiredMaxScroll = contentHeight > minimumHeightBeforeExtraScroll
+        ? contentHeight - targetBottomPosition
+        : 0
+      const currentExtraSpace = bottomScrollSpaceRef.current
+      const baseMaxScroll = Math.max(0, container.scrollHeight - viewportHeight - currentExtraSpace)
+      const nextExtraSpace = Math.max(0, desiredMaxScroll - baseMaxScroll)
+
+      if (Math.abs(nextExtraSpace - currentExtraSpace) > 1) {
+        bottomScrollSpaceRef.current = nextExtraSpace
+        setBottomScrollSpace(nextExtraSpace)
+      }
+    }
+    const scheduleMeasure = (): void => {
+      if (!frame) frame = window.requestAnimationFrame(measure)
+    }
+
+    const resizeObserver = new ResizeObserver(scheduleMeasure)
+    resizeObserver.observe(container)
+    if (editor?.view.dom) resizeObserver.observe(editor.view.dom)
+    if (sourceRef.current) resizeObserver.observe(sourceRef.current)
+
+    const mutationObserver = new MutationObserver(scheduleMeasure)
+    mutationObserver.observe(container, { childList: true, characterData: true, subtree: true })
+    editor?.on('transaction', scheduleMeasure)
+    window.addEventListener('resize', scheduleMeasure)
+    scheduleMeasure()
+
+    return () => {
+      resizeObserver.disconnect()
+      mutationObserver.disconnect()
+      editor?.off('transaction', scheduleMeasure)
+      window.removeEventListener('resize', scheduleMeasure)
+      if (frame) window.cancelAnimationFrame(frame)
+    }
+  }, [activeNote?.fullPath, editor, isSourceMode, rawMarkdown])
 
   useEffect(() => () => {
     if (scrollRestoreFrameRef.current !== null) {
@@ -1225,7 +1437,21 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     ? vaultIndex[resolvedHoverNote.relativePath]
     : undefined
   const currentSideNotes = sideNotes.notes.filter((note) => note.sourcePath === activeNote.relativePath)
-  const hasAttachedSideNotes = Boolean(editor && currentSideNotes.some((note) => !note.detached && resolveEditorAnchor(editor.state.doc, note.anchor).status === 'attached'))
+  const visibleCurrentSideNotes = editor
+    ? currentSideNotes.filter((note) => {
+      if (note.detached) return false
+      const range = resolveEditorAnchor(editor.state.doc, note.anchor)
+      if (range.status !== 'attached') return false
+      return isSourceMode || foldedHeadingsContainingRange(
+        editor.state.doc,
+        headingFoldKey.getState(editor.state) ?? new Set(),
+        range.from,
+        range.to
+      ).length === 0
+    })
+    : []
+  const hasAttachedSideNotes = visibleCurrentSideNotes.length > 0
+  const sideNotesAreCompact = compactSideNotes || manuallyCompactSideNotes
   const visibleSideNotes = sideNotes.notes.filter((note) => (sideFilter === 'vault' || note.sourcePath === activeNote.relativePath) && `${note.body} ${note.anchor.quote} ${note.sourcePath}`.toLocaleLowerCase().includes(sideSearch.toLocaleLowerCase()))
 
   const maxWidthClass =
@@ -1257,6 +1483,16 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         onChangeBaseFontSize={(newSize) => onUpdateSettings({ baseFontSize: newSize })}
       />
       <div className="flex items-center justify-end gap-1 border-b border-surface-border px-2 py-1">
+        {hasAttachedSideNotes && <IconButton
+          size="sm"
+          isActive={sideNotesAreCompact}
+          disabled={compactSideNotes}
+          tooltip={compactSideNotes
+            ? 'Observações recolhidas por falta de espaço'
+            : manuallyCompactSideNotes ? 'Expandir observações' : 'Recolher observações para ícones'}
+          icon={sideNotesAreCompact ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          onClick={() => setManuallyCompactSideNotes((collapsed) => !collapsed)}
+        />}
         <Button size="xs" variant="ghost" leftIcon={<MessageSquarePlus className="h-4 w-4" />} onMouseDown={(event) => event.preventDefault()} onClick={() => void createSideAnnotation()}>Adicionar observação</Button>
       </div>
       {sideNotes.error && <div role="alert" className="border-b border-surface-border px-3 py-2 text-xs text-content-primary">{sideNotes.error}</div>}
@@ -1273,7 +1509,8 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         ref={documentScrollRef}
         onScroll={(event) => {
           if (scrollNoteKeyRef.current === activeNote.fullPath) {
-            noteScrollPositionsRef.current.set(activeNote.fullPath, event.currentTarget.scrollTop)
+            const scrollTop = event.currentTarget.scrollTop
+            queueScrollPositionSave(activeNote.relativePath, scrollTop)
           }
         }}
         aria-busy={isNoteLoading}
@@ -1282,7 +1519,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         }`}
       >
         <div className="flex min-h-full justify-center">
-        {hasAttachedSideNotes && !compactSideNotes && <div aria-hidden="true" className="w-56 shrink-0" />}
+        {hasAttachedSideNotes && !sideNotesAreCompact && <div aria-hidden="true" className="w-56 shrink-0" />}
         <div
           style={
             {
@@ -1299,7 +1536,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
               : 'bg-surface-bg px-8 py-8 md:px-14 md:py-10 min-h-full'
           }`}
         >
-          <SideNoteLane notes={currentSideNotes} editor={editor} extensions={editorExtensions} sourceMode={isSourceMode} sourceRef={sourceRef} compact={compactSideNotes} onFocusEditor={setSideEditor} onDisposeEditor={disposeSideEditor} onSave={(id, body) => sideNotes.update(id, { body })} />
+          <SideNoteLane notes={visibleCurrentSideNotes} editor={editor} extensions={editorExtensions} sourceMode={isSourceMode} sourceRef={sourceRef} compact={sideNotesAreCompact} onFocusEditor={setSideEditor} onDisposeEditor={disposeSideEditor} onSave={(id, body) => sideNotes.update(id, { body })} />
           {/* The file name is the note title; it is not part of the Markdown body. */}
           <div className="flex items-center gap-4 pb-3 mb-6 border-b border-surface-border/60">
             <div className="flex items-center gap-2 text-xs text-content-muted min-w-0 flex-1">
@@ -1535,6 +1772,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
           )}
         </div>
         </div>
+        <div aria-hidden="true" className="shrink-0" style={{ height: bottomScrollSpace }} />
       </div>
       </div>
       {observationsPanelTarget && createPortal(<div ref={sideNotesPanelRef} tabIndex={-1} aria-label="Consulta de observações" className="flex flex-1 min-h-0 flex-col">

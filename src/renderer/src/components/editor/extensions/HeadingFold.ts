@@ -5,25 +5,87 @@ import { Decoration, DecorationSet } from '@tiptap/pm/view'
 
 export const headingFoldKey = new PluginKey<Set<number>>('headingFold')
 
+export interface FoldedHeadingReference {
+  level: number
+  text: string
+  occurrence: number
+}
+
+function listHeadings(doc: ProseMirrorNode): Array<FoldedHeadingReference & { position: number }> {
+  const occurrences = new Map<string, number>()
+  const headings: Array<FoldedHeadingReference & { position: number }> = []
+  doc.forEach((node, position) => {
+    if (node.type.name !== 'heading') return
+    const level = Number(node.attrs.level)
+    const text = node.textContent.trim().replace(/\s+/g, ' ')
+    const key = JSON.stringify([level, text])
+    const occurrence = (occurrences.get(key) ?? 0) + 1
+    occurrences.set(key, occurrence)
+    headings.push({ position, level, text, occurrence })
+  })
+  return headings
+}
+
+function headingReferenceKey(reference: FoldedHeadingReference): string {
+  return JSON.stringify([reference.level, reference.text, reference.occurrence])
+}
+
+/** Create stable heading references that can be stored between editor sessions. */
+export function getFoldedHeadingReferences(doc: ProseMirrorNode, folded: Set<number>): FoldedHeadingReference[] {
+  return listHeadings(doc)
+    .filter((heading) => folded.has(heading.position))
+    .map(({ level, text, occurrence }) => ({ level, text, occurrence }))
+}
+
+/** Resolve saved heading references against the current document structure. */
+export function restoreFoldedHeadings(doc: ProseMirrorNode, references: readonly FoldedHeadingReference[]): Set<number> {
+  const validReferences = new Set(references.filter((reference) =>
+    Number.isInteger(reference.level) && reference.level >= 1 && reference.level <= 6 &&
+    typeof reference.text === 'string' && Number.isInteger(reference.occurrence) && reference.occurrence > 0
+  ).map(headingReferenceKey))
+  return new Set(listHeadings(doc)
+    .filter((heading) => validReferences.has(headingReferenceKey(heading)))
+    .map((heading) => heading.position))
+}
+
+function getHeadingSection(doc: ProseMirrorNode, position: number): { start: number; end: number; level: number } | null {
+  const blocks: Array<{ position: number; node: ProseMirrorNode }> = []
+  doc.forEach((node, blockPosition) => blocks.push({ node, position: blockPosition }))
+  const headingIndex = blocks.findIndex((block) => block.position === position && block.node.type.name === 'heading')
+  if (headingIndex < 0) return null
+
+  const heading = blocks[headingIndex]
+  const level = Number(heading.node.attrs.level)
+  const start = position + heading.node.nodeSize
+  let end = start
+  for (let index = headingIndex + 1; index < blocks.length; index++) {
+    const block = blocks[index]
+    if (block.node.type.name === 'heading' && Number(block.node.attrs.level) <= level) break
+    end = block.position + block.node.nodeSize
+  }
+  return { start, end, level }
+}
+
 /** Find a folded heading that currently hides the given document position. */
 export function foldedHeadingContainingPosition(doc: ProseMirrorNode, folded: Set<number>, target: number): number | null {
-  const blocks: Array<{ position: number; node: ProseMirrorNode }> = []
-  doc.forEach((node, position) => blocks.push({ node, position }))
-  for (let i = 0; i < blocks.length; i++) {
-    const heading = blocks[i]
-    if (heading.node.type.name !== 'heading' || !folded.has(heading.position) || i + 1 >= blocks.length) continue
-    const next = blocks[i + 1].node
-    const branch = next.type.name === 'heading' && next.attrs.level > heading.node.attrs.level
-    const start = heading.position + heading.node.nodeSize
-    let end = start
-    for (let j = i + 1; j < blocks.length; j++) {
-      const block = blocks[j]
-      if (block.node.type.name === 'heading' && (!branch || block.node.attrs.level <= heading.node.attrs.level)) break
-      end = block.position + block.node.nodeSize
-    }
-    if (target >= start && target < end) return heading.position
+  for (const headingPosition of folded) {
+    const section = getHeadingSection(doc, headingPosition)
+    if (section && section.end > section.start && target >= section.start && target < section.end) return headingPosition
   }
   return null
+}
+
+/** Find all folded sections that overlap an anchored range, from outer to inner. */
+export function foldedHeadingsContainingRange(doc: ProseMirrorNode, folded: Set<number>, from: number, to: number): number[] {
+  return Array.from(folded)
+    .filter((headingPosition) => {
+      const section = getHeadingSection(doc, headingPosition)
+      if (!section || section.end <= section.start) return false
+      return from === to
+        ? from >= section.start && from < section.end
+        : from < section.end && to > section.start
+    })
+    .sort((left, right) => left - right)
 }
 
 export function createHeadingFoldPlugin(): Plugin<Set<number>> {
@@ -32,8 +94,11 @@ export function createHeadingFoldPlugin(): Plugin<Set<number>> {
       state: {
         init: () => new Set<number>(),
         apply(transaction, previous) {
-          const action = transaction.getMeta(headingFoldKey) as { reset?: boolean; toggle?: number } | undefined
+          const action = transaction.getMeta(headingFoldKey) as { reset?: boolean; toggle?: number; restore?: number[] } | undefined
           if (action?.reset) return new Set<number>()
+          if (action?.restore) {
+            return new Set(action.restore.filter((position) => transaction.doc.nodeAt(position)?.type.name === 'heading'))
+          }
           const next = new Set<number>()
           for (const position of previous) {
             const mapped = transaction.mapping.mapResult(position, 1)
@@ -50,24 +115,20 @@ export function createHeadingFoldPlugin(): Plugin<Set<number>> {
         decorations(state) {
           const folded = headingFoldKey.getState(state) ?? new Set<number>()
           const decorations: Decoration[] = []
-          let hiding = false
-          let hiddenBranchLevel: number | null = null
-          state.doc.forEach((node, position, index) => {
-            if (hiddenBranchLevel !== null) {
-              if (node.type.name !== 'heading' || node.attrs.level > hiddenBranchLevel) {
+          let hiddenSectionLevel: number | null = null
+          state.doc.forEach((node, position) => {
+            if (hiddenSectionLevel !== null) {
+              if (node.type.name !== 'heading' || Number(node.attrs.level) > hiddenSectionLevel) {
                 decorations.push(Decoration.node(position, position + node.nodeSize, { class: 'heading-fold-hidden' }))
                 return
               }
-              hiddenBranchLevel = null
-              hiding = false
+              hiddenSectionLevel = null
             }
             if (node.type.name === 'heading') {
-              hiding = folded.has(position)
-              const isFolded = hiding
-              const nextNode = index + 1 < state.doc.childCount ? state.doc.child(index + 1) : null
-              const hasSubheadings = nextNode?.type.name === 'heading' && nextNode.attrs.level > node.attrs.level
-              if (!nextNode || (nextNode.type.name === 'heading' && !hasSubheadings)) return
-              if (isFolded && hasSubheadings) hiddenBranchLevel = node.attrs.level
+              const section = getHeadingSection(state.doc, position)
+              if (!section || section.end <= section.start) return
+              const isFolded = folded.has(position)
+              if (isFolded) hiddenSectionLevel = section.level
               decorations.push(Decoration.widget(position + 1, (view, getPos) => {
                 const control = document.createElement('span')
                 control.className = 'heading-fold-control'
@@ -81,21 +142,15 @@ export function createHeadingFoldPlugin(): Plugin<Set<number>> {
                   const widgetPos = getPos()
                   if (widgetPos === undefined) return
                   const headingPos = widgetPos - 1
+                  const section = getHeadingSection(view.state.doc, headingPos)
                   const transaction = view.state.tr.setMeta(headingFoldKey, { toggle: headingPos })
-                  if (!headingFoldKey.getState(view.state)?.has(headingPos)) {
-                    const heading = view.state.doc.nodeAt(headingPos)
-                    let end = headingPos + (heading?.nodeSize ?? 0)
-                    let branch: boolean | null = null
-                    let stopped = false
-                    view.state.doc.forEach((child, pos) => {
-                      if (pos < end || stopped) return
-                      if (branch === null) branch = child.type.name === 'heading' && child.attrs.level > heading?.attrs.level
-                      if (child.type.name === 'heading' && (!branch || child.attrs.level <= heading?.attrs.level)) { stopped = true; return }
-                      end = pos + child.nodeSize
-                    })
-                    if (view.state.selection.from < end && view.state.selection.to > headingPos) {
-                      transaction.setSelection(TextSelection.near(transaction.doc.resolve(headingPos + 1)))
-                    }
+                  const isExpanding = headingFoldKey.getState(view.state)?.has(headingPos)
+                  const selection = view.state.selection
+                  const selectionTouchesSection = section && (selection.empty
+                    ? selection.from >= section.start && selection.from < section.end
+                    : selection.to > section.start && selection.from < section.end)
+                  if (!isExpanding && selectionTouchesSection) {
+                    transaction.setSelection(TextSelection.near(transaction.doc.resolve(headingPos + 1)))
                   }
                   view.dispatch(transaction)
                 }
@@ -105,9 +160,7 @@ export function createHeadingFoldPlugin(): Plugin<Set<number>> {
                   if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); toggle() }
                 })
                 return control
-              }, { key: `heading-fold-${position}-${hiding}`, side: -1 }))
-            } else if (hiding) {
-              decorations.push(Decoration.node(position, position + node.nodeSize, { class: 'heading-fold-hidden' }))
+              }, { key: `heading-fold-${position}-${isFolded}`, side: -1 }))
             }
           })
           return DecorationSet.create(state.doc, decorations)

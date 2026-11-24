@@ -40,39 +40,10 @@ import {
   saveSettings,
   applyThemeToDocument
 } from './services/settingsManager'
+import { loadVaultSession, pruneLegacyHeadingFoldStates, saveVaultSession } from './services/vaultSession'
 
 const LAST_VAULT_STORAGE_KEY = 'notes-md:last-vault'
-const VAULT_SESSIONS_STORAGE_KEY = 'notes-md:vault-sessions:v1'
 const RECENT_VAULTS_KEY = 'notes-md:recent-vaults:v1'
-
-interface PersistedVaultSession {
-  openTabPaths: string[]
-  activeNotePath: string | null
-  expandedFolders: Record<string, boolean>
-}
-
-function loadVaultSession(targetVaultPath: string): PersistedVaultSession | null {
-  try {
-    const raw = localStorage.getItem(VAULT_SESSIONS_STORAGE_KEY)
-    if (!raw) return null
-    const allSessions = JSON.parse(raw) as Record<string, PersistedVaultSession>
-    return allSessions[targetVaultPath] || null
-  } catch {
-    return null
-  }
-}
-
-function saveVaultSession(targetVaultPath: string, session: PersistedVaultSession): void {
-  if (!targetVaultPath) return
-  try {
-    const raw = localStorage.getItem(VAULT_SESSIONS_STORAGE_KEY)
-    const allSessions: Record<string, PersistedVaultSession> = raw ? JSON.parse(raw) : {}
-    allSessions[targetVaultPath] = session
-    localStorage.setItem(VAULT_SESSIONS_STORAGE_KEY, JSON.stringify(allSessions))
-  } catch {
-    // ignore storage errors
-  }
-}
 
 export function App(): React.ReactElement {
   const [settings, setSettings] = useState<AppSettings>(() => loadSettings())
@@ -407,14 +378,20 @@ export function App(): React.ReactElement {
     return () => unsub()
   }, [])
 
-  // Persist per-Vault session (open tabs, last active note, and expanded/collapsed folders)
+  // Persist per-Vault session and prune view state for notes whose tabs were closed.
   useEffect(() => {
     if (!vaultPath) return
+    const openTabPaths = openTabs.map((tab) => tab.relativePath)
     saveVaultSession(vaultPath, {
-      openTabPaths: openTabs.map((t) => t.relativePath),
+      openTabPaths,
       activeNotePath,
       expandedFolders
     })
+    const openNoteFullPaths = openTabs.flatMap((tab) => {
+      const note = notesRef.current.find((item) => item.relativePath === tab.relativePath)
+      return note ? [note.fullPath] : []
+    })
+    pruneLegacyHeadingFoldStates(vaultPath, openNoteFullPaths)
   }, [vaultPath, openTabs, activeNotePath, expandedFolders])
 
   const updateSettings = useCallback((partial: Partial<AppSettings>) => {
