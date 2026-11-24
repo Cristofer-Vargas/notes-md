@@ -21,6 +21,7 @@ import Subscript from '@tiptap/extension-subscript'
 import Superscript from '@tiptap/extension-superscript'
 
 import { FontSizeExtension } from './extensions/FontSizeExtension'
+import { ListExit } from './extensions/ListExit'
 import { WikiLinkExtension } from './extensions/WikiLinkExtension'
 import { EditorToolbar } from './EditorToolbar'
 import { EditorContextMenu, type EditorContextMenuPosition } from './EditorContextMenu'
@@ -421,6 +422,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
           }
         }
       }),
+      ListExit,
       CustomCodeBlock.configure({
         lowlight,
         defaultLanguage: 'plaintext'
