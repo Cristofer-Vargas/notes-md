@@ -7,6 +7,15 @@
   padding: 0;
   font-size: 0.8rem;
 }
+.side-note-editor .ProseMirror .heading-decoration-group {
+  gap: 0;
+  width: 0.8rem;
+  margin-left: -0.9rem;
+  margin-right: 0.1rem;
+}
+.side-note-editor .ProseMirror .heading-level-marker {
+  display: none;
+}
 .side-note-editor .ProseMirror p.is-editor-empty:first-child::before {
   content: 'Escreva uma observação...';
 }
@@ -23,7 +32,7 @@
   overflow-wrap: anywhere;
   user-select: none;
 }
-.side-note-preview .ProseMirror .heading-fold-control {
+.preview-wysiwyg .ProseMirror .heading-decoration-group {
   display: none;
 }
 .side-note-preview .ProseMirror p:first-child,
@@ -318,15 +327,88 @@ button svg { stroke-width: 1.7; }
   display: none !important;
 }
 
-.ProseMirror .heading-fold-control {
+.ProseMirror .heading-decoration-group {
   display: inline-flex;
   align-items: center;
+  gap: 0.15rem;
+  width: 2.1rem;
+  height: 1.2em;
+  margin-left: -2.2rem;
+  margin-right: 0.1rem;
+  vertical-align: middle;
+  user-select: none;
+}
+
+.ProseMirror .heading-level-marker {
+  display: inline-flex;
+  flex: 0 0 1.25rem;
+  align-items: center;
   justify-content: center;
-  width: 1.25em;
-  height: 1.25em;
-  margin-left: -1.35em;
-  margin-right: 0.1em;
-  border-radius: 0.25rem;
+  height: 1rem;
+  pointer-events: none;
+}
+
+.ProseMirror .heading-level-marker::before {
+  display: block;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 999px;
+  background: var(--accent-color);
+  content: '';
+}
+
+.ProseMirror .heading-decoration-group[data-level='1'] .heading-level-marker::before {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 0.12rem;
+  background: var(--accent-color);
+  box-shadow: 0 0 0 0.18rem var(--accent-soft);
+  transform: rotate(45deg);
+}
+
+.ProseMirror .heading-decoration-group[data-level='2'] .heading-level-marker::before {
+  width: 0.56rem;
+  height: 0.56rem;
+  border: 1.5px solid var(--accent-color);
+  background: transparent;
+}
+
+.ProseMirror .heading-decoration-group[data-level='3'] .heading-level-marker::before {
+  width: 0.62rem;
+  height: 0.2rem;
+  border-radius: 999px;
+}
+
+.ProseMirror .heading-decoration-group[data-level='4'] .heading-level-marker::before {
+  width: 0.4rem;
+  height: 0.4rem;
+  opacity: 0.8;
+}
+
+.ProseMirror .heading-decoration-group[data-level='5'] .heading-level-marker::before {
+  width: 0.34rem;
+  height: 0.34rem;
+  border: 1px solid var(--accent-color);
+  background: transparent;
+  opacity: 0.75;
+}
+
+.ProseMirror .heading-decoration-group[data-level='6'] .heading-level-marker::before {
+  width: 0.24rem;
+  height: 0.24rem;
+  background: var(--text-muted);
+  opacity: 0.65;
+}
+
+.ProseMirror .heading-fold-control {
+  display: inline-flex;
+  flex: 0 0 0.7rem;
+  align-items: center;
+  justify-content: center;
+  width: 0.7rem;
+  height: 1rem;
+  margin: 0;
+  border-radius: 0.2rem;
   color: var(--text-muted);
   font-size: 0.65em;
   vertical-align: middle;
@@ -376,6 +458,9 @@ button svg { stroke-width: 1.7; }
   line-height: 1.25;
   margin-top: 0.75em;
   margin-bottom: 0.45em;
+  padding-bottom: 0.2em;
+  border-bottom: 1px solid;
+  border-image: linear-gradient(90deg, var(--accent-color), var(--border-color) 38%, transparent 82%) 1;
   color: var(--text-primary);
 }
 

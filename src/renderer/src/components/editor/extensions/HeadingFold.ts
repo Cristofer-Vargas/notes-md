@@ -126,10 +126,22 @@ export function createHeadingFoldPlugin(): Plugin<Set<number>> {
             }
             if (node.type.name === 'heading') {
               const section = getHeadingSection(state.doc, position)
-              if (!section || section.end <= section.start) return
-              const isFolded = folded.has(position)
-              if (isFolded) hiddenSectionLevel = section.level
+              const canFold = Boolean(section && section.end > section.start)
+              const isFolded = canFold && folded.has(position)
+              if (isFolded && section) hiddenSectionLevel = section.level
               decorations.push(Decoration.widget(position + 1, (view, getPos) => {
+                const group = document.createElement('span')
+                group.className = 'heading-decoration-group'
+                group.dataset.level = String(node.attrs.level)
+                group.setAttribute('contenteditable', 'false')
+
+                const marker = document.createElement('span')
+                marker.className = 'heading-level-marker'
+                marker.setAttribute('aria-hidden', 'true')
+                group.appendChild(marker)
+
+                if (!canFold) return group
+
                 const control = document.createElement('span')
                 control.className = 'heading-fold-control'
                 control.setAttribute('role', 'button')
@@ -159,8 +171,9 @@ export function createHeadingFoldPlugin(): Plugin<Set<number>> {
                 control.addEventListener('keydown', (event) => {
                   if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); toggle() }
                 })
-                return control
-              }, { key: `heading-fold-${position}-${isFolded}`, side: -1 }))
+                group.appendChild(control)
+                return group
+              }, { key: `heading-decoration-${position}-${node.attrs.level}-${isFolded}`, side: -1 }))
             }
           })
           return DecorationSet.create(state.doc, decorations)
