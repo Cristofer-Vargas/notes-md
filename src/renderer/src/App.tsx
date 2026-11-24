@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
+import React, { useEffect, useLayoutEffect, useMemo, useState, useCallback, useRef } from 'react'
 import {
   Download,
   PanelLeft,
@@ -122,8 +122,31 @@ export function App(): React.ReactElement {
     tabs: [],
     activeNotePath: null
   })
+  const tabNavigationHistoryRef = useRef({
+    'pane-1': { currentPath: null as string | null, lastPath: null as string | null },
+    'pane-2': { currentPath: null as string | null, lastPath: null as string | null }
+  })
   const [activePaneId, setActivePaneId] = useState<'pane-1' | 'pane-2'>('pane-1')
   const [pendingTitleFocus, setPendingTitleFocus] = useState<{ path: string; paneId: 'pane-1' | 'pane-2' } | null>(null)
+
+  useLayoutEffect(() => {
+    const syncPaneHistory = (paneId: 'pane-1' | 'pane-2', pane: EditorPaneState): void => {
+      const history = tabNavigationHistoryRef.current[paneId]
+      const nextPath = pane.tabs.some((tab) => tab.relativePath === pane.activeNotePath)
+        ? pane.activeNotePath
+        : null
+      if (history.currentPath && nextPath && history.currentPath !== nextPath) {
+        history.lastPath = history.currentPath
+      }
+      history.currentPath = nextPath
+      if (history.lastPath && !pane.tabs.some((tab) => tab.relativePath === history.lastPath)) {
+        history.lastPath = null
+      }
+    }
+
+    syncPaneHistory('pane-1', pane1)
+    syncPaneHistory('pane-2', pane2)
+  }, [pane1, pane2])
 
   const activePane = activePaneId === 'pane-1' ? pane1 : pane2
   const activeNotePath = activePane.activeNotePath || pane1.activeNotePath || null
@@ -1172,6 +1195,10 @@ export function App(): React.ReactElement {
         const setTargetPane = targetPaneId === 'pane-1' ? setPane1 : setPane2
         setTargetPane((prev) => {
           if (prev.tabs.length <= 1) return prev
+          const lastPath = tabNavigationHistoryRef.current[targetPaneId].lastPath
+          if (lastPath && prev.tabs.some((tab) => tab.relativePath === lastPath)) {
+            return { ...prev, activeNotePath: lastPath }
+          }
           const curIdx = prev.tabs.findIndex((t) => t.relativePath === prev.activeNotePath)
           const nextIdx = (curIdx + 1 + prev.tabs.length) % prev.tabs.length
           return { ...prev, activeNotePath: prev.tabs[nextIdx].relativePath }

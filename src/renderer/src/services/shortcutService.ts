@@ -49,8 +49,8 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
   // Navegação
   {
     id: 'nextTab',
-    label: 'Próxima Guia',
-    description: 'Alterna para a próxima aba aberta no painel ativo',
+    label: 'Última Guia Acessada',
+    description: 'Alterna entre a guia atual e a última guia acessada no painel ativo',
     category: 'Navegação',
     defaultKey: 'Ctrl+Tab'
   },
