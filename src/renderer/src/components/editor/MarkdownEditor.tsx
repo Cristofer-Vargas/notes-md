@@ -1270,15 +1270,20 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   }, [handleOpenQuickToolsAtCaret])
 
   const handleToggleSourceMode = (): void => {
-    if (!editor) return
+    if (!editor || !activeNote) return
     if (isSourceMode) {
       // Switching from Raw Markdown back to WYSIWYG
       isInternalUpdateRef.current = true
-      editor.commands.setContent(preprocessMarkdownForEditor(rawMarkdown), false)
-      isInternalUpdateRef.current = false
+      try {
+        editor.commands.setContent(preprocessMarkdownForEditor(rawMarkdown), false)
+        restoreHeadingFolds(editor, activeNote.relativePath, activeNote.fullPath)
+      } finally {
+        isInternalUpdateRef.current = false
+      }
       setIsSourceMode(false)
     } else {
       // Switching from WYSIWYG to Raw Markdown
+      persistHeadingFolds(editor)
       const serialized = (editor.storage as any).markdown.getMarkdown() as string
       setRawMarkdown(postprocessMarkdownFromEditor(serialized))
       setIsSourceMode(true)
