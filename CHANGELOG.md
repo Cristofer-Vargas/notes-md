@@ -1,3 +1,19 @@
+# [1.6.0](https://github.com/Cristofer-Vargas/notes-md/compare/v1.5.1...v1.6.0) (2026-11-24)
+
+
+### Correções
+
+* alternância para Markdown puro salva o estado dos títulos recolhidos ([](https://github.com/Cristofer-Vargas/notes-md/commit/568d951bb001097700508cdd09ac34e75e41b637))
+* ao copiar um texto de nota, o texto copiado sera puro inves de formatado em md ([](https://github.com/Cristofer-Vargas/notes-md/commit/c81728cd3aa689c117355e01522e0007d25a4208))
+* corrigido a manipulação das janelas que não aconteciam o esperado ([](https://github.com/Cristofer-Vargas/notes-md/commit/394d1970549ef2ead0a6e9a0669bfd65b3b75d0a))
+* ctrl+Tab agora alterna entre a guia atual e a última guia acessada no painel ativo ([](https://github.com/Cristofer-Vargas/notes-md/commit/9fefce1324bcceb58c030cf401a235b8dd349703))
+* o título da nota agora quebra linhas automaticamente quando excede a largura disponível ([](https://github.com/Cristofer-Vargas/notes-md/commit/bf9e1971089ff728c8445e5ea587535d021e676b))
+
+
+### Novos Recursos
+
+* possibilidade de escolher estilo de fonte para as notas a partir das fontes do sistema ([](https://github.com/Cristofer-Vargas/notes-md/commit/4f2bfad78718f69769b9b03ded761260d6108d33))
+
 ## [1.5.1](https://github.com/Cristofer-Vargas/notes-md/compare/v1.5.0...v1.5.1) (2026-11-24)
 
 
