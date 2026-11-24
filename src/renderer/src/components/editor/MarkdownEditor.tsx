@@ -63,7 +63,7 @@ import type { VaultNoteData } from '../../../../preload/index.d'
 import type { AppSettings, IndexedNoteMeta } from '../../types/app'
 import { CheckCircle2, Clock, ExternalLink, FolderOpen, Link2, MessageSquarePlus, PanelLeftClose, PanelLeftOpen, Pencil, RefreshCw, Sparkles, Trash2, Unlink } from 'lucide-react'
 import appLogo from '../../assets/logo.png'
-import { Button, IconButton, Input } from '../ui'
+import { Button, IconButton, Input, Textarea } from '../ui'
 
 interface MarkdownEditorProps {
   vaultPath: string
@@ -152,7 +152,30 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   const [rawMarkdown, setRawMarkdown] = useState('')
   const [noteTitleInput, setNoteTitleInput] = useState('')
   const [isRenaming, setIsRenaming] = useState(false)
-  const titleInputRef = useRef<HTMLInputElement>(null)
+  const titleInputRef = useRef<HTMLTextAreaElement>(null)
+  const resizeNoteTitle = useCallback(() => {
+    const title = titleInputRef.current
+    if (!title) return
+    title.style.height = 'auto'
+    title.style.height = `${title.scrollHeight}px`
+  }, [])
+  useLayoutEffect(() => {
+    resizeNoteTitle()
+  }, [
+    noteTitleInput,
+    activeNote?.fullPath,
+    settings.baseFontSize,
+    settings.fontFamily,
+    settings.customFontFamily,
+    resizeNoteTitle
+  ])
+  useEffect(() => {
+    const title = titleInputRef.current
+    if (!title) return
+    const observer = new ResizeObserver(resizeNoteTitle)
+    observer.observe(title)
+    return () => observer.disconnect()
+  }, [activeNote?.fullPath, resizeNoteTitle])
   const cancelTitleEditRef = useRef(false)
   const [activeNodePath, setActiveNodePath] = useState('documento › p')
   const [saveStatus, setSaveStatus] = useState<'saved' | 'typing' | 'saving'>('saved')
@@ -1060,6 +1083,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     const resizeObserver = new ResizeObserver(scheduleMeasure)
     resizeObserver.observe(container)
     if (editor?.view.dom) resizeObserver.observe(editor.view.dom)
+    if (titleInputRef.current) resizeObserver.observe(titleInputRef.current)
     if (sourceRef.current) resizeObserver.observe(sourceRef.current)
 
     const mutationObserver = new MutationObserver(scheduleMeasure)
@@ -1442,7 +1466,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
 
   const wordCount = (editor?.storage as any)?.characterCount?.words?.() ?? countWords(rawMarkdown)
   const readingTimeMin = Math.max(1, Math.ceil(wordCount / 200))
-  const isNoteLoading = readyNoteKey !== activeNote.fullPath || activeNoteKeyRef.current !== activeNote.fullPath
+  const isNoteLoading = isRenaming || readyNoteKey !== activeNote.fullPath || activeNoteKeyRef.current !== activeNote.fullPath
   const resolvedHoverNote = hoverPreview
     ? resolveWikiLinkTarget(hoverPreview.targetName, allNotes)
     : undefined
@@ -1511,7 +1535,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       <div className="flex flex-1 min-h-0 min-w-0">
       <div className="relative flex-1 min-h-0">
       {isNoteLoading && (
-        <div role="status" aria-label="Carregando nota" className="absolute inset-0 z-10 flex items-center justify-center bg-surface-bg">
+        <div role="status" aria-label={isRenaming ? 'Renomeando nota' : 'Carregando nota'} className="absolute inset-0 z-10 flex items-center justify-center bg-surface-bg">
           <RefreshCw aria-hidden="true" className="h-5 w-5 animate-spin text-accent" />
         </div>
       )}
@@ -1558,14 +1582,15 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
           </div>
 
           <h1 className="mb-5">
-            <Input
+            <Textarea
               ref={titleInputRef}
-              type="text"
+              rows={1}
+              wrap="soft"
               aria-label="Título da nota"
               title="Renomear nota"
               value={noteTitleInput}
               disabled={isRenaming}
-              onChange={(e) => setNoteTitleInput(e.target.value)}
+              onChange={(e) => setNoteTitleInput(e.target.value.replace(/[\r\n]+/g, ' '))}
               onBlur={async () => {
                 if (cancelTitleEditRef.current) {
                   cancelTitleEditRef.current = false
@@ -1599,7 +1624,8 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
                   e.currentTarget.blur()
                 }
               }}
-              className="w-full border border-transparent bg-transparent px-0 py-1 text-[2rem] font-bold leading-tight tracking-tight text-content-primary hover:border-surface-border focus:border-accent focus:bg-surface-secondary focus:ring-0"
+              style={{ overflowWrap: 'anywhere' }}
+              className="block w-full min-h-[1.25em] resize-none overflow-hidden whitespace-pre-wrap break-words border border-transparent bg-transparent px-0 py-1 text-[2rem] font-bold leading-tight tracking-tight text-content-primary hover:border-surface-border focus:border-accent focus:bg-surface-secondary focus:ring-0"
             />
           </h1>
 
