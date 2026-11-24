@@ -454,7 +454,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         html: true,
         tightLists: true,
         transformPastedText: true,
-        transformCopiedText: true
+        transformCopiedText: false
       }),
       Underline,
       CustomHighlight.configure({ multicolor: true }),
