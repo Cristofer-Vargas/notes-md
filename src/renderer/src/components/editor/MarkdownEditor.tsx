@@ -42,7 +42,14 @@ import { WikiLinkHoverPreview } from './WikiLinkHoverPreview'
 import { CustomCodeBlock, lowlight } from './extensions/CustomCodeBlock'
 import { CustomHighlight } from './extensions/CustomHighlight'
 import { HeadingFold, foldedHeadingsContainingRange, getFoldedHeadingReferences, headingFoldKey, restoreFoldedHeadings, type FoldedHeadingReference } from './extensions/HeadingFold'
-import { applyInlineFormatting, inlineFormattingKey, wrapMarkdownSelection } from './inlineFormatting'
+import {
+  applyHighlightColor,
+  applyInlineFormatting,
+  inlineFormattingKey,
+  ORANGE_HIGHLIGHT_COLOR,
+  wrapMarkdownSelection,
+  wrapMarkdownSelectionWithHighlightColor
+} from './inlineFormatting'
 import { escapeInlineFormatting } from './escapeInlineFormatting'
 import { blockShortcut, moveEditorBlocks, moveMarkdownLines } from './moveBlocks'
 import {
@@ -659,6 +666,13 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         if (matchesShortcut(event, getShortcutKey(settings, 'insertWikiLink'))) {
           event.preventDefault()
           handleOpenWikiPickerFromToolbar()
+          return true
+        }
+        if (
+          matchesShortcut(event, getShortcutKey(settings, 'highlightOrange')) &&
+          applyHighlightColor(view, ORANGE_HIGHLIGHT_COLOR)
+        ) {
+          event.preventDefault()
           return true
         }
         if (matchesShortcut(event, getShortcutKey(settings, 'saveNote'))) {
@@ -1674,6 +1688,23 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
                   e.preventDefault()
                   onToggleZenMode()
                   return
+                }
+                if (matchesShortcut(nativeEvent, getShortcutKey(settings, 'highlightOrange'))) {
+                  const textarea = e.currentTarget
+                  const wrapped = wrapMarkdownSelectionWithHighlightColor(
+                    textarea.value,
+                    textarea.selectionStart,
+                    textarea.selectionEnd,
+                    ORANGE_HIGHLIGHT_COLOR
+                  )
+                  if (wrapped) {
+                    e.preventDefault()
+                    updateRawMarkdown(wrapped.value)
+                    window.requestAnimationFrame(() => {
+                      if (document.activeElement === textarea) textarea.setSelectionRange(wrapped.start, wrapped.end)
+                    })
+                    return
+                  }
                 }
                 if (matchesShortcut(nativeEvent, getShortcutKey(settings, 'saveNote'))) {
                   e.preventDefault()

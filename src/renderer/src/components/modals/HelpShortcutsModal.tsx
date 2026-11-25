@@ -20,7 +20,8 @@ export const HelpShortcutsModal: React.FC<HelpShortcutsModalProps> = ({ isOpen, 
     { keys: '> + Espaço', desc: 'Cria um bloco de citação (Blockquote)' },
     { keys: '``` + Enter', desc: 'Cria um bloco de código formatado' },
     { keys: '--- + Enter', desc: 'Insere uma linha divisória horizontal' },
-    { keys: 'Ctrl + B / Ctrl + I / Ctrl + U', desc: 'Aplica Negrito, Itálico ou Sublinhado' }
+    { keys: 'Ctrl + B / Ctrl + I / Ctrl + U', desc: 'Aplica Negrito, Itálico ou Sublinhado' },
+    { keys: 'Ctrl + G', desc: 'Aplica marca-texto laranja ao texto selecionado' }
   ]
 
   return (

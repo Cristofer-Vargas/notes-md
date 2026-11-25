@@ -26,6 +26,7 @@ export type ShortcutActionId =
   | 'toggleZenMode'
   | 'toggleSourceMode'
   | 'insertWikiLink'
+  | 'highlightOrange'
   | 'saveNote'
 
 export type CustomShortcutsMap = Partial<Record<ShortcutActionId, string>>

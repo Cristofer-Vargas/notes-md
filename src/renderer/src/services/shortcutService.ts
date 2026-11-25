@@ -111,6 +111,13 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
     description: 'Abre o autocompletar para criar links para outras notas',
     category: 'Editor',
     defaultKey: 'Ctrl+K'
+  },
+  {
+    id: 'highlightOrange',
+    label: 'Marca-texto laranja',
+    description: 'Aplica o destaque laranja ao texto selecionado',
+    category: 'Editor',
+    defaultKey: 'Ctrl+G'
   }
 ]
 

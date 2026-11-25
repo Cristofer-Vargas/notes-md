@@ -3,6 +3,7 @@ import type { Editor } from '@tiptap/react'
 import { Input } from '../ui'
 import { SelectionButton } from '../ui/SelectionButton'
 import { BlockStyleSelect } from '../ui/BlockStyleSelect'
+import { ORANGE_HIGHLIGHT_COLOR } from './inlineFormatting'
 import {
   Undo2,
   Redo2,
@@ -54,7 +55,7 @@ interface EditorToolbarProps {
 
 export const HIGHLIGHT_COLORS = [
   { name: 'Amarelo Solar', color: '#fef08a' },
-  { name: 'Laranja Quente', color: '#fed7aa' },
+  { name: 'Laranja Quente', color: ORANGE_HIGHLIGHT_COLOR },
   { name: 'Rosa Coral', color: '#fecdd3' },
   { name: 'Verde Menta', color: '#bbf7d0' },
   { name: 'Azul Céu', color: '#bfdbfe' },
