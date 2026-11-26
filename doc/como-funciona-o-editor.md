@@ -25,7 +25,19 @@ flowchart LR
 ### O Motor por Trás: TipTap & ProseMirror
 O Notes-MD usa o **TipTap**, uma biblioteca moderna construída sobre o **ProseMirror** (o mesmo motor utilizado por ferramentas como o editor do Jira, Confluence e The New York Times).
 - Em vez de tratar o texto como uma simples sequência de caracteres, o TipTap entende o texto como uma **árvore de blocos**: um título é um bloco, uma tabela é um bloco com linhas e células, e um checklist é uma lista de itens com estado marcado/desmarcado.
-- Quando você salva a nota, o conversor percorre essa árvore e transforma tudo em Markdown limpo e padronizado.
+- Quando você salva a nota, o conversor (`tiptap-markdown`) percorre essa árvore e transforma tudo em Markdown limpo e padronizado.
+
+### Alternância WYSIWYG ↔ Markdown Puro (`Ctrl + /`) e Recursos do Editor
+- **Modo Híbrido**: você pode alternar a qualquer momento entre a edição visual (WYSIWYG) e o código Markdown puro (`Ctrl + /`), preservando o estado dos títulos recolhidos ao voltar ao editor visual.
+- **Títulos Recolhíveis (`HeadingFold`)**: títulos `H1`–`H6` possuem controle para recolher/expandir seu conteúdo sem afetar títulos irmãos ou pais, com estado lembrado na sessão e opção de estilo destacado configurável.
+- **Formatação Rápida e Blocos**:
+  - Selecione um trecho e pressione `*`, `_`, `~`, `` ` `` ou `=` para aplicar/alternar formatação inline, ou use `Ctrl + G` para aplicar marca-texto laranja (atalho personalizável nas Configurações).
+  - Mova blocos ou itens de lista para cima/baixo com `Ctrl + ↑` / `↓` e duplique com `Ctrl + Alt + ↑` / `↓`.
+  - Copie trechos para a área de transferência como texto puro limpo.
+  - Crie tabelas interativas, checklists (`- [ ]`), cores de texto, marca-texto multicolorido, blocos de código com realce sintático (`lowlight`) e diagramas **Mermaid.js** com alternância entre edição e visualização.
+- **Áudio Integrado às Notas**: grave pelo microfone diretamente da barra do editor (com pausa/continuação, prévia e conversão local para MP3 em `.notes-md/audio/`) e reproduza por um player compacto com forma de onda embutido na nota.
+- **Observações Laterais (Side Notes)**: ancore comentários e anotações paralelas a trechos específicos do texto, visualizando-os na lateral da nota (com memória de colapso por nota) ou na aba **Observações** do painel direito.
+- **Tipografia, Largura e Sessão**: escolha fontes do sistema ou presets (`Geist`, `Georgia`, `IBM Plex Mono`), peso (`200`–`500`), tamanho base, espaçamentos (linha, parágrafo, letras e palavras), largura da página, Modo Zen (`F11`) e restauração automática das abas, divisões, rolagem e pastas expandidas por cofre (`vaultSession.ts`).
 
 ---
 

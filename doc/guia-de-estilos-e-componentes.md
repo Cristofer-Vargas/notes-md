@@ -127,11 +127,11 @@ import { CheckCircle2 } from 'lucide-react'
 
 ---
 
-### 4. `Input` (Campos de Digitação Padronizados)
-Inputs com suporte a ícones, foco com anel suave e tema Dracula nativo:
+### 4. `Input` e `Textarea` (Campos de Digitação Padronizados)
+Campos de texto e áreas multilinha com suporte a ícones (`Input`), foco com anel suave e adaptação nativa aos temas:
 
 ```tsx
-import { Input } from '../ui'
+import { Input, Textarea } from '../ui'
 import { Search } from 'lucide-react'
 
 <Input
@@ -140,7 +140,23 @@ import { Search } from 'lucide-react'
   value={termoBusca}
   onChange={(e) => setTermoBusca(e.target.value)}
 />
+
+<Textarea
+  placeholder="Escreva uma observação..."
+  value={observacao}
+  onChange={(e) => setObservacao(e.target.value)}
+/>
 ```
+
+---
+
+### 5. `Switch`, `SelectMenu`, `BlockStyleSelect`, `SelectionButton` e `RangeInput`
+Além dos controles básicos, a pasta `src/renderer/src/components/ui/` reúne os demais primitivos compartilhados pela interface:
+- **`Switch`**: alternador booleano acessível (`role="switch"`, `aria-checked`, `label`) usado nas Configurações e no Pomodoro.
+- **`SelectMenu` e `BlockStyleSelect`**: seletores em portal com posicionamento automático (acima ou abaixo do botão) e navegação completa por teclado.
+- **`SelectionButton`**: botão base para cartões selecionáveis, itens de lista/árvore e botões da barra de ferramentas do editor, com foco visível padronizado.
+- **`RangeInput`**: controle deslizante estilizado com a cor de destaque do tema (`--accent-color`) para ajustes como tamanho da fonte e espaçamentos.
+- **`useContextMenuPosition`**: hook auxiliar que mantém menus flutuantes e menus de contexto sempre dentro da área visível da janela.
 
 ---
 
@@ -171,8 +187,10 @@ Ao criar ou customizar qualquer componente, **nunca use cores fixas** (como `bg-
 | `bg-surface-bg` | Fundo principal da página ou do editor. |
 | `bg-surface-secondary` | Fundo de barras laterais, cabeçalhos e modais. |
 | `bg-surface-tertiary` | Fundo de campos de texto, inputs e estados de hover. |
+| `bg-surface-canvas` | Fundo externo sob o papel da nota (quando no estilo papel/canvas). |
 | `border-surface-border` | Linhas divisórias e bordas sutis. |
 | `text-content-primary` | Texto principal com contraste ideal. |
 | `text-content-secondary` | Textos secundários, subtítulos e ícones inativos. |
 | `text-content-muted` | Textos apagados, dicas e comentários. |
-| `bg-accent` / `text-accent` | Cor de destaque personalizada (Roxo Dracula, Azul, Esmeralda, etc.). |
+| `bg-accent` / `bg-accent-soft` / `border-accent` / `text-accent` | Cor de destaque configurável (Lima, Roxo Dracula, Azul, Esmeralda, Âmbar, Rosa). |
+| `--code-bg` / `--code-header-bg` / `--code-border` / `--code-text` | Variáveis CSS dedicadas a blocos de código e diagramas Mermaid. |

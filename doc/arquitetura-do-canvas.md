@@ -1,5 +1,8 @@
 # 🎨 Arquitetura do Canvas Infinito — Notes-MD
 
+> [!NOTE]
+> **Status**: **Planejamento / Especificação Futura** — este documento descreve o desenho técnico proposto para o futuro suporte a arquivos `.canvas`; o recurso ainda não está implementado na versão atual do aplicativo.
+
 Este documento detalha o planejamento arquitetural, a especificação técnica e as opções de implementação para o recurso de **Canvas Visual Infinito** no **Notes-MD**, seguindo o mesmo padrão aberto do **Obsidian Canvas (**`.canvas`**)**.
 
 ---

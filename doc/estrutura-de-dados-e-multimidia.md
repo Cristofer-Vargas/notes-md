@@ -13,12 +13,14 @@ Os dados precisam continuar acessíveis fora do aplicativo sempre que isso fizer
 - Cada nota é um arquivo `.md` dentro de um cofre escolhido pelo usuário.
 - O cofre também pode conter outros arquivos, inclusive imagens. O explorador reconhece imagens e o processo principal consegue ler imagens do disco para exibição.
 - O editor permite inserir imagens por URL. A experiência atual de importar, organizar e editar imagens ainda é limitada.
-- A primeira experiência de áudio inclui gravação pelo microfone, pausa/continuação, prévia, descarte e salvamento no cofre com um player inserido na nota. A captura temporária do microfone é convertida localmente para MP3 antes de salvar; gravações WebM já existentes continuam sendo reconhecidas e reproduzidas. O player prepara o arquivo antes de liberar a reprodução e mostra o tempo atual e a duração total.
-- As gravações são salvas em `.notes-md/audio/` e referenciadas no Markdown por um bloco HTML de áudio; o arquivo binário permanece separado do texto.
+- A primeira experiência de áudio inclui gravação pelo microfone, pausa/continuação, prévia, descarte e salvamento no cofre com um player embutido na nota (com barra de progresso e forma de onda visual). A captura temporária do microfone é convertida localmente para MP3 antes de salvar; gravações WebM já existentes continuam sendo reconhecidas e reproduzidas. O player prepara o arquivo antes de liberar a reprodução, mostra o tempo atual e a duração total, e permite desvincular da nota ou excluir o arquivo do cofre pelo menu de contexto.
+- As gravações são salvas em `.notes-md/audio/` e referenciadas no Markdown por um bloco HTML de áudio (`<div data-vault-audio="...">`); o arquivo binário permanece separado do texto.
+- O painel lateral direito conta com a aba **Áudios** (`AudioLibraryPanel`), permitindo listar e pesquisar gravações referenciadas na nota atual ou em todo o cofre, saltar diretamente para o player na nota e remover o vínculo da nota sem apagar o arquivo do disco.
 - Preferências, estado de interface e cofres recentes são mantidos no armazenamento local do aplicativo, incluindo `localStorage`.
 - O Pomodoro mantém configuração, sessão, histórico e progresso em arquivos JSON no perfil local do aplicativo.
-- O índice de notas e conexões é calculado para uso do app; não há atualmente um banco de dados único que seja a fonte das notas.
-- Ainda não há biblioteca de mídia, transcrição, importação de áudio externo ou organização avançada das gravações.
+- As observações laterais (*Side Notes*) ficam persistidas por cofre pelo processo principal (`sideNotesService.ts`) com âncoras no texto das notas.
+- O índice de notas e conexões é calculado em memória para uso do app; não há atualmente um banco de dados único que seja a fonte das notas.
+- Ainda não há biblioteca unificada para outros tipos de mídia (como imagens e vídeos), transcrição, importação de áudio externo ou organização avançada por pastas/categorias de gravações.
 
 Essas informações descrevem a implementação encontrada no projeto e podem mudar conforme o app evoluir.
 

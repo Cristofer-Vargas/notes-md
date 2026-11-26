@@ -6,10 +6,12 @@ Bem-vindo ao repositório do **Notes-MD**. Este arquivo serve como referência p
 
 ## 🏛️ 1. Arquitetura e Estrutura do Código
 
-- **Ambiente**: Electron 31 + React 18 + TypeScript + Vite (`electron-vite`).
-- **Estilização**: Tailwind CSS com tokens semânticos (`surface-*`, `content-*`, `accent-*`) e suporte a múltiplos temas (Dracula oficial, Claro, Sépia).
-- **Editor Central**: TipTap (ProseMirror) com extensão personalizada de WikiLinks, blocos de código com realce sintático e diagramas Mermaid.
-- **Espaço de Trabalho**: Janelas flexíveis (Split Panes) com suporte a divisão horizontal e vertical, arraste de abas e auto-fechamento inteligente.
+- **Ambiente**: Electron 31 + React 18 + TypeScript 5.5 + Vite (`electron-vite`) + Vitest.
+- **Processo Principal (`src/main/`)**: gerenciamento de cofre e watcher em disco (`vaultService.ts`), observações laterais (`sideNotesService.ts`), Pomodoro com histórico e XP/constelação (`pomodoroService.ts`), corretor ortográfico (`spellcheckService.ts`), fontes do sistema (`fontService.ts`), Discord Rich Presence (`discordPresenceService.ts`), auto-updater (`updateService.ts`), isolamento dev/produção (`runtimeEnv.ts`) e estado de janela (`windowState.ts`).
+- **Múltiplas Janelas**: janela principal do workspace e janelas independentes para Configurações (`SettingsWindow`), Pomodoro (`PomodoroWindow`) e Visualizador de Imagens (`ImageViewerWindow`).
+- **Estilização**: Tailwind CSS com tokens semânticos (`surface-*`, `content-*`, `accent-*`, `--code-*`) e suporte a múltiplos temas (Dracula oficial, Claro e Sépia) e 6 presets de cor de destaque.
+- **Editor Central**: TipTap (ProseMirror) + `tiptap-markdown`, com extensões personalizadas de `WikiLinkExtension` (Live Preview + sugestões de notas existentes e pendentes), `HeadingFold` (títulos recolhíveis persistidos na sessão), `CustomHighlight`, `CustomCodeBlock` (`lowlight`), diagramas **Mermaid.js**, `VaultAudio` (gravação/player MP3 em `.notes-md/audio/`), `ListExit`, `FontSizeExtension`, além de **Observações Laterais (Side Notes)** ancoradas ao texto.
+- **Espaço de Trabalho**: Janelas flexíveis (Split Panes) com divisão horizontal/vertical, arraste de abas, persistência de sessão (`vaultSession.ts`), auto-fechamento inteligente e painel direito modular com 4 abas (`Conexões`, `Sumário`, `Áudios`, `Observações`).
 
 ---
 
@@ -17,14 +19,17 @@ Bem-vindo ao repositório do **Notes-MD**. Este arquivo serve como referência p
 
 > Todas as implementações devem seguir a regra oficial em [.agents/rules/component-styling-guide.md](.agents/rules/component-styling-guide.md).
 
-- **Proibido**: `<button>` e `<input>` com classes Tailwind inline repetidas.
+- **Proibido**: `<button>`, `<input>` e `<textarea>` com classes Tailwind inline repetidas.
 - **Obrigatório**: Utilizar os componentes reutilizáveis de `src/renderer/src/components/ui/`:
   - `Button`: Botões de ação textual (`primary`, `secondary`, `ghost`, `danger`, `outline`).
   - `IconButton`: Botões compactos com ícones para barras e abas (`ghost`, `secondary`, `accent`, `accent-soft`, `danger`).
   - `Badge`: Pílulas e tags de status/contadores.
-  - `Input`: Campos de texto com ícones opcionais e foco padronizado.
-  - `cn(...)`: Função utilitária para fusão de classes condicionais.
-- **Tokens Semânticos**: Nunca utilize cores fixas arbitrárias (como `bg-slate-900` ou `text-gray-400`); utilize sempre os tokens `surface-*`, `content-*` e `accent-*` para garantir suporte perfeito a todos os temas.
+  - `Input` e `Textarea`: Campos de texto e áreas de texto padronizados.
+  - `Switch`: Alternadores acessíveis (`role="switch"`).
+  - `SelectMenu` e `BlockStyleSelect`: Menus seletores com posicionamento automático e navegação por teclado.
+  - `SelectionButton` e `RangeInput`: Botões de seleção estruturados e controles deslizantes.
+  - `useContextMenuPosition` e `cn(...)`: Utilitários de posicionamento de menus e fusão de classes condicionais.
+- **Tokens Semânticos**: Nunca utilize cores fixas arbitrárias (como `bg-slate-900` ou `text-gray-400`); utilize sempre os tokens `surface-*`, `content-*`, `accent-*` e `--code-*` para garantir suporte perfeito a todos os temas.
 
 ---
 
@@ -47,4 +52,8 @@ Bem-vindo ao repositório do **Notes-MD**. Este arquivo serve como referência p
 - [Arquitetura do App (doc/arquitetura-do-app.md)](doc/arquitetura-do-app.md)
 - [O Editor e Split Panes (doc/como-funciona-o-editor.md)](doc/como-funciona-o-editor.md)
 - [Conhecimento Conectado & WikiLinks (doc/conexoes-e-wikilinks.md)](doc/conexoes-e-wikilinks.md)
+- [Identidade Visual e Experiência (doc/identidade-visual-e-experiencia.md)](doc/identidade-visual-e-experiencia.md)
+- [Guia de Estilos e Componentes (doc/guia-de-estilos-e-componentes.md)](doc/guia-de-estilos-e-componentes.md)
+- [Estrutura de Dados e Multimídia (doc/estrutura-de-dados-e-multimidia.md)](doc/estrutura-de-dados-e-multimidia.md)
 - [Guia de Comandos e Scripts (doc/guia-de-comandos.md)](doc/guia-de-comandos.md)
+- [Arquitetura do Canvas Infinito — Planejamento (doc/arquitetura-do-canvas.md)](doc/arquitetura-do-canvas.md)

@@ -25,10 +25,12 @@ Um **WikiLink** é uma ligação rápida entre duas notas, escrita com colchetes
 O conceito de [[Inteligência Artificial]] depende diretamente da [[Lógica de Programação]].
 ```
 
-No editor visual do Notes-MD, em vez de ver colchetes feios, esse texto vira uma **etiqueta elegante e clicável**:
-- Clicar no link com o botão esquerdo abre a nota correspondente.
-- Clicar com o botão do meio da rodinha do mouse abre a nota em uma nova guia.
-- **Se a nota ainda não existir**: o Notes-MD cria o arquivo `.md` no cofre instantaneamente e abre o editor pronto para você escrever.
+No editor visual do Notes-MD, em vez de ver colchetes feios, esse texto funciona no estilo **Live Preview** (como no Obsidian):
+- Quando o cursor está fora do link, os colchetes ficam ocultos e o link aparece como uma **etiqueta clicável** (respeitando apelidos como `[[Nota|Apelido]]`) acompanhada de um ícone `↗`.
+- Clicar sobre o texto da etiqueta coloca o cursor dentro dela e revela o código `[[...]]` para você editar rapidamente; clicar no ícone `↗` ou usar **`Ctrl + Clique`** abre a nota correspondente.
+- Clicar com o **botão do meio do mouse** (rodinha) abre a nota em uma nova guia.
+- **Autocompletar inteligente (`[[` ou `Ctrl + K`)**: sugere tanto as notas já existentes no cofre quanto **WikiLinks que já foram mencionados em outras notas mas ainda não possuem arquivo criado**, além da opção de criar uma nota nova na hora.
+- **Se a nota ainda não existir**: clicar para abrir o link cria o arquivo `.md` no cofre instantaneamente e abre o editor pronto para você escrever.
 
 ---
 
@@ -54,6 +56,17 @@ graph LR
 - Quando você abre a nota **"Arquitetura de Software"**, você não precisa se lembrar de onde ela foi citada.
 - O painel lateral direito lista automaticamente todas as notas do seu cofre que mencionam essa nota, incluindo o **trecho exato** do parágrafo onde o link foi feito.
 
+### Painel Direito Modular & Busca Global
+Além das **Conexões (Backlinks)**, o painel lateral direito é dividido em uma área superior e outra inferior com divisor redimensionável e abas reordenáveis por arraste:
+- **Conexões**: referências recebidas (Backlinks) e links de saída da nota ativa.
+- **Sumário**: índice hierárquico (`H1`–`H6`) interativo que destaca e acompanha automaticamente o tópico onde o cursor está posicionado.
+- **Áudios**: lista os áudios vinculados à nota atual ou a todo o cofre, permitindo buscar, pular direto para o player na nota ou remover a referência.
+- **Observações**: centraliza as observações laterais (*Side Notes*) vinculadas ao cofre/nota.
+
+E para navegar ainda mais rápido pelo seu segundo cérebro:
+- **Quick Switcher (`Ctrl + P`)**: busca rápida com autocompletar de pastas e notas, permitindo também criar novas notas instantaneamente (inclusive informando caminhos como `Pasta/Nova Nota`).
+- **Pesquisa no Cofre (`Ctrl + Shift + F`)**: busca global por palavras em títulos e no conteúdo completo de todas as notas do cofre.
+
 ---
 
 ## 3. O Indexador em Memória (`noteIndexer`): Rápido e Sem Internet
@@ -62,7 +75,7 @@ Como o Notes-MD descobre todos esses links sem um banco de dados pesado na nuvem
 
 O segredo é um motor interno chamado **Indexador de Notas**:
 1. Quando você abre o aplicativo, ele faz uma leitura rápida de todos os arquivos `.md` do seu cofre em milissegundos.
-2. Ele encontra todos os `[[links]]`, todos os títulos (`#`, `##`, `###`) e gera uma tabela de conexões na memória do computador.
+2. Ele encontra todos os `[[links]]`, todos os títulos (`#`–`######`), calcula contagem de palavras e gera um resumo limpo junto com a tabela de conexões na memória do computador.
 3. Se você salvar uma nota nova, o indexador recalcula apenas aquela nota em frações de segundo, sem deixar o aplicativo lento.
 
 ---

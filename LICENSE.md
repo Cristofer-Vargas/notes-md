@@ -44,11 +44,17 @@ O **Notes-MD** utiliza bibliotecas e ferramentas de código aberto consolidadas 
 | Biblioteca / Projeto | Licença Oficial | Finalidade no Projeto |
 | :--- | :--- | :--- |
 | **[Electron](https://github.com/electron/electron)** | MIT | Plataforma desktop multiplataforma e integração com o sistema operacional |
+| **[electron-vite](https://github.com/alex8088/electron-vite)** | MIT | Ferramenta de build e desenvolvimento com Hot Reload para Electron e Vite |
+| **[electron-updater](https://github.com/electron-userland/electron-builder)** | MIT | Sistema de verificação e instalação de atualizações automáticas via GitHub Releases |
 | **[React](https://github.com/facebook/react)** | MIT | Biblioteca declarativa para construção da interface de usuário (UI) |
 | **[TipTap](https://github.com/ueberdosis/tiptap)** | MIT | Motor central de edição rica em formato WYSIWYG e extensões de texto |
+| **[tiptap-markdown](https://github.com/aguingand/tiptap-markdown)** | MIT | Serialização e leitura bidirecional entre documentos TipTap e Markdown |
 | **[Tailwind CSS](https://github.com/tailwindlabs/tailwindcss)** | MIT | Framework de estilização utilitária e suporte a temas (Dracula, Claro, Sépia) |
 | **[Lucide Icons](https://github.com/lucide-icons/lucide)** | ISC | Conjunto moderno e consistente de ícones vetoriais da interface |
 | **[Mermaid.js](https://github.com/mermaid-js/mermaid)** | MIT | Motor de renderização de diagramas, fluxogramas e gráficos textuais |
 | **[Lowlight](https://github.com/wooorm/lowlight)** | MIT | Realce sintático (syntax highlighting) para blocos de código com highlight.js |
+| **[wasm-media-encoders](https://github.com/nicklas-m/wasm-media-encoders)** | MIT | Codificação local de áudio gravado para MP3 diretamente via WebAssembly |
+| **[hunspell-wasm](https://github.com/kwonoj/hunspell-wasm)** | LGPL-2.0 / GPL-2.0 / MPL-1.1 | Motor de verificação ortográfica e sugestões em WebAssembly (`dictionary-pt` / `dictionary-en`) |
+| **[@xhayper/discord-rpc](https://github.com/xhayper/discord-rpc)** | ISC | Integração opcional de status com o Discord Rich Presence |
 | **[Vitest](https://github.com/vitest-dev/vitest)** | MIT | Framework de testes unitários automatizados de alta performance |
 | **[Commitizen](https://github.com/commitizen/cz-cli)** | MIT | Padronização de mensagens de commit conforme o padrão Conventional Commits |

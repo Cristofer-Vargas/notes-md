@@ -11,26 +11,28 @@ Este guia foi elaborado especialmente para explicar, em **linguagem simples e ac
 Para navegar pelos conceitos no seu próprio ritmo, dividimos o conteúdo em capítulos temáticos:
 
 1. **[Arquitetura do Aplicativo (`arquitetura-do-app.md`)](arquitetura-do-app.md)**  
-   *Entenda o que é o Electron, a separação entre a "Cozinha" (Processo Principal) e o "Salão" (Interface Visual), e por que suas notas ficam salvas no seu computador em formato Markdown puro, sem bancos de dados misteriosos.*
+   *Entenda o que é o Electron, a separação entre a "Cozinha" (Processo Principal) e o "Salão" (Interface Visual), as janelas auxiliares, o isolamento do modo dev, o auto-updater e por que suas notas ficam salvas no computador em Markdown puro.*
 
 2. **[Como Funciona o Editor e as Janelas Flexíveis (`como-funciona-o-editor.md`)](como-funciona-o-editor.md)**  
-   *Descubra a tecnologia por trás do editor WYSIWYG (o que você vê é o que você tem), como o texto se transforma em Markdown em tempo real e como funciona o sistema de janelas divididas (Split Panes) com arraste e solte.*
+   *Descubra a tecnologia por trás do editor WYSIWYG/Markdown, títulos recolhíveis, observações laterais, gravação de áudio nas notas, personalização tipográfica e o sistema de janelas divididas (Split Panes) com persistência de sessão.*
 
 3. **[Conexões de Notas e Conhecimento em Rede (`conexoes-e-wikilinks.md`)](conexoes-e-wikilinks.md)**  
-   *Como o aplicativo funciona como um "segundo cérebro" estilo Obsidian? Entenda como o indexador lê os links `[[...]]`, cria a teia de Backlinks, exibe prévias instantâneas e atualiza tudo automaticamente ao renomear arquivos.*
+   *Como o aplicativo funciona como um "segundo cérebro" estilo Obsidian? Entenda o Live Preview dos `[[WikiLinks]]`, o painel direito modular (Conexões, Sumário, Áudios e Observações), busca global, Quick Switcher, prévias instantâneas e atualização automática ao renomear arquivos.*
 
 4. **[Guia de Comandos e Versionamento (`guia-de-comandos.md`)](guia-de-comandos.md)**  
-   *Um manual prático dos comandos do projeto: como rodar em desenvolvimento, executar testes automáticos de qualidade, criar commits semânticos no padrão Commitizen e gerenciar versões Alpha pré-v1.0.0.*
+   *Manual prático dos comandos do projeto: como rodar em desenvolvimento, validar tipos e testes, gerar instaladores Windows, criar commits semânticos no padrão Commitizen e acompanhar o fluxo de releases automatizadas (`semantic-release`).*
 
 5. **[Guia de Estilos e Componentes Reutilizáveis (`guia-de-estilos-e-componentes.md`)](guia-de-estilos-e-componentes.md)**  
-   *Como utilizar a camada de componentes primitivos (Button, IconButton, Badge, Input, cn) para otimizar código, evitar repetição e garantir consistência visual em todos os temas.*
+   *Como utilizar a camada de componentes primitivos (`Button`, `IconButton`, `Badge`, `Input`, `Textarea`, `Switch`, `SelectMenu`, `SelectionButton`, `RangeInput`, `cn`) e tokens semânticos para garantir consistência visual em todos os temas.*
 
-6. **[Arquitetura do Canvas Infinito (`arquitetura-do-canvas.md`)](arquitetura-do-canvas.md)**  
-   *Como funciona o Canvas visual estilo Obsidian (.canvas), a especificação aberta JSON Canvas, os tipos de nós (textos, notas, imagens, grupos) e as opções arquiteturais de implementação.*
+6. **[Identidade Visual e Experiência (`identidade-visual-e-experiencia.md`)](identidade-visual-e-experiencia.md)**  
+   *Direção visual oficial do aplicativo, marca adaptativa, temas (Claro, Dracula e Sépia), 6 cores de destaque e padrões de interação dos principais componentes.*
 
-7. **[Identidade Visual e Experiência (`identidade-visual-e-experiencia.md`)](identidade-visual-e-experiencia.md)**: direção visual oficial do aplicativo, temas, marca e padrões de interação dos principais componentes.
+7. **[Estrutura de Dados e Mídia (`estrutura-de-dados-e-multimidia.md`)](estrutura-de-dados-e-multimidia.md)**  
+   *Estado atual e evolução planejada para organizar notas, imagens, gravações de áudio em `.notes-md/audio/`, biblioteca de áudios, sincronização e uso futuro em dispositivos móveis.*
 
-8. **[Estrutura de Dados e Mídia (`estrutura-de-dados-e-multimidia.md`)](estrutura-de-dados-e-multimidia.md)**: estado atual e proposta para organizar notas, imagens, áudio, banco local, Google Drive e uso futuro no Android.
+8. **[Arquitetura do Canvas Infinito (`arquitetura-do-canvas.md`)](arquitetura-do-canvas.md)** *(Planejamento)*  
+   *Especificação futura do Canvas visual estilo Obsidian (`.canvas`), baseada no padrão aberto JSON Canvas, com tipos de nós e opções arquiteturais de implementação.*
 
 ---
 
@@ -45,4 +47,7 @@ Para facilitar a leitura dos outros capítulos, aqui estão alguns conceitos fre
 - **Backlink**: A via de mão dupla de um link. Se a nota "A" cita a nota "B", a nota "B" sabe automaticamente que a nota "A" falou dela.
 - **Electron**: Uma plataforma que permite construir programas de computador modernos usando as mesmas tecnologias da internet (HTML, CSS e JavaScript/TypeScript).
 - **Split Panes**: Janelas divididas na mesma tela (lado a lado ou em cima e embaixo) para trabalhar com dois arquivos ao mesmo tempo.
-- **SemVer (Versionamento Semântico)**: Padrão numérico (`Maior.Menor.Correção-estágio`) para organizar a evolução de um aplicativo.
+- **Side Notes (Observações Laterais)**: Anotações independentes ancoradas a trechos específicos de uma nota para registrar comentários sem poluir o texto principal.
+- **Áudio no Cofre**: Gravações de voz convertidas localmente para MP3 e armazenadas em `.notes-md/audio/` dentro do cofre, reproduzidas por um player com forma de onda dentro da nota.
+- **Pomodoro & Gamificação**: Timer integrado com ciclos de foco/pausa, histórico, relatórios, acúmulo de XP e constelação visual.
+- **SemVer (Versionamento Semântico)**: Padrão numérico (`Maior.Menor.Correção`, ex.: `1.6.0`) para organizar a evolução estável de um aplicativo.

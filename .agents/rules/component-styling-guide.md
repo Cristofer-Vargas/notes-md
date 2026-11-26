@@ -40,12 +40,23 @@ Esta regra define o padrão arquitetural obrigatório para todas as implementaç
    - **Variantes**: `default`, `accent`, `secondary`, `success`, `warning`, `danger`.
    - **Tamanhos**: `sm` (11px), `md` (12px).
 
-4. **`Input` (`Input.tsx`)**:
-   - Campos de digitação de texto com anel de foco padronizado (`focus:ring-1 focus:ring-accent`).
-   - Suporta `leftIcon` (ex: lupa de busca), `rightIcon` e propriedade `error`.
+4. **`Input` (`Input.tsx`) & `Textarea` (`Textarea.tsx`)**:
+   - Campos de digitação e áreas de texto com anel de foco padronizado (`focus:ring-1 focus:ring-accent`).
+   - `Input` suporta `leftIcon` (ex: lupa de busca), `rightIcon` e propriedade `error`.
 
-5. **Utilitário `cn(...)` (`src/renderer/src/utils/cn.ts`)**:
-   - Sempre utilize `cn(...)` para combinar classes CSS condicionais ou permitir customizações via `className`.
+5. **`Switch` (`Switch.tsx`)**:
+   - Alternador booleano acessível (`role="switch"`, `aria-checked`, `label`) para configurações e preferências.
+
+6. **`SelectMenu` (`SelectMenu.tsx`) & `BlockStyleSelect` (`BlockStyleSelect.tsx`)**:
+   - Menus seletores em portal com posicionamento automático (acima ou abaixo conforme espaço disponível) e navegação completa por teclado.
+
+7. **`SelectionButton` (`SelectionButton.tsx`) & `RangeInput` (`RangeInput.tsx`)**:
+   - `SelectionButton`: botão base para cartões selecionáveis, itens de árvore, botões de barra do editor e controles estruturados com anel de foco consistente.
+   - `RangeInput`: controle deslizante estilizado com a cor de destaque do tema (`--accent-color`).
+
+8. **Utilitários (`useContextMenuPosition.ts` e `src/renderer/src/utils/cn.ts`)**:
+   - `useContextMenuPosition`: posiciona menus flutuantes e de contexto dentro dos limites visíveis da janela.
+   - `cn(...)`: combina classes Tailwind condicionais de forma segura via `clsx` + `tailwind-merge`.
 
 ---
 
@@ -59,7 +70,8 @@ Para que os temas funcionem sem quebras visuais:
   - **Superfícies**: `bg-surface-bg`, `bg-surface-secondary`, `bg-surface-tertiary`, `bg-surface-canvas`.
   - **Bordas**: `border-surface-border`.
   - **Textos**: `text-content-primary`, `text-content-secondary`, `text-content-muted`.
-  - **Destaque**: `bg-accent`, `hover:bg-accent-hover`, `bg-accent-soft`, `text-accent`, `border-accent`.
+  - **Destaque**: `bg-accent`, `hover:bg-accent-hover`, `bg-accent-soft`, `border-accent`, `text-accent`.
+  - **Blocos de Código**: variáveis CSS `--code-bg`, `--code-header-bg`, `--code-border`, `--code-text`.
 
 ---
 

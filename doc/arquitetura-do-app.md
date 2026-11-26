@@ -24,9 +24,10 @@ O Notes-MD é construído em cima de uma tecnologia chamada **Electron**. O Elec
 ```mermaid
 flowchart LR
     subgraph SALAO["🍽️ Salão do Restaurante (Processo Visual / Renderer)"]
-        UI["Interface Gráfica (React)"]
-        EDITOR["Editor de Texto (TipTap WYSIWYG)"]
+        UI["Interface Gráfica (React 18)"]
+        EDITOR["Editor de Texto (TipTap WYSIWYG + Markdown)"]
         THEME["Estilos e Temas (Tailwind CSS)"]
+        WINDOWS["Janelas Auxiliares (Configurações, Pomodoro, Imagens)"]
     end
 
     subgraph GARCOM["🤵 Garçom de Confiança (Ponte Segura / Preload API)"]
@@ -34,26 +35,28 @@ flowchart LR
     end
 
     subgraph COZINHA["👨‍🍳 Cozinha e Despensa (Processo Principal / Main Node.js)"]
-        FS["Leitor e Gravador de Arquivos (.md)"]
+        FS["Leitor e Gravador (.md, imagens e áudio MP3)"]
         WATCHER["Sentinela de Mudanças no Disco (Watcher)"]
+        SERVICES["Serviços (Pomodoro, Side Notes, Ortografia, Fontes, Discord RPC, Updates)"]
         TRASH["Lixeira do Sistema Operacional"]
     end
 
     SALAO <-->|"Pedidos e Respostas Seguras"| GARCOM
     GARCOM <-->|"Ações no Sistema"| COZINHA
-    COZINHA <-->|"Gravação em Tempo Real"| DISCO[("💾 Seu Disco Rígido (Vault de Notas)")]
+    COZINHA <-->|"Gravação em Tempo Real"| DISCO[("💾 Seu Disco Rígido (Vault de Notas & .notes-md/audio/)")]
 ```
 
 1. **O Salão (Processo Visual / Renderer)**:
-   - É a parte bonita onde o cliente (você) senta e interage. É feito com **React** e **Tailwind CSS**.
-   - Aqui vive a digitação, os botões bonitos, as cores do tema Dracula e os menus.
-   - **Regra de Segurança**: Por segurança, o salão não tem permissão para mexer diretamente nas facas da cozinha nem abrir os armários do computador.
+   - É a parte visível onde você interage. É construída com **React 18** e **Tailwind CSS**, incluindo a janela principal e janelas auxiliares independentes (Configurações, Pomodoro flutuante/relatórios e Visualizador de Imagens).
+   - Aqui vivem a digitação, a barra de ferramentas, o gravador e player de áudio, os temas (Dracula, Claro, Sépia) e os menus.
+   - **Regra de Segurança**: Por segurança, o salão não tem permissão para mexer diretamente nos arquivos do sistema nem abrir os armários do computador.
 2. **A Cozinha (Processo Principal / Main com Node.js)**:
-   - Fica nos bastidores do seu computador.
-   - É quem tem a chave do seu disco rígido para ler arquivos `.md`, salvar alterações, renomear pastas e enviar itens para a lixeira do Windows/Mac/Linux.
+   - Fica nos bastidores do seu computador (`src/main/`).
+   - É quem tem a chave do disco rígido para ler e gravar notas `.md`, imagens e áudios em `.notes-md/audio/`, renomear/mover pastas, listar fontes do sistema, gerenciar o Pomodoro e as Observações laterais, executar o corretor ortográfico, conectar ao Discord Rich Presence, verificar atualizações no GitHub Releases (`electron-updater`) e enviar itens excluídos para a lixeira do sistema.
+   - Além disso, o módulo `runtimeEnv.ts` isola automaticamente o perfil (`userData`) e o cofre padrão do modo desenvolvimento (`npm run dev`) para não interferir na versão estável instalada.
 3. **O Garçom de Confiança (Preload & ContextBridge)**:
-   - É a ponte que conecta o Salão à Cozinha.
-   - Quando você clica em *"Salvar"* ou abre uma nota, a interface chama o Garçom com um pedido específico. O Garçom leva o pedido à Cozinha, que executa e devolve o resultado com segurança máxima.
+   - É a ponte segura (`src/preload/`) que conecta o Salão à Cozinha via `window.electronAPI`.
+   - Quando você salva uma nota, grava um áudio ou altera configurações, a interface envia um pedido específico ao Garçom, que repassa à Cozinha e devolve o resultado com segurança máxima.
 
 ---
 
@@ -90,8 +93,12 @@ No Notes-MD, quando você exclui uma nota ou pasta pelo explorador lateral, o ap
 
 | Tecnologia | O que faz no app? | Por que foi escolhida? |
 | :--- | :--- | :--- |
-| **Electron** | Transforma o código web em aplicativo desktop (.exe / app) | Integração nativa com janelas, menus de contexto e disco local. |
+| **Electron 31** | Transforma o código web em aplicativo desktop (`.exe` / app) | Integração nativa com janelas, lixeira do sistema, fontes, ortografia e disco local. |
+| **electron-vite** | Compila e empacota Main, Preload e Renderer com Hot Reload | Desenvolvimento rápido com separação clara entre Node.js e interface web. |
 | **React 18** | Constrói os componentes da tela de forma reativa | Atualiza instantaneamente a interface quando os dados mudam. |
-| **TypeScript** | Garante que o código não tenha erros de tipo | Traz segurança, previsibilidade e menos bugs na aplicação. |
-| **Tailwind CSS** | Estiliza todo o visual com classes utilitárias | Permite alternar temas (Dracula, Claro, Sépia) com extrema facilidade. |
-| **TipTap** | Motor do editor de texto WYSIWYG | Permite formatar texto rico e converter para Markdown puro sem falhas. |
+| **TypeScript 5.5** | Garante que o código não tenha erros de tipo | Traz segurança, previsibilidade e menos bugs na aplicação. |
+| **Tailwind CSS** | Estiliza todo o visual com tokens semânticos | Permite alternar temas (Dracula, Claro, Sépia) e cores de destaque com facilidade. |
+| **TipTap + tiptap-markdown** | Motor do editor WYSIWYG e conversão para Markdown | Permite editar texto rico e converter bidirecionalmente para `.md` limpo. |
+| **Mermaid.js & Lowlight** | Diagramas visuais e realce sintático em blocos de código | Renderiza fluxogramas e códigos multilinguagem diretamente dentro das notas. |
+| **wasm-media-encoders** | Codifica gravações de microfone para MP3 em WebAssembly | Mantém áudios compactos e portáteis dentro do cofre sem depender de servidor externo. |
+| **Vitest** | Executa testes automatizados de serviços e lógica do editor | Garante estabilidade contínua em indexação, sessões, atalhos e regras do editor. |

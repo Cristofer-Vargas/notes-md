@@ -45,7 +45,9 @@ Use seletores e menus compactos, com cores do tema, bordas discretas e estados d
 
 Menus de contexto devem permanecer dentro da janela, com rolagem quando necessário. Suas ações são percorridas com as setas; no menu da nota, a seta para a direita entra em um submenu e a esquerda retorna ao menu anterior. Preserve os nomes acessíveis e os estados de foco ao modificar esses controles. `useContextMenuPosition` centraliza o posicionamento dos menus do editor e do explorador.
 
-As configurações usam uma navegação lateral simples por ícone e nome. O conteúdo começa pelas opções da categoria selecionada, sem números na navegação ou uma seção introdutória repetida em cada categoria.
+As configurações usam uma navegação lateral simples por ícone e nome (Aparência, Editor, Ortografia, Discord, Atalhos e Sobre). O conteúdo começa pelas opções da categoria selecionada, sem números na navegação ou uma seção introdutória repetida em cada categoria.
+
+O painel lateral direito organiza **Conexões**, **Sumário**, **Áudios** e **Observações** em duas áreas empilhadas com divisor redimensionável e troca de posição das abas por arraste.
 
 ### Editor, código e diagramas
 
@@ -57,7 +59,7 @@ Uma nota nova é criada como **Nova nota**, com o corpo em branco e o nome pront
 
 ## Ao implementar ou revisar uma tela
 
-1. Reutilize os componentes em `src/renderer/src/components/ui/`, especialmente `Button`, `IconButton`, `Input`, `Badge` e `SelectMenu`, conforme o tipo de controle.
+1. Reutilize os componentes em `src/renderer/src/components/ui/`, especialmente `Button`, `IconButton`, `Input`, `Textarea`, `Badge`, `Switch`, `SelectMenu`, `SelectionButton` e `RangeInput`, conforme o tipo de controle.
 2. Use tokens semânticos e confira contraste, seleção, hover, foco e estados desabilitados nos três temas.
 3. Mantenha ações compactas identificáveis por nome acessível e teste a navegação por teclado.
 4. Verifique menus próximos das bordas, conteúdo longo e janelas menores, preservando acesso a todas as ações.
