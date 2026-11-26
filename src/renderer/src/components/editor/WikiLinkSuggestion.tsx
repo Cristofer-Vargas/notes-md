@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { FileText, PlusCircle, Link2, Tag } from 'lucide-react'
 import type { VaultNoteData } from '../../../../preload/index.d'
+import { Button, Input } from '../ui'
+import { extractWikiLinks, normalizeNoteKey, resolveWikiLinkTarget } from '../../services/noteIndexer'
 
 interface WikiLinkSuggestionProps {
   query: string
@@ -37,11 +39,42 @@ export const WikiLinkSuggestion: React.FC<WikiLinkSuggestionProps> = ({
     )
     .slice(0, 8)
 
+  const missingWikiLinks = useMemo(() => {
+    const targets = new Map<string, string>()
+    for (const note of notes) {
+      for (const link of extractWikiLinks(note.content)) {
+        const target = link.target.trim()
+        const key = normalizeNoteKey(target)
+        if (key && !targets.has(key) && !resolveWikiLinkTarget(target, notes)) {
+          targets.set(key, target)
+        }
+      }
+    }
+    return Array.from(targets.values())
+  }, [notes])
+
+  const filteredMissingWikiLinks = missingWikiLinks
+    .filter((target) => target.toLowerCase().includes(normalizedQuery))
+    .slice(0, 8)
+
   const exactMatchExists = notes.some(
     (n) => n.name.toLowerCase() === normalizedQuery && normalizedQuery.length > 0
   )
-  const canCreateNew = normalizedQuery.length > 0 && !exactMatchExists
-  const totalItems = filteredNotes.length + (canCreateNew ? 1 : 0)
+  const exactMissingLinkExists = missingWikiLinks.some(
+    (target) => normalizeNoteKey(target) === normalizeNoteKey(rawNoteQuery)
+  )
+  const canCreateNew = normalizedQuery.length > 0 && !exactMatchExists && !exactMissingLinkExists
+  const totalItems = filteredNotes.length + filteredMissingWikiLinks.length + (canCreateNew ? 1 : 0)
+  const selectSuggestion = (index: number): void => {
+    const target =
+      filteredNotes[index]?.name ??
+      filteredMissingWikiLinks[index - filteredNotes.length] ??
+      (canCreateNew && index === filteredNotes.length + filteredMissingWikiLinks.length
+        ? rawNoteQuery.trim()
+        : undefined)
+
+    if (target) onSelect(target, effectiveAlias || undefined)
+  }
 
   useEffect(() => {
     setSelectedIndex(0)
@@ -64,13 +97,10 @@ export const WikiLinkSuggestion: React.FC<WikiLinkSuggestionProps> = ({
         e.stopPropagation()
         setSelectedIndex((prev) => (totalItems > 0 ? (prev - 1 + totalItems) % totalItems : 0))
       } else if (e.key === 'Enter' || e.key === 'Tab') {
+        if (totalItems === 0) return
         e.preventDefault()
         e.stopPropagation()
-        if (selectedIndex < filteredNotes.length) {
-          onSelect(filteredNotes[selectedIndex].name, effectiveAlias || undefined)
-        } else if (canCreateNew) {
-          onSelect(rawNoteQuery.trim(), effectiveAlias || undefined)
-        }
+        selectSuggestion(Math.min(selectedIndex, totalItems - 1))
       } else if (e.key === 'Escape') {
         e.preventDefault()
         e.stopPropagation()
@@ -87,6 +117,7 @@ export const WikiLinkSuggestion: React.FC<WikiLinkSuggestionProps> = ({
     canCreateNew,
     rawNoteQuery,
     effectiveAlias,
+    selectSuggestion,
     onSelect,
     onClose
   ])
@@ -104,20 +135,20 @@ export const WikiLinkSuggestion: React.FC<WikiLinkSuggestionProps> = ({
           <Link2 className="w-3.5 h-3.5 text-accent" />
           Vincular Nota [[Nota|Alias]]
         </span>
-        <span className="text-[11px] text-content-muted">↑↓ • Enter</span>
+        <span className="text-[11px] text-content-muted">↑↓ • Tab/Enter</span>
       </div>
 
       {/* Optional Alias Input (or automatic via | pipe) */}
       <div className="px-2.5 py-1.5 bg-surface-secondary/50 border-b border-surface-border flex items-center gap-2">
         <Tag className="w-3.5 h-3.5 text-accent shrink-0" />
-        <input
+        <Input
           type="text"
           value={inlineAlias ? inlineAlias : customAlias}
           disabled={ Boolean(inlineAlias) }
           onChange={(e) => setCustomAlias(e.target.value)}
           onMouseDown={(e) => e.stopPropagation()}
           placeholder="Texto de exibição / Alias (ou digite |Nota)"
-          className="w-full bg-transparent text-xs text-content-primary placeholder:text-content-muted focus:outline-none"
+          className="bg-transparent border-0 rounded-none px-0 py-0 focus:border-transparent focus:ring-0"
         />
       </div>
 
@@ -129,23 +160,23 @@ export const WikiLinkSuggestion: React.FC<WikiLinkSuggestionProps> = ({
             : 'Raiz do Vault'
 
           return (
-            <button
+            <Button
               key={note.relativePath}
               type="button"
+              variant={isSelected ? 'primary' : 'ghost'}
+              size="sm"
               onMouseDown={(e) => e.preventDefault()}
               onMouseEnter={() => setSelectedIndex(idx)}
-              onClick={() => onSelect(note.name, effectiveAlias || undefined)}
-              className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-colors ${
-                isSelected
-                  ? 'bg-accent text-white'
-                  : 'text-content-primary hover:bg-surface-secondary'
-              }`}
+              onClick={() => selectSuggestion(idx)}
+              className={`w-full min-w-0 justify-start gap-2.5 px-2.5 py-2 rounded-lg text-left ${
+                isSelected ? 'text-white' : 'text-content-primary hover:bg-surface-secondary'
+              } [&>span:last-child]:flex [&>span:last-child]:min-w-0 [&>span:last-child]:flex-1`}
+              leftIcon={
+                <FileText className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-accent'}`} />
+              }
             >
-              <FileText
-                className={`w-4 h-4 shrink-0 ${isSelected ? 'text-white' : 'text-accent'}`}
-              />
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium truncate">
+              <span className="block min-w-0 flex-1">
+                <span className="block text-sm font-medium truncate">
                   {note.name}
                   {effectiveAlias && (
                     <span
@@ -156,46 +187,83 @@ export const WikiLinkSuggestion: React.FC<WikiLinkSuggestionProps> = ({
                       → &ldquo;{effectiveAlias}&rdquo;
                     </span>
                   )}
-                </div>
-                <div
-                  className={`text-[11px] truncate ${
+                </span>
+                <span
+                  className={`block text-[11px] truncate ${
                     isSelected ? 'text-white/80' : 'text-content-muted'
                   }`}
                 >
                   {folder}
-                </div>
-              </div>
-            </button>
+                </span>
+              </span>
+            </Button>
+          )
+        })}
+
+        {filteredMissingWikiLinks.map((target, index) => {
+          const itemIndex = filteredNotes.length + index
+          const isSelected = itemIndex === selectedIndex
+
+          return (
+            <Button
+              key={normalizeNoteKey(target)}
+              type="button"
+              variant={isSelected ? 'primary' : 'ghost'}
+              size="sm"
+              onMouseDown={(e) => e.preventDefault()}
+              onMouseEnter={() => setSelectedIndex(itemIndex)}
+              onClick={() => selectSuggestion(itemIndex)}
+              className={`w-full min-w-0 justify-start gap-2.5 px-2.5 py-2 rounded-lg text-left ${
+                isSelected ? 'text-white' : 'text-content-primary hover:bg-surface-secondary'
+              } [&>span:last-child]:flex [&>span:last-child]:min-w-0 [&>span:last-child]:flex-1`}
+              leftIcon={<Link2 className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-accent'}`} />}
+            >
+              <span className="block min-w-0 flex-1">
+                <span className="block text-sm font-medium truncate">
+                  {target}
+                  {effectiveAlias && (
+                    <span className={`ml-1.5 text-xs font-normal ${isSelected ? 'text-white/90' : 'text-accent'}`}>
+                      → &ldquo;{effectiveAlias}&rdquo;
+                    </span>
+                  )}
+                </span>
+                <span className={`block text-[11px] ${isSelected ? 'text-white/80' : 'text-content-muted'}`}>
+                  Link existente sem nota criada
+                </span>
+              </span>
+            </Button>
           )
         })}
 
         {canCreateNew && (
-          <button
+          <Button
             type="button"
+            variant={selectedIndex === filteredNotes.length + filteredMissingWikiLinks.length ? 'primary' : 'ghost'}
+            size="sm"
             onMouseDown={(e) => e.preventDefault()}
-            onMouseEnter={() => setSelectedIndex(filteredNotes.length)}
-            onClick={() => onSelect(rawNoteQuery.trim(), effectiveAlias || undefined)}
-            className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-colors ${
-              selectedIndex === filteredNotes.length
-                ? 'bg-accent text-white'
+            onMouseEnter={() => setSelectedIndex(filteredNotes.length + filteredMissingWikiLinks.length)}
+            onClick={() => selectSuggestion(filteredNotes.length + filteredMissingWikiLinks.length)}
+            className={`w-full min-w-0 justify-start gap-2.5 px-2.5 py-2 rounded-lg text-left ${
+              selectedIndex === filteredNotes.length + filteredMissingWikiLinks.length
+                ? 'text-white'
                 : 'text-accent hover:bg-surface-secondary'
-            }`}
+            } [&>span:last-child]:flex [&>span:last-child]:min-w-0 [&>span:last-child]:flex-1`}
+            leftIcon={<PlusCircle className="w-4 h-4" />}
           >
-            <PlusCircle className="w-4 h-4 shrink-0" />
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium truncate">
+            <span className="block min-w-0 flex-1">
+              <span className="block text-sm font-medium truncate">
                 Criar link para &ldquo;{rawNoteQuery.trim()}&rdquo;
                 {effectiveAlias ? ` (${effectiveAlias})` : ''}
-              </div>
-              <div
+              </span>
+              <span
                 className={`text-[11px] ${
-                  selectedIndex === filteredNotes.length ? 'text-white/80' : 'text-content-muted'
+                  selectedIndex === filteredNotes.length + filteredMissingWikiLinks.length ? 'text-white/80' : 'text-content-muted'
                 }`}
               >
                 A nota será criada automaticamente ao abrir
-              </div>
-            </div>
-          </button>
+              </span>
+            </span>
+          </Button>
         )}
 
         {totalItems === 0 && (
