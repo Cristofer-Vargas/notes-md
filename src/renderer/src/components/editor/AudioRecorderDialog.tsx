@@ -40,19 +40,24 @@ async function convertRecordingToMp3(blob: Blob): Promise<{ blob: Blob; waveform
     encoder.configure({ channels, sampleRate: audioBuffer.sampleRate, bitrate: 128 })
 
     const channelData = Array.from({ length: channels }, (_, channel) => audioBuffer.getChannelData(channel))
-    const output: Uint8Array[] = []
+    const output: ArrayBuffer[] = []
+    const copyChunkToArrayBuffer = (chunk: Uint8Array): ArrayBuffer => {
+      const copy = new Uint8Array(chunk.byteLength)
+      copy.set(chunk)
+      return copy.buffer
+    }
     const chunkSize = 16_384
     for (let offset = 0; offset < audioBuffer.length; offset += chunkSize) {
       const samples = channelData.map((data) => data.subarray(offset, Math.min(offset + chunkSize, audioBuffer.length)))
       const encoded = encoder.encode(samples)
-      if (encoded.length > 0) output.push(encoded.slice())
+      if (encoded.length > 0) output.push(copyChunkToArrayBuffer(encoded))
       if (offset > 0 && offset % (chunkSize * 8) === 0) {
         await new Promise<void>((resolve) => window.setTimeout(resolve, 0))
       }
     }
 
     const finalChunk = encoder.finalize()
-    if (finalChunk.length > 0) output.push(finalChunk.slice())
+    if (finalChunk.length > 0) output.push(copyChunkToArrayBuffer(finalChunk))
     return { blob: new Blob(output, { type: 'audio/mpeg' }), waveform }
   } finally {
     await audioContext.close()
