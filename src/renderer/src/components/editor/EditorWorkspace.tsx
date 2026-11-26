@@ -22,6 +22,7 @@ interface EditorWorkspaceProps {
   onUpdateSplitLayout: (layout: SplitLayoutMode) => void
   splitRatio: number
   onUpdateSplitRatio: (ratio: number) => void
+  onSplitRatioCommit: (ratio: number) => void
   pane1: EditorPaneState
   onUpdatePane1: (updater: (prev: EditorPaneState) => EditorPaneState) => void
   pane2: EditorPaneState
@@ -57,6 +58,7 @@ export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
   onUpdateSplitLayout,
   splitRatio,
   onUpdateSplitRatio,
+  onSplitRatioCommit,
   pane1,
   onUpdatePane1,
   pane2,
@@ -85,6 +87,8 @@ export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const isResizingRef = useRef(false)
+  const splitRatioRef = useRef(splitRatio)
+  splitRatioRef.current = splitRatio
   const [draggedTabInfo, setDraggedTabInfo] = useState<DraggedTabInfo | null>(null)
 
   // Start Resizing between Pane 1 and Pane 2
@@ -100,17 +104,20 @@ export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
         const x = moveEvent.clientX - rect.left
         const rawRatio = x / rect.width
         const boundedRatio = Math.max(0.18, Math.min(0.82, rawRatio))
+        splitRatioRef.current = boundedRatio
         onUpdateSplitRatio(boundedRatio)
       } else if (splitLayout === 'vertical') {
         const y = moveEvent.clientY - rect.top
         const rawRatio = y / rect.height
         const boundedRatio = Math.max(0.18, Math.min(0.82, rawRatio))
+        splitRatioRef.current = boundedRatio
         onUpdateSplitRatio(boundedRatio)
       }
     }
 
     const handleMouseUp = (): void => {
       isResizingRef.current = false
+      onSplitRatioCommit(splitRatioRef.current)
       window.removeEventListener('mousemove', handleMouseMove)
       window.removeEventListener('mouseup', handleMouseUp)
     }
@@ -121,7 +128,9 @@ export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
 
   // Double click divider to reset to 50/50
   const handleResetSplitRatio = (): void => {
+    splitRatioRef.current = 0.5
     onUpdateSplitRatio(0.5)
+    onSplitRatioCommit(0.5)
   }
 
   // Select Tab within a Pane

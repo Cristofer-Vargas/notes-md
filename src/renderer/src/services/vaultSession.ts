@@ -12,10 +12,22 @@ export interface PersistedNoteViewState {
   sideNotesCollapsed: boolean
 }
 
+export interface PersistedEditorPane {
+  openTabPaths: string[]
+  activeNotePath: string | null
+}
+
 export interface PersistedVaultSession {
   openTabPaths: string[]
   activeNotePath: string | null
   expandedFolders: Record<string, boolean>
+  splitLayout?: 'single' | 'horizontal' | 'vertical'
+  splitRatio?: number
+  activePaneId?: 'pane-1' | 'pane-2'
+  panes?: {
+    pane1?: PersistedEditorPane
+    pane2?: PersistedEditorPane
+  }
   noteViewStates?: Record<string, PersistedNoteViewState>
 }
 

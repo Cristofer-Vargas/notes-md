@@ -411,14 +411,34 @@ export function App(): React.ReactElement {
     saveVaultSession(vaultPath, {
       openTabPaths,
       activeNotePath,
-      expandedFolders
+      expandedFolders,
+      splitLayout,
+      splitRatio,
+      activePaneId,
+      panes: {
+        pane1: {
+          openTabPaths: pane1.tabs.map((tab) => tab.relativePath),
+          activeNotePath: pane1.activeNotePath
+        },
+        pane2: {
+          openTabPaths: pane2.tabs.map((tab) => tab.relativePath),
+          activeNotePath: pane2.activeNotePath
+        }
+      }
     })
     const openNoteFullPaths = openTabs.flatMap((tab) => {
       const note = notesRef.current.find((item) => item.relativePath === tab.relativePath)
       return note ? [note.fullPath] : []
     })
     pruneLegacyHeadingFoldStates(vaultPath, openNoteFullPaths)
-  }, [vaultPath, openTabs, activeNotePath, expandedFolders])
+  }, [vaultPath, openTabs, activeNotePath, expandedFolders, splitLayout, activePaneId, pane1, pane2])
+
+  const handleSplitRatioCommit = useCallback((ratio: number) => {
+    if (!vaultPath) return
+    const currentSession = loadVaultSession(vaultPath)
+    if (!currentSession) return
+    saveVaultSession(vaultPath, { ...currentSession, splitRatio: ratio })
+  }, [vaultPath])
 
   const updateSettings = useCallback((partial: Partial<AppSettings>) => {
     setSettings((prev) => {
@@ -471,30 +491,55 @@ export function App(): React.ReactElement {
           setExpandedFolders(savedSession.expandedFolders)
         }
 
-        const restoredTabs: OpenTab[] = []
-        for (const relPath of savedSession.openTabPaths || []) {
-          const found = snapshot.notes.find((n) => n.relativePath === relPath)
-          if (found && !restoredTabs.some((t) => t.relativePath === found.relativePath)) {
-            restoredTabs.push({ relativePath: found.relativePath, title: found.name })
+        const restorePaneTabs = (paths: string[] | undefined): OpenTab[] => {
+          const restored: OpenTab[] = []
+          for (const relPath of paths || []) {
+            const found = snapshot.notes.find((n) => n.relativePath === relPath)
+            if (found && !restored.some((tab) => tab.relativePath === found.relativePath)) {
+              restored.push({ relativePath: found.relativePath, title: found.name })
+            }
           }
+          return restored
         }
 
-        if (restoredTabs.length > 0) {
-          const savedActiveExists =
-            savedSession.activeNotePath &&
-            restoredTabs.some((t) => t.relativePath === savedSession.activeNotePath)
-          const targetActive = savedActiveExists
-            ? savedSession.activeNotePath
-            : restoredTabs[0].relativePath
+        const pane1Paths = savedSession.panes?.pane1?.openTabPaths ?? savedSession.openTabPaths
+        const pane2Paths = savedSession.panes?.pane2?.openTabPaths ?? []
+        const restoredTabs = restorePaneTabs(pane1Paths)
+        const restoredPane2Tabs = restorePaneTabs(pane2Paths)
+
+        if (restoredTabs.length > 0 || restoredPane2Tabs.length > 0) {
+          const restoredPane1: OpenTab[] = restoredTabs.length > 0
+            ? restoredTabs
+            : [{ relativePath: welcome.relativePath, title: welcome.name }]
+          const pane1ActivePath = savedSession.panes?.pane1?.activeNotePath ?? savedSession.activeNotePath
+          const pane1HasSavedActive = pane1ActivePath && restoredPane1.some((tab) => tab.relativePath === pane1ActivePath)
+          const targetPane1Active = pane1HasSavedActive ? pane1ActivePath : restoredPane1[0].relativePath
+          const pane2ActivePath = savedSession.panes?.pane2?.activeNotePath
+          const pane2HasSavedActive = pane2ActivePath && restoredPane2Tabs.some((tab) => tab.relativePath === pane2ActivePath)
+          const targetPane2Active = pane2HasSavedActive
+            ? pane2ActivePath
+            : restoredPane2Tabs[0]?.relativePath ?? null
+          const savedLayout = savedSession.splitLayout === 'horizontal' || savedSession.splitLayout === 'vertical'
+            ? savedSession.splitLayout
+            : 'single'
+          const shouldRestoreSplit = savedLayout !== 'single' && restoredPane2Tabs.length > 0
+          const savedRatio = typeof savedSession.splitRatio === 'number' && Number.isFinite(savedSession.splitRatio)
+            ? savedSession.splitRatio
+            : 0.5
 
           setPane1({
             id: 'pane-1',
-            tabs: restoredTabs,
-            activeNotePath: targetActive
+            tabs: restoredPane1,
+            activeNotePath: targetPane1Active
           })
-          setPane2({ id: 'pane-2', tabs: [], activeNotePath: null })
-          setSplitLayout('single')
-          setActivePaneId('pane-1')
+          setPane2({
+            id: 'pane-2',
+            tabs: shouldRestoreSplit ? restoredPane2Tabs : [],
+            activeNotePath: shouldRestoreSplit ? targetPane2Active : null
+          })
+          setSplitLayout(shouldRestoreSplit ? savedLayout : 'single')
+          setSplitRatio(Math.max(0.18, Math.min(0.82, savedRatio)))
+          setActivePaneId(shouldRestoreSplit && savedSession.activePaneId === 'pane-2' ? 'pane-2' : 'pane-1')
           return
         }
       } else {
@@ -1370,6 +1415,7 @@ export function App(): React.ReactElement {
           onUpdateSplitLayout={setSplitLayout}
           splitRatio={splitRatio}
           onUpdateSplitRatio={setSplitRatio}
+          onSplitRatioCommit={handleSplitRatioCommit}
           pane1={pane1}
           onUpdatePane1={setPane1}
           pane2={pane2}
