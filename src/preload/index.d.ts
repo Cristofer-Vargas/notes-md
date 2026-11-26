@@ -85,6 +85,9 @@ export interface ElectronAPI {
     vaultPath: string,
     relativePath: string
   ) => Promise<{ dataUrl: string; size: number } | null>
+  saveVaultAudio: (vaultPath: string, audioBytes: Uint8Array, contentType: string) => Promise<{ relativePath: string; size: number }>
+  readVaultAudioBase64: (vaultPath: string, relativePath: string) => Promise<{ dataUrl: string; size: number } | null>
+  deleteVaultAudio: (vaultPath: string, relativePath: string) => Promise<boolean>
   deleteEntry: (vaultPath: string, relativePath: string) => Promise<boolean>
   openExternal: (url: string) => Promise<void>
   openInExplorer: (vaultPath: string) => Promise<void>

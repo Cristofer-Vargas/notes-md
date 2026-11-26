@@ -79,6 +79,12 @@ const api: ElectronAPI = {
     ipcRenderer.invoke('vault:move-entry', vaultPath, oldRelativePath, newParentFolderRelativePath),
   readImageBase64: (vaultPath: string, relativePath: string) =>
     ipcRenderer.invoke('vault:read-image-base64', vaultPath, relativePath),
+  saveVaultAudio: (vaultPath: string, audioBytes: Uint8Array, contentType: string) =>
+    ipcRenderer.invoke('vault:save-audio', vaultPath, audioBytes, contentType),
+  readVaultAudioBase64: (vaultPath: string, relativePath: string) =>
+    ipcRenderer.invoke('vault:read-audio-base64', vaultPath, relativePath),
+  deleteVaultAudio: (vaultPath: string, relativePath: string) =>
+    ipcRenderer.invoke('vault:delete-audio', vaultPath, relativePath),
   deleteEntry: (vaultPath: string, relativePath: string) =>
     ipcRenderer.invoke('vault:delete-entry', vaultPath, relativePath),
   openExternal: (url: string) => ipcRenderer.invoke('shell:open-external', url),

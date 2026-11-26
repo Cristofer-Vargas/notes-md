@@ -23,6 +23,7 @@ import type {
 import type { VaultNoteData } from '../../../../preload/index.d'
 import { MarkdownEditor } from './MarkdownEditor'
 import appLogo from '../../assets/logo.png'
+import type { VaultAudioNavigationTarget } from '../../services/vaultAudioReferences'
 
 export interface DraggedTabInfo {
   paneId: 'pane-1' | 'pane-2'
@@ -65,6 +66,8 @@ interface EditorPaneViewProps {
   hasLeftFloatingToggle?: boolean
   hasRightFloatingToggle?: boolean
   pomodoroControl?: React.ReactNode
+  audioNavigationTarget?: VaultAudioNavigationTarget | null
+  onAudioNavigationHandled?: (requestId: number) => void
 }
 
 export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
@@ -100,7 +103,9 @@ export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
   onOpenQuickSwitcher,
   hasLeftFloatingToggle,
   hasRightFloatingToggle,
-  pomodoroControl
+  pomodoroControl,
+  audioNavigationTarget,
+  onAudioNavigationHandled
 }) => {
   const editorContentRef = useRef<HTMLDivElement | null>(null)
   const [dropZone, setDropZone] = useState<DropZoneDirection | null>(null)
@@ -481,6 +486,8 @@ export const EditorPaneView: React.FC<EditorPaneViewProps> = ({
             onToggleZenMode={onToggleZenMode}
             onOpenHelpModal={onOpenHelpModal}
             pomodoroControl={pomodoroControl}
+            audioNavigationTarget={audioNavigationTarget}
+            onAudioNavigationHandled={onAudioNavigationHandled}
           />
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center select-none bg-surface-canvas/30 space-y-4">

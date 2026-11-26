@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useEditor, EditorContent, type Editor } from '@tiptap/react'
+import type { Transaction } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from 'tiptap-markdown'
 import Underline from '@tiptap/extension-underline'
@@ -24,6 +25,7 @@ import { FontSizeExtension } from './extensions/FontSizeExtension'
 import { ListExit } from './extensions/ListExit'
 import { WikiLinkExtension } from './extensions/WikiLinkExtension'
 import { EditorToolbar } from './EditorToolbar'
+import { AudioRecorderDialog, type AudioRecorderMotionAnchor } from './AudioRecorderDialog'
 import { EditorContextMenu, type EditorContextMenuPosition } from './EditorContextMenu'
 import { SideNoteCard } from './SideNoteCard'
 import { SideNoteDeleteDialog } from './SideNoteDeleteDialog'
@@ -41,6 +43,7 @@ import { WikiLinkSuggestion } from './WikiLinkSuggestion'
 import { WikiLinkHoverPreview } from './WikiLinkHoverPreview'
 import { CustomCodeBlock, lowlight } from './extensions/CustomCodeBlock'
 import { CustomHighlight } from './extensions/CustomHighlight'
+import { VaultAudio } from './extensions/VaultAudioExtension'
 import { HeadingFold, foldedHeadingsContainingRange, getFoldedHeadingReferences, headingFoldKey, restoreFoldedHeadings, type FoldedHeadingReference } from './extensions/HeadingFold'
 import {
   applyHighlightColor,
@@ -69,6 +72,7 @@ import { getEditorFontStack } from '../../services/settingsManager'
 import { getShortcutKey, matchesShortcut } from '../../services/shortcutService'
 import type { VaultNoteData } from '../../../../preload/index.d'
 import type { AppSettings, IndexedNoteMeta } from '../../types/app'
+import { findVaultAudioReferenceOffset, type VaultAudioNavigationTarget } from '../../services/vaultAudioReferences'
 import { CheckCircle2, Clock, ExternalLink, FolderOpen, Link2, MessageSquarePlus, PanelLeftClose, PanelLeftOpen, Pencil, RefreshCw, Sparkles, Trash2, Unlink } from 'lucide-react'
 import appLogo from '../../assets/logo.png'
 import { Button, IconButton, Input, Textarea } from '../ui'
@@ -91,6 +95,8 @@ interface MarkdownEditorProps {
   onToggleZenMode: () => void
   onOpenHelpModal: () => void
   pomodoroControl?: React.ReactNode
+  audioNavigationTarget?: VaultAudioNavigationTarget | null
+  onAudioNavigationHandled?: (requestId: number) => void
 }
 
 function legacyHeadingFoldStorageKey(vaultPath: string, notePath: string): string {
@@ -112,6 +118,36 @@ function readHeadingFoldReferences(key: string): FoldedHeadingReference[] {
   }
 }
 
+function getAudioTitleSuggestion(editor: Editor | null, position: number, noteName: string): string {
+  if (!editor || editor.isDestroyed) return `${noteName} 001`
+  const headingsBeforeCursor: Array<{ position: number; title: string }> = []
+  editor.state.doc.descendants((node, nodePosition) => {
+    if (node.type.name === 'heading' && nodePosition <= position) {
+      const title = node.textContent.trim()
+      if (title) headingsBeforeCursor.push({ position: nodePosition, title })
+    }
+  })
+  const activeHeading = headingsBeforeCursor[headingsBeforeCursor.length - 1] ?? null
+
+  let currentSectionPosition: number | null = null
+  let sectionAudioCount = 0
+  let highestNumber = 0
+  editor.state.doc.descendants((node, nodePosition) => {
+    if (node.type.name === 'heading') {
+      currentSectionPosition = nodePosition
+      return
+    }
+    if (node.type.name !== 'vaultAudio' || currentSectionPosition !== (activeHeading?.position ?? null)) return
+    sectionAudioCount += 1
+    const match = /\s(\d+)$/.exec(String(node.attrs.title || ''))
+    if (match) highestNumber = Math.max(highestNumber, Number(match[1]))
+  })
+
+  const nextNumber = Math.max(sectionAudioCount, highestNumber) + 1
+  const topicTitle = activeHeading?.title || noteName
+  return `${topicTitle} ${String(nextNumber).padStart(3, '0')}`
+}
+
 export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   vaultPath,
   observationsPanelTarget,
@@ -129,11 +165,59 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   isZenMode,
   onToggleZenMode,
   onOpenHelpModal,
-  pomodoroControl
+  pomodoroControl,
+  audioNavigationTarget,
+  onAudioNavigationHandled
 }) => {
   const sideNotes = useSideNotes(vaultPath)
+  const vaultPathRef = useRef(vaultPath)
+  vaultPathRef.current = vaultPath
+  const audioInsertTargetRef = useRef<Editor | null>(null)
+  const audioInsertRangeRef = useRef<{ from: number; to: number } | null>(null)
+  const [isAudioRecorderOpen, setIsAudioRecorderOpen] = useState(false)
+  const [audioMotionAnchor, setAudioMotionAnchor] = useState<AudioRecorderMotionAnchor | null>(null)
+  const [audioTitleSuggestion, setAudioTitleSuggestion] = useState<string | null>(null)
   const sideNotesRef = useRef(sideNotes)
   sideNotesRef.current = sideNotes
+  useEffect(() => {
+    if (!isAudioRecorderOpen) return
+    const targetEditor = audioInsertTargetRef.current
+    if (!targetEditor || targetEditor.isDestroyed) return
+
+    const reposition = (): void => {
+      const range = audioInsertRangeRef.current
+      if (!range || targetEditor.isDestroyed) return
+      try {
+        const position = Math.max(0, Math.min(range.from, targetEditor.state.doc.content.size))
+        const cursor = targetEditor.view.coordsAtPos(position)
+        setAudioMotionAnchor((current) => current ? { ...current, target: { x: cursor.left, y: (cursor.top + cursor.bottom) / 2 } } : current)
+      } catch {
+        // The current editor view may be updating; the last valid anchor remains usable.
+      }
+    }
+    const onTransaction = ({ transaction }: { transaction: Transaction }): void => {
+      const range = audioInsertRangeRef.current
+      if (range && transaction.docChanged) {
+        const isCursor = range.from === range.to
+        audioInsertRangeRef.current = {
+          from: transaction.mapping.map(range.from, isCursor ? 1 : -1),
+          to: transaction.mapping.map(range.to, 1)
+        }
+      }
+      reposition()
+    }
+
+    targetEditor.on('transaction', onTransaction)
+    window.addEventListener('scroll', reposition, true)
+    window.addEventListener('resize', reposition)
+    const frame = window.requestAnimationFrame(reposition)
+    return () => {
+      targetEditor.off('transaction', onTransaction)
+      window.removeEventListener('scroll', reposition, true)
+      window.removeEventListener('resize', reposition)
+      window.cancelAnimationFrame(frame)
+    }
+  }, [isAudioRecorderOpen])
   const [sideEditor, setSideEditor] = useState<Editor | null>(null)
   const [sideFilter, setSideFilter] = useState<'current' | 'vault'>('current')
   const [sideSearch, setSideSearch] = useState('')
@@ -492,6 +576,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         }
       }),
       Image,
+      VaultAudio.configure({ getVaultPath: () => vaultPathRef.current }),
       WikiLinkExtension,
       Placeholder.configure({
         placeholder:
@@ -737,6 +822,63 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     })
     return () => window.cancelAnimationFrame(frame)
   }, [sideNoteNavigation, editor, activeNote, readyNoteKey, sideNotes.notes, isSourceMode])
+
+  useEffect(() => {
+    if (!audioNavigationTarget || !editor || editor.isDestroyed || !activeNote) return
+    const normalizePath = (path: string): string => path.replace(/\\/g, '/').toLocaleLowerCase()
+    if (normalizePath(activeNote.relativePath) !== normalizePath(audioNavigationTarget.sourcePath)) return
+    if (readyNoteKey !== activeNote.fullPath || activeNoteKeyRef.current !== activeNote.fullPath || hydratedEditorRef.current?.path !== activeNote.fullPath) return
+
+    if (isSourceMode) {
+      const input = sourceRef.current
+      const offset = findVaultAudioReferenceOffset(input?.value ?? rawMarkdown, audioNavigationTarget.audioPath, audioNavigationTarget.occurrence)
+      if (!input || offset === null) {
+        onAudioNavigationHandled?.(audioNavigationTarget.requestId)
+        return
+      }
+      input.focus({ preventScroll: true })
+      input.setSelectionRange(offset, offset)
+      const lineHeight = Number.parseFloat(window.getComputedStyle(input).lineHeight) || 20
+      const line = input.value.slice(0, offset).split('\n').length - 1
+      input.scrollTop = Math.max(0, line * lineHeight - input.clientHeight / 2)
+      onAudioNavigationHandled?.(audioNavigationTarget.requestId)
+      return
+    }
+
+    const audioPositions: number[] = []
+    editor.state.doc.descendants((node, position) => {
+      if (node.type.name !== 'vaultAudio' || String(node.attrs.src || '') !== audioNavigationTarget.audioPath) return
+      audioPositions.push(position)
+    })
+
+    const position = audioPositions[audioNavigationTarget.occurrence]
+    if (position === undefined) {
+      onAudioNavigationHandled?.(audioNavigationTarget.requestId)
+      return
+    }
+
+    const folded = headingFoldKey.getState(editor.state) ?? new Set()
+    const headingsToExpand = foldedHeadingsContainingRange(editor.state.doc, folded, position, position + 1)
+    for (const headingPosition of headingsToExpand) {
+      if (headingFoldKey.getState(editor.state)?.has(headingPosition)) {
+        editor.view.dispatch(editor.state.tr.setMeta(headingFoldKey, { toggle: headingPosition }))
+      }
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      if (editor.isDestroyed) return
+      editor.commands.setNodeSelection(position)
+      editor.commands.focus(undefined, { scrollIntoView: false })
+      const target = editor.view.nodeDOM(position)
+      if (target instanceof HTMLElement) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        target.classList.add('audio-navigation-highlight')
+        window.setTimeout(() => target.classList.remove('audio-navigation-highlight'), 2100)
+      }
+      onAudioNavigationHandled?.(audioNavigationTarget.requestId)
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [audioNavigationTarget, editor, activeNote, readyNoteKey, isSourceMode, rawMarkdown, onAudioNavigationHandled])
 
   const requestEnhancedSpellSuggestions = useCallback(
     (word: string): void => {
@@ -1527,7 +1669,48 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         onOpenHelpModal={onOpenHelpModal}
         baseFontSize={settings.baseFontSize}
         onChangeBaseFontSize={(newSize) => onUpdateSettings({ baseFontSize: newSize })}
+        onOpenAudioRecorder={(trigger) => {
+          const targetEditor = sideEditor ?? editor
+          const insertionPosition = targetEditor?.state.selection.from ?? 0
+          audioInsertTargetRef.current = targetEditor
+          audioInsertRangeRef.current = targetEditor
+            ? { from: insertionPosition, to: targetEditor.state.selection.to }
+            : null
+          setAudioTitleSuggestion(getAudioTitleSuggestion(targetEditor, insertionPosition, activeNote?.name || 'Áudio'))
+          const triggerRect = trigger?.getBoundingClientRect()
+          const origin = triggerRect
+            ? { left: triggerRect.left, top: triggerRect.top, width: triggerRect.width, height: triggerRect.height }
+            : { left: window.innerWidth / 2, top: 24, width: 36, height: 36 }
+          let target = { x: origin.left + origin.width / 2, y: origin.top + origin.height / 2 }
+          try {
+            if (targetEditor && !targetEditor.isDestroyed) {
+              const cursor = targetEditor.view.coordsAtPos(targetEditor.state.selection.from)
+              target = { x: cursor.left, y: (cursor.top + cursor.bottom) / 2 }
+            }
+          } catch {
+            // Keep the animation aimed at the toolbar if the cursor is not measurable.
+          }
+          setAudioMotionAnchor({ origin, target })
+          setIsAudioRecorderOpen(true)
+        }}
       />
+      {activeNote && <AudioRecorderDialog
+        open={isAudioRecorderOpen}
+        vaultPath={vaultPath}
+        noteName={activeNote.name}
+        suggestedTitle={audioTitleSuggestion}
+        motionAnchor={audioMotionAnchor}
+        onClose={() => { setIsAudioRecorderOpen(false); setAudioMotionAnchor(null); audioInsertRangeRef.current = null; audioInsertTargetRef.current = null }}
+        onSaved={(relativePath, title, durationSeconds, waveform) => {
+          const targetEditor = audioInsertTargetRef.current
+          const range = audioInsertRangeRef.current
+          if (!targetEditor || targetEditor.isDestroyed || !range) return false
+          const inserted = targetEditor.chain().focus().insertContentAt(range, { type: 'vaultAudio', attrs: { src: relativePath, title, duration: durationSeconds, waveform } }).run()
+          audioInsertTargetRef.current = null
+          audioInsertRangeRef.current = null
+          return inserted
+        }}
+      />}
       <div className="flex items-center justify-end gap-1 border-b border-surface-border px-2 py-1">
         {hasAttachedSideNotes && <IconButton
           size="sm"

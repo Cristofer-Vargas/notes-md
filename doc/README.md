@@ -30,6 +30,8 @@ Para navegar pelos conceitos no seu próprio ritmo, dividimos o conteúdo em cap
 
 7. **[Identidade Visual e Experiência (`identidade-visual-e-experiencia.md`)](identidade-visual-e-experiencia.md)**: direção visual oficial do aplicativo, temas, marca e padrões de interação dos principais componentes.
 
+8. **[Estrutura de Dados e Mídia (`estrutura-de-dados-e-multimidia.md`)](estrutura-de-dados-e-multimidia.md)**: estado atual e proposta para organizar notas, imagens, áudio, banco local, Google Drive e uso futuro no Android.
+
 ---
 
 ## 💡 Glossário Rápido de Termos Técnicos

@@ -1,6 +1,7 @@
 import fs from 'fs/promises'
 import fsSync from 'fs'
 import path from 'path'
+import { randomUUID } from 'crypto'
 import type { VaultFileEntry, VaultNoteData, VaultSnapshot } from '../preload/index.d'
 
 function normalizeRelPath(relPath: string): string {
@@ -568,6 +569,68 @@ export async function readVaultImageBase64(
       dataUrl: `data:${mime};base64,${base64}`,
       size: stat.size
     }
+  } catch {
+    return null
+  }
+}
+
+const AUDIO_MIME_TYPES: Record<string, { mime: string; extension: string }> = {
+  'audio/webm': { mime: 'audio/webm', extension: 'webm' },
+  'audio/ogg': { mime: 'audio/ogg', extension: 'ogg' },
+  'audio/mp4': { mime: 'audio/mp4', extension: 'm4a' },
+  'audio/mpeg': { mime: 'audio/mpeg', extension: 'mp3' },
+  'audio/wav': { mime: 'audio/wav', extension: 'wav' }
+}
+
+export function resolveVaultAudioPath(vaultPath: string, relativePath: string): string {
+  const normalized = relativePath.replace(/\\/g, '/')
+  if (!vaultPath || !normalized.startsWith('.notes-md/audio/') || normalized.split('/').includes('..')) {
+    throw new Error('Caminho de áudio inválido.')
+  }
+
+  const fullPath = path.resolve(vaultPath, ...normalized.split('/'))
+  const relativeToVault = path.relative(path.resolve(vaultPath), fullPath)
+  const extension = path.extname(fullPath).replace(/^\./, '').toLowerCase()
+  const isSupportedAudio = Object.values(AUDIO_MIME_TYPES).some((audioType) => audioType.extension === extension)
+  if (!relativeToVault || relativeToVault.startsWith('..') || path.isAbsolute(relativeToVault) || !isSupportedAudio) {
+    throw new Error('Caminho de áudio inválido.')
+  }
+  return fullPath
+}
+
+export async function saveVaultAudio(
+  vaultPath: string,
+  audioBytes: Uint8Array,
+  contentType: string
+): Promise<{ relativePath: string; size: number }> {
+  const audioType = AUDIO_MIME_TYPES[contentType.split(';')[0].trim().toLowerCase()]
+  if (!audioType) throw new Error('Formato de áudio não suportado.')
+  if (!vaultPath || !(audioBytes instanceof Uint8Array)) {
+    throw new Error('Não foi possível salvar esta gravação.')
+  }
+
+  const relativePath = `.notes-md/audio/${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID()}.${audioType.extension}`
+  const fullPath = path.join(vaultPath, ...relativePath.split('/'))
+  const buffer = Buffer.from(audioBytes)
+  if (buffer.length === 0) throw new Error('A gravação está vazia.')
+  await fs.mkdir(path.dirname(fullPath), { recursive: true })
+  await fs.writeFile(fullPath, buffer, { flag: 'wx' })
+  return { relativePath, size: buffer.length }
+}
+
+export async function readVaultAudioBase64(
+  vaultPath: string,
+  relativePath: string
+): Promise<{ dataUrl: string; size: number } | null> {
+  try {
+    const normalized = relativePath.replace(/\\/g, '/')
+    if (!normalized.startsWith('.notes-md/audio/') || normalized.split('/').includes('..')) return null
+    const fullPath = path.join(vaultPath, ...normalized.split('/'))
+    const ext = path.extname(fullPath).replace(/^\./, '').toLowerCase()
+    const mime = Object.values(AUDIO_MIME_TYPES).find((entry) => entry.extension === ext)?.mime
+    if (!mime) return null
+    const [stat, buffer] = await Promise.all([fs.stat(fullPath), fs.readFile(fullPath)])
+    return { dataUrl: `data:${mime};base64,${buffer.toString('base64')}`, size: stat.size }
   } catch {
     return null
   }

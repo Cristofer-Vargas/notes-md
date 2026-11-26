@@ -31,6 +31,7 @@ import {
   Code2,
   Workflow,
   FileCode,
+  Mic,
   Maximize2,
   Minimize2,
   HelpCircle,
@@ -49,6 +50,7 @@ interface EditorToolbarProps {
   onToggleZenMode: () => void
   onOpenWikiLinkPicker: () => void
   onOpenHelpModal: () => void
+  onOpenAudioRecorder: (trigger: HTMLElement | null) => void
   baseFontSize: number
   onChangeBaseFontSize: (newSize: number) => void
 }
@@ -79,6 +81,7 @@ interface ToolBtnProps {
   title: string
   children: React.ReactNode
   className?: string
+  buttonRef?: React.Ref<HTMLButtonElement>
 }
 
 const ToolBtn: React.FC<ToolBtnProps> = ({
@@ -87,9 +90,11 @@ const ToolBtn: React.FC<ToolBtnProps> = ({
   onClick,
   title,
   children,
-  className = ''
+  className = '',
+  buttonRef
 }) => (
   <SelectionButton
+    ref={buttonRef}
     type="button"
     disabled={disabled}
     onMouseDown={(e) => {
@@ -116,9 +121,11 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   onToggleZenMode,
   onOpenWikiLinkPicker,
   onOpenHelpModal,
+  onOpenAudioRecorder,
   baseFontSize,
   onChangeBaseFontSize
 }) => {
+  const audioButtonRef = useRef<HTMLButtonElement>(null)
   const [openDropdown, setOpenDropdown] = useState<
     null | 'highlight' | 'color' | 'typography' | 'align' | 'table' | 'link' | 'image'
   >(null)
@@ -358,6 +365,15 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           </div>
         )}
       </div>
+
+      <ToolBtn
+        buttonRef={audioButtonRef}
+        disabled={isSourceMode || !editor}
+        onClick={() => onOpenAudioRecorder(audioButtonRef.current)}
+        title="Gravar áudio nesta nota"
+      >
+        <Mic className="w-4 h-4" />
+      </ToolBtn>
 
       {/* Highlight / Marker Color Dropdown */}
       <div className="relative">

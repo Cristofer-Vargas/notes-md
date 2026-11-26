@@ -7,6 +7,7 @@ import type {
   SplitLayoutMode
 } from '../../types/app'
 import type { VaultNoteData } from '../../../../preload/index.d'
+import type { VaultAudioNavigationTarget } from '../../services/vaultAudioReferences'
 import {
   EditorPaneView,
   type DraggedTabInfo,
@@ -44,6 +45,8 @@ interface EditorWorkspaceProps {
   hasLeftFloatingToggle?: boolean
   hasRightFloatingToggle?: boolean
   pomodoroControl: React.ReactNode
+  audioNavigation?: { target: VaultAudioNavigationTarget; paneId: 'pane-1' | 'pane-2' } | null
+  onAudioNavigationHandled?: (requestId: number) => void
 }
 
 export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
@@ -76,7 +79,9 @@ export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
   onTitleFocusHandled,
   hasLeftFloatingToggle,
   hasRightFloatingToggle,
-  pomodoroControl
+  pomodoroControl,
+  audioNavigation,
+  onAudioNavigationHandled
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const isResizingRef = useRef(false)
@@ -576,6 +581,8 @@ export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
           hasLeftFloatingToggle={hasLeftFloatingToggle}
           hasRightFloatingToggle={isSplitActive && splitLayout === 'horizontal' ? false : hasRightFloatingToggle}
           pomodoroControl={!isSplitActive ? pomodoroControl : null}
+          audioNavigationTarget={audioNavigation?.paneId === 'pane-1' ? audioNavigation.target : null}
+          onAudioNavigationHandled={onAudioNavigationHandled}
         />
       </div>
 
@@ -645,6 +652,8 @@ export const EditorWorkspace: React.FC<EditorWorkspaceProps> = ({
             hasLeftFloatingToggle={false}
             hasRightFloatingToggle={splitLayout === 'horizontal' ? hasRightFloatingToggle : false}
             pomodoroControl={pomodoroControl}
+            audioNavigationTarget={audioNavigation?.paneId === 'pane-2' ? audioNavigation.target : null}
+            onAudioNavigationHandled={onAudioNavigationHandled}
           />
         </div>
       )}

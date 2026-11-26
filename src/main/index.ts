@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, dialog, session, powerMonitor, Notification } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog, session, powerMonitor, Notification, systemPreferences } from 'electron'
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -13,6 +13,9 @@ import {
   moveVaultEntry,
   deleteVaultEntry,
   readVaultImageBase64,
+  saveVaultAudio,
+  readVaultAudioBase64,
+  resolveVaultAudioPath,
   VaultWatcher
 } from './vaultService'
 import { loadWindowState, trackWindowState } from './windowState'
@@ -314,6 +317,19 @@ function openImageWindow(vaultPath: string, relativePath: string, fileName: stri
 app.whenReady().then(() => {
   if (!hasStableLock) return
 
+  session.defaultSession.setPermissionRequestHandler((requestingWindow, permission, callback, details) => {
+    const mediaTypes = (details as Electron.MediaAccessPermissionRequest).mediaTypes
+    if (permission !== 'media' || requestingWindow !== primaryWindow?.webContents || !mediaTypes?.includes('audio') || mediaTypes.includes('video')) {
+      callback(false)
+      return
+    }
+    if (process.platform === 'darwin') {
+      void systemPreferences.askForMediaAccess('microphone').then(callback).catch(() => callback(false))
+      return
+    }
+    callback(true)
+  })
+
   electronApp.setAppUserModelId(runtimeConfig.appUserModelId)
 
   discordPresenceService = new DiscordPresenceService({
@@ -500,6 +516,26 @@ app.whenReady().then(() => {
       return readVaultImageBase64(vaultPath, relativePath)
     }
   )
+
+  ipcMain.handle('vault:save-audio', async (_event, vaultPath: string, audioBytes: Uint8Array, contentType: string) =>
+    saveVaultAudio(vaultPath, audioBytes, contentType)
+  )
+
+  ipcMain.handle('vault:read-audio-base64', async (_event, vaultPath: string, relativePath: string) =>
+    readVaultAudioBase64(vaultPath, relativePath)
+  )
+
+  ipcMain.handle('vault:delete-audio', async (_event, vaultPath: string, relativePath: string) => {
+    const fullPath = resolveVaultAudioPath(vaultPath, relativePath)
+    try {
+      await shell.trashItem(fullPath)
+    } catch (err) {
+      console.warn('shell.trashItem falhou ao excluir áudio, usando remoção permanente:', err)
+      await deleteVaultEntry(vaultPath, relativePath)
+    }
+    vaultWatcher?.scheduleCheck(60)
+    return true
+  })
 
   ipcMain.handle('vault:delete-entry', async (_event, vaultPath: string, relativePath: string) => {
     const fullPath = join(vaultPath, relativePath)

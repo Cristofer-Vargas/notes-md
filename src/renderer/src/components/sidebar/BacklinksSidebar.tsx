@@ -4,6 +4,7 @@ import {
   ArrowUpRight,
   ListTree,
   MessageSquareText,
+  AudioLines,
   PanelRight,
   FileText,
   PlusCircle,
@@ -18,6 +19,8 @@ import { extractHeadings, resolveWikiLinkTarget } from '../../services/noteIndex
 import { IconButton } from '../ui/IconButton'
 import { SelectionButton } from '../ui/SelectionButton'
 import { useSideNotes } from '../editor/useSideNotes'
+import { AudioLibraryPanel } from './AudioLibraryPanel'
+import { extractVaultAudioReferences, type VaultAudioReference } from '../../services/vaultAudioReferences'
 
 export interface HeadingTreeNode extends NoteHeading {
   index: number
@@ -55,6 +58,56 @@ const getHeadingBadgeClass = (level: number): string => {
     default:
       return 'bg-surface-tertiary/60 text-content-muted font-normal'
   }
+}
+
+type SidebarTab = 'connections' | 'outline' | 'audio' | 'observations'
+
+const SIDEBAR_TAB_ORDER_KEY = 'notes-md:right-sidebar-tab-order:v1'
+const SIDEBAR_SPLIT_RATIO_KEY = 'notes-md:right-sidebar-split-ratio:v1'
+const DEFAULT_SIDEBAR_TAB_ORDER: SidebarTab[] = ['connections', 'outline', 'audio', 'observations']
+
+function loadSidebarTabOrder(): SidebarTab[] {
+  try {
+    const saved: unknown = JSON.parse(localStorage.getItem(SIDEBAR_TAB_ORDER_KEY) ?? 'null')
+    if (
+      Array.isArray(saved) &&
+      saved.length === DEFAULT_SIDEBAR_TAB_ORDER.length &&
+      saved.every((tab): tab is SidebarTab => DEFAULT_SIDEBAR_TAB_ORDER.includes(tab)) &&
+      new Set(saved).size === DEFAULT_SIDEBAR_TAB_ORDER.length
+    ) {
+      return [
+        ...saved.filter((tab) => DEFAULT_SIDEBAR_TAB_ORDER.slice(0, 2).includes(tab)),
+        ...saved.filter((tab) => DEFAULT_SIDEBAR_TAB_ORDER.slice(2).includes(tab))
+      ]
+    }
+  } catch {
+    // Restore the default grouping when saved preferences cannot be read.
+  }
+  return [...DEFAULT_SIDEBAR_TAB_ORDER]
+}
+
+function loadSidebarSplitRatio(): number {
+  try {
+    const value = Number(localStorage.getItem(SIDEBAR_SPLIT_RATIO_KEY))
+    if (Number.isFinite(value) && value >= 0.2 && value <= 0.8) return value
+  } catch {
+    // Use the default split if the saved preference cannot be read.
+  }
+  return 0.56
+}
+
+function loadSidebarPanelTab(panel: 'top' | 'bottom', order: SidebarTab[]): SidebarTab {
+  const allowedTabs = panel === 'top' ? order.slice(0, 2) : order.slice(2)
+  const key = `notes-md:right-sidebar-${panel}-tab:v1`
+  try {
+    const saved = localStorage.getItem(key) as SidebarTab | null
+    if (saved && allowedTabs.includes(saved)) return saved
+    const legacyTab = localStorage.getItem('notes-md:right-sidebar-tab') as SidebarTab | null
+    if (legacyTab && allowedTabs.includes(legacyTab)) return legacyTab
+  } catch {
+    // Use the first tab in this panel if the saved selection cannot be read.
+  }
+  return allowedTabs[0]
 }
 
 interface HeadingTreeItemProps {
@@ -175,7 +228,9 @@ interface BacklinksSidebarProps {
   activePaneId: 'pane-1' | 'pane-2'
   noteMeta?: IndexedNoteMeta
   allNotes: VaultNoteData[]
+  onSaveContent: (relativePath: string, newMarkdown: string) => Promise<void>
   onOpenNoteByPath: (relativePath: string, openInNewTab?: boolean) => void
+  onNavigateAudio: (audio: VaultAudioReference) => void
   onNavigateWikiLink: (targetTitle: string, openInNewTab?: boolean) => void
   onHoverTarget?: (targetName: string, rect: DOMRect, isCtrlDown: boolean) => void
   onLeaveTarget?: () => void
@@ -190,26 +245,31 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
   activePaneId,
   noteMeta,
   allNotes,
+  onSaveContent,
   onOpenNoteByPath,
+  onNavigateAudio,
   onNavigateWikiLink,
   onHoverTarget,
   onLeaveTarget,
   onCloseSidebar
 }) => {
   const { notes: observations } = useSideNotes(vaultPath)
-  const [activeTab, setActiveTab] = useState<'connections' | 'outline' | 'observations'>(() => {
-    try {
-      const saved = localStorage.getItem('notes-md:right-sidebar-tab')
-      if (saved === 'connections' || saved === 'outline' || saved === 'observations') return saved
-    } catch {
-      // ignore
-    }
-    return 'connections'
-  })
+  const [sidebarTabOrder, setSidebarTabOrder] = useState<SidebarTab[]>(loadSidebarTabOrder)
+  const [topPanelTab, setTopPanelTab] = useState<SidebarTab>(() => loadSidebarPanelTab('top', loadSidebarTabOrder()))
+  const [bottomPanelTab, setBottomPanelTab] = useState<SidebarTab>(() => loadSidebarPanelTab('bottom', loadSidebarTabOrder()))
+  const [sidebarSplitRatio, setSidebarSplitRatio] = useState(loadSidebarSplitRatio)
+  const [draggedSidebarTab, setDraggedSidebarTab] = useState<SidebarTab | null>(null)
+  const [dragOverSidebarTab, setDragOverSidebarTab] = useState<SidebarTab | null>(null)
 
   const [collapsedNodes, setCollapsedNodes] = useState<Record<string, boolean>>({})
   const [activeHeadingIndex, setActiveHeadingIndex] = useState(-1)
   const outlineRef = useRef<HTMLDivElement>(null)
+  const sidebarRef = useRef<HTMLElement>(null)
+  const topPanelHeaderRef = useRef<HTMLDivElement>(null)
+  const bottomPanelHeaderRef = useRef<HTMLDivElement>(null)
+  const sidebarSplitterRef = useRef<HTMLDivElement>(null)
+  const sidebarSplitRatioRef = useRef(sidebarSplitRatio)
+  sidebarSplitRatioRef.current = sidebarSplitRatio
 
   useEffect(() => {
     const updateActiveHeading = (): void => {
@@ -250,12 +310,15 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
 
   useEffect(() => {
     outlineRef.current?.querySelector<HTMLElement>('[data-active-heading="true"]')?.scrollIntoView({ block: 'nearest' })
-  }, [activeHeadingIndex, activeTab, collapsedNodes])
+  }, [activeHeadingIndex, topPanelTab, collapsedNodes])
 
-  const handleSelectTab = (tab: 'connections' | 'outline' | 'observations'): void => {
-    setActiveTab(tab)
+  const handleSelectTab = (tab: SidebarTab): void => {
+    const isTopTab = sidebarTabOrder.slice(0, 2).includes(tab)
+    if (isTopTab) setTopPanelTab(tab)
+    else setBottomPanelTab(tab)
     try {
       localStorage.setItem('notes-md:right-sidebar-tab', tab)
+      localStorage.setItem(`notes-md:right-sidebar-${isTopTab ? 'top' : 'bottom'}-tab:v1`, tab)
     } catch {
       // ignore
     }
@@ -349,93 +412,161 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
   }
 
   const isCompact = typeof width === 'number' && width < 260
-  const isIconOnly = typeof width === 'number' && width < 230
+  const isIconOnly = typeof width === 'number' && width < 350
   const linksCount = noteMeta ? noteMeta.backlinks.length + noteMeta.outgoingLinks.length : 0
   const headingsCount = noteMeta ? noteMeta.headings.length : 0
   const observationsCount = activeNote ? observations.filter((note) => note.sourcePath === activeNote.relativePath).length : 0
+  const audioCount = activeNote ? extractVaultAudioReferences([activeNote]).length : 0
+
+  const reorderSidebarTab = (source: SidebarTab, target: SidebarTab): void => {
+    if (source === target) return
+    const next = [...sidebarTabOrder]
+    const sourceIndex = next.indexOf(source)
+    const targetIndex = next.indexOf(target)
+    if (sourceIndex < 0 || targetIndex < 0) return
+    if ((sourceIndex < 2) !== (targetIndex < 2)) return
+    next.splice(sourceIndex, 1)
+    next.splice(targetIndex, 0, source)
+    setSidebarTabOrder(next)
+    const nextTopTabs = next.slice(0, 2)
+    const nextBottomTabs = next.slice(2)
+    if (!nextTopTabs.includes(topPanelTab)) {
+      const nextTab = nextTopTabs[0]
+      setTopPanelTab(nextTab)
+      try { localStorage.setItem('notes-md:right-sidebar-top-tab:v1', nextTab) } catch {}
+    }
+    if (!nextBottomTabs.includes(bottomPanelTab)) {
+      const nextTab = nextBottomTabs[0]
+      setBottomPanelTab(nextTab)
+      try { localStorage.setItem('notes-md:right-sidebar-bottom-tab:v1', nextTab) } catch {}
+    }
+    try {
+      localStorage.setItem(SIDEBAR_TAB_ORDER_KEY, JSON.stringify(next))
+    } catch {
+      // Keep the reordered tabs for the current session if storage is unavailable.
+    }
+  }
+
+  const handleStartSidebarSplitResize = (event: React.MouseEvent<HTMLDivElement>): void => {
+    event.preventDefault()
+    const sidebar = sidebarRef.current
+    if (!sidebar) return
+    const bounds = sidebar.getBoundingClientRect()
+    const onMouseMove = (moveEvent: MouseEvent): void => {
+      const topHeaderHeight = topPanelHeaderRef.current?.offsetHeight ?? 0
+      const bottomHeaderHeight = bottomPanelHeaderRef.current?.offsetHeight ?? 0
+      const splitterHeight = sidebarSplitterRef.current?.offsetHeight ?? 0
+      const availableHeight = Math.max(1, bounds.height - topHeaderHeight - bottomHeaderHeight - splitterHeight)
+      const positionInContent = moveEvent.clientY - bounds.top - topHeaderHeight - splitterHeight / 2
+      const nextRatio = Math.max(0.2, Math.min(0.8, positionInContent / availableHeight))
+      sidebarSplitRatioRef.current = nextRatio
+      setSidebarSplitRatio(nextRatio)
+    }
+    const onMouseUp = (): void => {
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onMouseUp)
+      try { localStorage.setItem(SIDEBAR_SPLIT_RATIO_KEY, String(sidebarSplitRatioRef.current)) } catch {}
+    }
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
+  }
+
+  const resizeSidebarSplitByKeyboard = (delta: number): void => {
+    const nextRatio = Math.max(0.2, Math.min(0.8, sidebarSplitRatio + delta))
+    sidebarSplitRatioRef.current = nextRatio
+    setSidebarSplitRatio(nextRatio)
+    try { localStorage.setItem(SIDEBAR_SPLIT_RATIO_KEY, String(nextRatio)) } catch {}
+  }
+
+  const renderSidebarTab = (tab: SidebarTab, isActive: boolean): React.ReactElement => {
+    const config = {
+      connections: { label: 'Links', ariaLabel: `Links e Conexões (${linksCount})`, count: linksCount, icon: <Link2 className="h-3.5 w-3.5 shrink-0" /> },
+      outline: { label: 'Sumário', ariaLabel: `Sumário da Nota (${headingsCount})`, count: headingsCount, icon: <ListTree className="h-3.5 w-3.5 shrink-0" /> },
+      audio: { label: 'Áudios', ariaLabel: `Áudios da nota (${audioCount})`, count: audioCount, icon: <AudioLines className="h-3.5 w-3.5 shrink-0" /> },
+      observations: { label: 'Observações', ariaLabel: `Observações da nota (${observationsCount})`, count: observationsCount, icon: <MessageSquareText className="h-3.5 w-3.5 shrink-0" /> }
+    }[tab]
+    const isDropTarget = dragOverSidebarTab === tab && draggedSidebarTab !== tab
+
+    return (
+      <SelectionButton
+        key={tab}
+        type="button"
+        draggable
+        aria-label={config.ariaLabel}
+        aria-pressed={isActive}
+        title={`${config.ariaLabel} · Arraste para reordenar`}
+        onClick={() => handleSelectTab(tab)}
+        onDragStart={(event) => {
+          event.dataTransfer.setData('application/notes-md-sidebar-tab', tab)
+          event.dataTransfer.effectAllowed = 'move'
+          setDraggedSidebarTab(tab)
+        }}
+        onDragEnd={() => { setDraggedSidebarTab(null); setDragOverSidebarTab(null) }}
+        onDragOver={(event) => {
+          const sourceIndex = draggedSidebarTab ? sidebarTabOrder.indexOf(draggedSidebarTab) : -1
+          const targetIndex = sidebarTabOrder.indexOf(tab)
+          if (
+            event.dataTransfer.types.includes('application/notes-md-sidebar-tab') &&
+            sourceIndex >= 0 &&
+            (sourceIndex < 2) === (targetIndex < 2)
+          ) {
+            event.preventDefault()
+            event.dataTransfer.dropEffect = 'move'
+            setDragOverSidebarTab(tab)
+          }
+        }}
+        onDragLeave={() => setDragOverSidebarTab((current) => current === tab ? null : current)}
+        onDrop={(event) => {
+          const source = event.dataTransfer.getData('application/notes-md-sidebar-tab') as SidebarTab
+          if (!DEFAULT_SIDEBAR_TAB_ORDER.includes(source)) return
+          event.preventDefault()
+          event.stopPropagation()
+          reorderSidebarTab(source, tab)
+          setDraggedSidebarTab(null)
+          setDragOverSidebarTab(null)
+        }}
+        className={`flex min-w-0 items-center justify-center gap-1.5 rounded-sm px-2 py-1.5 text-xs font-semibold transition-colors ${
+          isActive ? 'bg-accent-soft text-accent' : 'text-content-secondary hover:bg-surface-tertiary'
+        } ${isDropTarget ? 'ring-1 ring-accent/50' : ''} ${draggedSidebarTab === tab ? 'opacity-50' : ''}`}
+      >
+        {config.icon}
+        {!isIconOnly && <span className="truncate">{config.label} ({config.count})</span>}
+      </SelectionButton>
+    )
+  }
 
   return (
     <aside
+      ref={sidebarRef}
       style={{ width: width ? `${width}px` : undefined }}
       className="w-72 shrink-0 h-full bg-surface-secondary border-l border-surface-border flex flex-col select-none"
     >
-      {/* Header Tabs (Links & Sumário) + Close Button */}
-      <div className="p-2 border-b border-surface-border flex items-center gap-1.5 bg-surface-bg/50">
-        <SelectionButton
-          type="button"
-          onClick={() => handleSelectTab('connections')}
-          title={`Links e Conexões (${linksCount})`}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-sm text-xs font-semibold transition-colors min-w-0 ${
-            activeTab === 'connections'
-              ? 'bg-accent-soft text-accent'
-              : 'text-content-secondary hover:bg-surface-tertiary'
-          }`}
-        >
-          <Link2 className="w-3.5 h-3.5 shrink-0" />
-          {!isIconOnly && (
-            !isCompact ? (
-              <span className="truncate">Links ({linksCount})</span>
-            ) : (
-              <span className="text-[10px] px-1 py-0.2 rounded-sm bg-accent/20 text-accent font-bold">
-                {linksCount}
-              </span>
-            )
+      <section
+        style={{ flex: `${sidebarSplitRatio} 1 0%` }}
+        className="flex min-h-0 flex-col overflow-hidden"
+      >
+        <div ref={topPanelHeaderRef} className="relative shrink-0 border-b border-surface-border bg-surface-bg/50 p-2">
+          <div className={`grid grid-cols-2 gap-1.5 ${onCloseSidebar ? 'pr-7' : ''}`}>
+            {sidebarTabOrder.slice(0, 2).map((tab) => renderSidebarTab(tab, topPanelTab === tab))}
+          </div>
+          {onCloseSidebar && (
+            <IconButton
+              variant="ghost"
+              size="sm"
+              className="absolute right-2 top-2"
+              onClick={onCloseSidebar}
+              tooltip="Ocultar Painel Direito"
+              icon={<PanelRight className="h-4 w-4 text-content-secondary hover:text-content-primary" />}
+            />
           )}
-        </SelectionButton>
-
-        <SelectionButton
-          type="button"
-          onClick={() => handleSelectTab('outline')}
-          title={`Sumário da Nota (${headingsCount})`}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-sm text-xs font-semibold transition-colors min-w-0 ${
-            activeTab === 'outline'
-              ? 'bg-accent-soft text-accent'
-              : 'text-content-secondary hover:bg-surface-tertiary'
-          }`}
-        >
-          <ListTree className="w-3.5 h-3.5 shrink-0" />
-          {!isIconOnly && (
-            !isCompact ? (
-              <span className="truncate">Sumário ({headingsCount})</span>
-            ) : (
-              <span className="text-[10px] px-1 py-0.2 rounded-sm bg-accent/20 text-accent font-bold">
-                {headingsCount}
-              </span>
-            )
-          )}
-        </SelectionButton>
-
-        <SelectionButton
-          type="button"
-          onClick={() => handleSelectTab('observations')}
-          title={`Observações da nota (${observationsCount})`}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-sm text-xs font-semibold transition-colors min-w-0 ${activeTab === 'observations' ? 'bg-accent-soft text-accent' : 'text-content-secondary hover:bg-surface-tertiary'}`}
-        >
-          <MessageSquareText className="w-3.5 h-3.5 shrink-0" />
-          {!isIconOnly && (!isCompact ? <span className="truncate">Observações ({observationsCount})</span> : <span className="text-[10px] px-1 py-0.2 rounded-sm bg-accent/20 text-accent font-bold">{observationsCount}</span>)}
-        </SelectionButton>
-
-        {onCloseSidebar && (
-          <IconButton
-            variant="ghost"
-            size="sm"
-            onClick={onCloseSidebar}
-            tooltip="Ocultar Painel Direito"
-            icon={<PanelRight className="w-4 h-4 text-content-secondary hover:text-content-primary" />}
-          />
-        )}
-      </div>
-
-      {activeTab === 'observations' ? (
-        <div ref={onObservationsPanelTarget} className="flex flex-1 min-h-0 flex-col select-text">
-          {!activeNote && <div className="flex flex-1 items-center justify-center p-4 text-center text-xs text-content-muted">Abra uma nota para consultar suas observações.</div>}
         </div>
-      ) : !activeNote || !noteMeta ? (
-        <div className="flex-1 p-4 flex flex-col items-center justify-center text-center text-xs text-content-muted">
-          Abra uma nota para visualizar suas conexões e sumário.
-        </div>
-      ) : activeTab === 'connections' ? (
-        <div className="flex-1 overflow-y-auto p-3 space-y-5">
+        <div className="flex min-h-0 flex-1 flex-col">
+          {!activeNote || !noteMeta ? (
+            <div className="flex flex-1 flex-col items-center justify-center p-4 text-center text-xs text-content-muted">
+              Abra uma nota para visualizar suas conexões e sumário.
+            </div>
+          ) : topPanelTab === 'connections' ? (
+            <div className="flex-1 overflow-y-auto p-3 space-y-5">
           {/* Backlinks Section (Notes that link TO this note) */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -654,7 +785,55 @@ export const BacklinksSidebar: React.FC<BacklinksSidebarProps> = ({
             )}
           </div>
         </div>
-      )}
+          )}
+        </div>
+      </section>
+
+      <div
+        ref={sidebarSplitterRef}
+        role="separator"
+        aria-label="Redimensionar painéis do painel direito"
+        aria-orientation="horizontal"
+        aria-valuemin={20}
+        aria-valuemax={80}
+        aria-valuenow={Math.round(sidebarSplitRatio * 100)}
+        tabIndex={0}
+        onMouseDown={handleStartSidebarSplitResize}
+        onDoubleClick={() => resizeSidebarSplitByKeyboard(0.56 - sidebarSplitRatio)}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowUp') { event.preventDefault(); resizeSidebarSplitByKeyboard(-0.02) }
+          else if (event.key === 'ArrowDown') { event.preventDefault(); resizeSidebarSplitByKeyboard(0.02) }
+          else if (event.key === 'Home') { event.preventDefault(); resizeSidebarSplitByKeyboard(0.2 - sidebarSplitRatio) }
+          else if (event.key === 'End') { event.preventDefault(); resizeSidebarSplitByKeyboard(0.8 - sidebarSplitRatio) }
+        }}
+        className="group relative z-10 flex h-1.5 shrink-0 cursor-row-resize touch-none items-center justify-center bg-surface-border/50 transition-colors hover:bg-accent/50 active:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+      >
+        <div className="h-0.5 w-8 rounded-full bg-content-muted/50 transition-colors group-hover:bg-accent group-active:bg-accent" />
+      </div>
+
+      <section
+        style={{ flex: `${1 - sidebarSplitRatio} 1 0%` }}
+        className="flex min-h-0 flex-col overflow-hidden"
+      >
+        <div ref={bottomPanelHeaderRef} className="shrink-0 border-b border-surface-border bg-surface-bg/50 p-2">
+          <div className="grid grid-cols-2 gap-1.5">
+            {sidebarTabOrder.slice(2).map((tab) => renderSidebarTab(tab, bottomPanelTab === tab))}
+          </div>
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col">
+          {bottomPanelTab === 'observations' ? (
+            <div ref={onObservationsPanelTarget} className="flex min-h-0 flex-1 flex-col select-text">
+              {!activeNote && <div className="flex flex-1 items-center justify-center p-4 text-center text-xs text-content-muted">Abra uma nota para consultar suas observações.</div>}
+            </div>
+          ) : bottomPanelTab === 'audio' ? (
+            <AudioLibraryPanel activeNote={activeNote} allNotes={allNotes} onNavigateAudio={onNavigateAudio} onSaveContent={onSaveContent} />
+          ) : (
+            <div className="flex flex-1 items-center justify-center p-4 text-center text-xs text-content-muted">
+              Escolha Links ou Sumário na parte superior para visualizar este painel.
+            </div>
+          )}
+        </div>
+      </section>
     </aside>
   )
 }

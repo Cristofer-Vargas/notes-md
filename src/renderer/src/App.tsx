@@ -41,6 +41,7 @@ import {
   applyThemeToDocument
 } from './services/settingsManager'
 import { loadVaultSession, pruneLegacyHeadingFoldStates, saveVaultSession } from './services/vaultSession'
+import type { VaultAudioNavigationTarget, VaultAudioReference } from './services/vaultAudioReferences'
 
 const LAST_VAULT_STORAGE_KEY = 'notes-md:last-vault'
 const RECENT_VAULTS_KEY = 'notes-md:recent-vaults:v1'
@@ -128,6 +129,8 @@ export function App(): React.ReactElement {
   })
   const [activePaneId, setActivePaneId] = useState<'pane-1' | 'pane-2'>('pane-1')
   const [pendingTitleFocus, setPendingTitleFocus] = useState<{ path: string; paneId: 'pane-1' | 'pane-2' } | null>(null)
+  const [audioNavigation, setAudioNavigation] = useState<{ target: VaultAudioNavigationTarget; paneId: 'pane-1' | 'pane-2' } | null>(null)
+  const audioNavigationRequestRef = useRef(0)
 
   useLayoutEffect(() => {
     const syncPaneHistory = (paneId: 'pane-1' | 'pane-2', pane: EditorPaneState): void => {
@@ -718,6 +721,25 @@ export function App(): React.ReactElement {
     },
     [notes, activePaneId]
   )
+
+  const handleNavigateToAudio = useCallback((audio: VaultAudioReference) => {
+    const paneId = activePaneId
+    const requestId = ++audioNavigationRequestRef.current
+    setAudioNavigation({
+      target: {
+        sourcePath: audio.sourcePath,
+        audioPath: audio.audioPath,
+        occurrence: audio.occurrence,
+        requestId
+      },
+      paneId
+    })
+    navigateToNote(audio.sourcePath, false, paneId)
+  }, [activePaneId, navigateToNote])
+
+  const handleAudioNavigationHandled = useCallback((requestId: number) => {
+    setAudioNavigation((current) => current?.target.requestId === requestId ? null : current)
+  }, [])
 
   const pendingNoteWritesRef = useRef<Map<string, Promise<void>>>(new Map())
 
@@ -1371,6 +1393,8 @@ export function App(): React.ReactElement {
           hasLeftFloatingToggle={!settings.showLeftSidebar && !isZenMode}
           hasRightFloatingToggle={!settings.showRightSidebar && !isZenMode}
           pomodoroControl={<PomodoroBar context={pomodoroContext} />}
+          audioNavigation={audioNavigation}
+          onAudioNavigationHandled={handleAudioNavigationHandled}
         />
 
         {settings.showRightSidebar && !isZenMode && (
@@ -1392,7 +1416,9 @@ export function App(): React.ReactElement {
               activePaneId={activePaneId}
               noteMeta={activeNote ? vaultIndex[activeNote.relativePath] : undefined}
               allNotes={notes}
+              onSaveContent={handleSaveContent}
               onOpenNoteByPath={navigateToNote}
+              onNavigateAudio={handleNavigateToAudio}
               onNavigateWikiLink={handleNavigateWikiLink}
               onHoverTarget={handleHoverSidebarTarget}
               onLeaveTarget={handleLeaveSidebarTarget}
