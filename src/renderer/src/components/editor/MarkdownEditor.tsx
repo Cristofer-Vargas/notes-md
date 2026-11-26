@@ -2193,20 +2193,32 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         <div className="flex shrink-0 items-center gap-2 sm:gap-4">
           <span className="editor-status-secondary flex items-center gap-1.5 text-content-secondary">
             {saveStatus === 'typing' ? (
-              <>
-                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                <span className="text-amber-500 font-medium">Modificado (salvando em 2s...)</span>
-              </>
+              <span
+                className="flex items-center text-amber-500"
+                role="status"
+                aria-label="Alterações aguardando salvamento"
+                title="Alterações aguardando salvamento"
+              >
+                <span className="w-2 h-2 rounded-full bg-current animate-pulse" aria-hidden="true" />
+              </span>
             ) : saveStatus === 'saving' ? (
-              <>
-                <RefreshCw className="w-3 h-3 text-accent animate-spin" />
-                <span className="text-accent font-medium">Salvando no disco...</span>
-              </>
+              <span
+                className="flex items-center text-content-muted/70"
+                role="status"
+                aria-label="Salvando no disco"
+                title="Salvando no disco..."
+              >
+                <RefreshCw className="w-3 h-3 animate-spin" aria-hidden="true" />
+              </span>
             ) : (
-              <>
-                <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                <span>Salvo no disco</span>
-              </>
+              <span
+                className="flex items-center text-emerald-500"
+                role="status"
+                aria-label="Salvo no disco"
+                title="Salvo no disco"
+              >
+                <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
+              </span>
             )}
           </span>
           <span className="editor-status-secondary flex items-center gap-1">
