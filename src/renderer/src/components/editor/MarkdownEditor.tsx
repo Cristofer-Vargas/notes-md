@@ -3,6 +3,10 @@ import { createPortal } from 'react-dom'
 import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import type { Transaction } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
+import Bold from '@tiptap/extension-bold'
+import Code from '@tiptap/extension-code'
+import Italic from '@tiptap/extension-italic'
+import Strike from '@tiptap/extension-strike'
 import { Markdown } from 'tiptap-markdown'
 import Underline from '@tiptap/extension-underline'
 import TextStyle from '@tiptap/extension-text-style'
@@ -53,7 +57,6 @@ import {
   wrapMarkdownSelection,
   wrapMarkdownSelectionWithHighlightColor
 } from './inlineFormatting'
-import { escapeInlineFormatting } from './escapeInlineFormatting'
 import { blockShortcut, moveEditorBlocks, moveMarkdownLines } from './moveBlocks'
 import {
   generateFallbackSuggestions,
@@ -529,14 +532,22 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     () => [
       StarterKit.configure({
         heading: { levels: [1, 2, 3, 4, 5, 6] },
+        bold: false,
+        code: false,
         codeBlock: false,
-        code: {
-          HTMLAttributes: {
-            spellcheck: 'false',
-            'data-gramm': 'false'
-          }
+        italic: false,
+        strike: false
+      }),
+      // Non-inclusive text marks let arrow navigation leave formatting; highlight stays inclusive for continued typing.
+      Bold.extend({ inclusive: false }),
+      Code.extend({ inclusive: false }).configure({
+        HTMLAttributes: {
+          spellcheck: 'false',
+          'data-gramm': 'false'
         }
       }),
+      Italic.extend({ inclusive: false }),
+      Strike.extend({ inclusive: false }),
       ListExit,
       CustomCodeBlock.configure({
         lowlight,
@@ -549,13 +560,13 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         transformPastedText: true,
         transformCopiedText: false
       }),
-      Underline,
+      Underline.extend({ inclusive: false }),
       CustomHighlight.configure({ multicolor: true }),
-      TextStyle,
+      TextStyle.extend({ inclusive: false }),
       Color,
       FontSizeExtension,
-      Subscript,
-      Superscript,
+      Subscript.extend({ inclusive: false }),
+      Superscript.extend({ inclusive: false }),
       TextAlign.configure({
         types: ['heading', 'paragraph']
       }),
@@ -569,7 +580,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       TaskItem.configure({
         nested: true
       }),
-      Link.configure({
+      Link.extend({ inclusive: false }).configure({
         openOnClick: false,
         HTMLAttributes: {
           rel: 'noopener noreferrer'
@@ -724,10 +735,6 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         if (blockAction) {
           event.preventDefault()
           return moveEditorBlocks(view, blockAction.direction, blockAction.duplicate)
-        }
-        if (escapeInlineFormatting(view, event)) {
-          event.preventDefault()
-          return true
         }
         if (
           matchesShortcut(event, getShortcutKey(settings, 'quickTools')) ||

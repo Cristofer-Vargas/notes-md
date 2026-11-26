@@ -12,6 +12,10 @@ export function inlineFormattingKey(event: Pick<KeyboardEvent, 'key' | 'ctrlKey'
 
 export function wrapMarkdownSelection(value: string, start: number, end: number, key: InlineKey): { value: string; start: number; end: number } | null {
   if (start >= end || !value.slice(start, end).trim()) return null
+  if (key === '=') {
+    const unwrapped = unwrapSelectedMark(value, start, end)
+    if (unwrapped) return unwrapped
+  }
   const [open, close] = key === '~' ? ['~~', '~~'] : key === '=' ? ['<mark>', '</mark>'] : [key, key]
   return {
     value: value.slice(0, start) + open + value.slice(start, end) + close + value.slice(end),
@@ -27,6 +31,9 @@ export function wrapMarkdownSelectionWithHighlightColor(
   color: string
 ): { value: string; start: number; end: number } | null {
   if (start >= end || !value.slice(start, end).trim()) return null
+  const unwrapped = unwrapSelectedMark(value, start, end, color)
+  if (unwrapped) return unwrapped
+
   const open = `<mark data-color="${color}">`
   const close = '</mark>'
   return {
@@ -49,7 +56,18 @@ export function applyHighlightColor(view: EditorView, color: string): boolean {
 
   const highlight = schema.marks.highlight
   if (!highlight) return false
-  view.dispatch(state.tr.addMark(selection.from, selection.to, highlight.create({ color })).scrollIntoView())
+  let foundText = false
+  let selectionHasOnlyThisColor = true
+  doc.nodesBetween(selection.from, selection.to, (node, position) => {
+    if (!node.isText || Math.min(selection.to, position + node.nodeSize) <= Math.max(selection.from, position)) return
+    foundText = true
+    if (highlight.isInSet(node.marks)?.attrs.color !== color) selectionHasOnlyThisColor = false
+  })
+
+  const transaction = state.tr
+  if (foundText && selectionHasOnlyThisColor) transaction.removeMark(selection.from, selection.to, highlight)
+  else transaction.addMark(selection.from, selection.to, highlight.create({ color }))
+  view.dispatch(transaction.scrollIntoView())
   return true
 }
 
@@ -79,4 +97,29 @@ export function applyInlineFormatting(view: EditorView, key: InlineKey): boolean
   }
   view.dispatch(tr.scrollIntoView())
   return true
+}
+
+function unwrapSelectedMark(
+  value: string,
+  start: number,
+  end: number,
+  color?: string
+): { value: string; start: number; end: number } | null {
+  const openingMatch = value.slice(0, start).match(/<mark\b[^>]*>$/i)
+  const closingMatch = value.slice(end).match(/^<\/mark\s*>/i)
+  if (!openingMatch || !closingMatch) return null
+
+  if (color) {
+    const existingColor = openingMatch[0].match(/\bdata-color\s*=\s*(["'])(.*?)\1/i)?.[2]
+    if (existingColor?.toLowerCase() !== color.toLowerCase()) return null
+  }
+
+  const openingStart = start - openingMatch[0].length
+  const nextValue = value.slice(0, openingStart) + value.slice(start, end) + value.slice(end + closingMatch[0].length)
+  const nextSelectionStart = start - openingMatch[0].length
+  return {
+    value: nextValue,
+    start: nextSelectionStart,
+    end: nextSelectionStart + end - start
+  }
 }

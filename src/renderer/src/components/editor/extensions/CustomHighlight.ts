@@ -5,6 +5,8 @@ import Highlight from '@tiptap/extension-highlight'
  * so pastel highlight marks keep readable dark foreground contrast across themes.
  */
 export const CustomHighlight = Highlight.extend({
+  inclusive: true,
+
   addAttributes() {
     if (!this.options.multicolor) {
       return {}
