@@ -1,3 +1,24 @@
+# [1.7.0](https://github.com/Cristofer-Vargas/notes-md/compare/v1.6.0...v1.7.0) (2026-11-26)
+
+
+### Correções
+
+* ajustado a formatação de marca texto que ficava grudada com o texto seguinte ([](https://github.com/Cristofer-Vargas/notes-md/commit/1027c1ec083c221eca48ff36edbedc8259c98c47))
+* **audio:** corrigido a montagem do audio com bloco em buffer ([](https://github.com/Cristofer-Vargas/notes-md/commit/c9df8c8b241c6df340021730f2f68baaa24d3cb8))
+* janelas divididas são ajustadas para salvar normalmente na sessão ([](https://github.com/Cristofer-Vargas/notes-md/commit/8e66d409f7eebf6dbfcc986d8ccee80611c00d34))
+* wikilinks mencionados pelo autocomplete inline tambem sugerem wikilinks sem notas criadas ([](https://github.com/Cristofer-Vargas/notes-md/commit/f593422b35eb54c9e4b2c88affccb490a0431533))
+
+
+### Documentação
+
+* **readme:** atualizando documentações gerais e README ([](https://github.com/Cristofer-Vargas/notes-md/commit/ab6e111f19b8abd218215e42468e597781c04c97)), closes [#2](https://github.com/Cristofer-Vargas/notes-md/issues/2)
+
+
+### Novos Recursos
+
+* atalho de marca texto e configuravel nas configurações ([](https://github.com/Cristofer-Vargas/notes-md/commit/26b148d974d75321c3571d98b63170f06b6cf934))
+* possibilidade de inserção de áudios gravados dentro das notas com vinculação do cofre ([](https://github.com/Cristofer-Vargas/notes-md/commit/35d75a8bd532bfae99f544f2e589ea7e03913264))
+
 # [1.6.0](https://github.com/Cristofer-Vargas/notes-md/compare/v1.5.1...v1.6.0) (2026-11-24)
 
 
